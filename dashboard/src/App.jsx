@@ -15,12 +15,14 @@ function fmtMonth(yyyy_mm_dd) {
   return String(yyyy_mm_dd).slice(0, 7);
 }
 
-function trendFromDelta(delta) {
-  if (delta == null) return { label: "N/A", tone: "neutral" };
-  const d = Number(delta);
-  if (d > 0) return { label: "ขาขึ้น", tone: "pos" };
-  if (d < 0) return { label: "ขาลง", tone: "neg" };
-  return { label: "ทรงตัว", tone: "neutral" };
+function trendFromSummaryTrend(trend) {
+  const map = {
+    UP: { label: "ขาขึ้น", tone: "pos" },
+    DOWN: { label: "ขาลง", tone: "neg" },
+    STABLE: { label: "ทรงตัว", tone: "neutral" },
+    "N/A": { label: "N/A", tone: "neutral" },
+  };
+  return map[trend] || { label: "N/A", tone: "neutral" };
 }
 
 export default function App() {
@@ -60,10 +62,10 @@ export default function App() {
     };
   }, []);
 
-  const lastActualValue = summary?.last_actual_value ?? null;
-  const deltaPred = summary?.delta_pred ?? null;
-  const forecastMonth = summary?.forecast_month ?? null;
-  const trend = trendFromDelta(deltaPred);
+  const lastActualValue = summary?.latest_value ?? null;
+  const momChange = summary?.mom_change ?? null;
+  const latestMonth = summary?.latest_month ?? null;
+  const trend = trendFromSummaryTrend(summary?.trend);
 
   return (
     <div>
@@ -134,24 +136,25 @@ export default function App() {
                   {lastActualValue != null ? Number(lastActualValue).toFixed(1) : "-"}
                 </div>
                 <div className="metric-sub">
-                  {t("MoM", "MoM")} {deltaPred != null ? `| ${Math.abs(Number(deltaPred)).toFixed(1)}` : "| -"}
+                  {t("MoM", "MoM")}{" "}
+                  {momChange != null ? `| ${Number(momChange).toFixed(2)}` : "| -"}
                 </div>
               </div>
 
               <div className="card card-pad" style={{ background: "#fff4f4" }}>
                 <div className="metric-label">{t("Trend", "แนวโน้ม")}</div>
-                <div className="metric-value" style={{ color: trend.tone === "pos" ? "#166534" : "#b91c1c" }}>
+                <div className="metric-value" style={{ color: trend.tone === "pos" ? "#166534" : trend.tone === "neg" ? "#b91c1c" : "#003d82"}}>
                   {trend.label}
                 </div>
                 <div className="metric-sub">
-                  {t("Based on predicted delta", "อิงจากการเปลี่ยนแปลง")}
+                  {t("Based on MoM change", "อิงจากการเปลี่ยนแปลง MoM")}
                 </div>
               </div>
 
               <div className="card card-pad">
                 <div className="metric-label">{t("Data as of", "ข้อมูล ณ")}</div>
                 <div className="metric-value" style={{ color: "#003d82" }}>
-                  {fmtMonth(forecastMonth)}
+                  {fmtMonth(latestMonth)}
                 </div>
                 <div className="metric-sub">{t("Updated monthly", "อัปเดตทุกเดือน")}</div>
               </div>

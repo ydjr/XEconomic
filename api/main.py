@@ -10,11 +10,10 @@ ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 ART_DIR = os.path.join(ROOT, "artifacts")
 DATA_DIR = os.path.join(ROOT, "data")
 
-CCI_CSV = os.path.join(DATA_DIR, "indicators/cci.csv")  # columns: date, cci_overall
+CCI_CSV = os.path.join(DATA_DIR, "indicators/cci.csv")
 
 LATEST_FORECAST = os.path.join(ART_DIR, "latest_forecast.json")
 LATEST_EXPLAIN = os.path.join(ART_DIR, "latest_explain.json")
-LATEST_FEATURES = os.path.join(ART_DIR, "latest_features.json")
 
 app = FastAPI(title="CCI Forecast API", version="1.0.0")
 
@@ -38,18 +37,98 @@ def health():
 
 @app.get("/dashboard/summary")
 def dashboard_summary():
-    fc = read_json(LATEST_FORECAST)
-    return fc or {}
+    """
+    Actual-only summary for the top cards (no forecast involved).
+
+    Returns:
+      {
+        "latest_month": "YYYY-MM-DD",
+        "latest_value": 51.7,
+        "prev_month": "YYYY-MM-DD",
+        "prev_value": 52.5,
+        "mom_change": -0.8,
+        "trend": "UP" | "DOWN" | "STABLE" | "N/A"
+      }
+    """
+    if not os.path.exists(CCI_CSV):
+        return {
+            "latest_month": None,
+            "latest_value": None,
+            "prev_month": None,
+            "prev_value": None,
+            "mom_change": None,
+            "trend": "N/A",
+        }
+
+    df = pd.read_csv(CCI_CSV)
+
+    if "date" not in df.columns or "cci_overall" not in df.columns:
+        return {
+            "latest_month": None,
+            "latest_value": None,
+            "prev_month": None,
+            "prev_value": None,
+            "mom_change": None,
+            "trend": "N/A",
+        }
+
+    df["date"] = pd.to_datetime(df["date"], errors="coerce")
+    df["cci_overall"] = pd.to_numeric(df["cci_overall"], errors="coerce")
+
+    df = df.dropna(subset=["date", "cci_overall"]).sort_values("date")
+
+    # normalize to first day of month (consistent)
+    df["date"] = df["date"].dt.to_period("M").dt.to_timestamp()
+
+    if len(df) == 0:
+        return {
+            "latest_month": None,
+            "latest_value": None,
+            "prev_month": None,
+            "prev_value": None,
+            "mom_change": None,
+            "trend": "N/A",
+        }
+
+    latest = df.iloc[-1]
+    latest_month = latest["date"].strftime("%Y-%m-%d")
+    latest_value = float(latest["cci_overall"])
+
+    prev_month = None
+    prev_value = None
+    mom_change = None
+    trend = "N/A"
+
+    if len(df) >= 2:
+        prev = df.iloc[-2]
+        prev_month = prev["date"].strftime("%Y-%m-%d")
+        prev_value = float(prev["cci_overall"])
+
+        mom_change = round(latest_value - prev_value, 2)
+
+        eps = 0.05  # small threshold to avoid noise
+        if mom_change > eps:
+            trend = "UP"
+        elif mom_change < -eps:
+            trend = "DOWN"
+        else:
+            trend = "STABLE"
+
+    return {
+        "latest_month": latest_month,
+        "latest_value": latest_value,
+        "prev_month": prev_month,
+        "prev_value": prev_value,
+        "mom_change": mom_change,
+        "trend": trend,
+    }
+
 
 @app.get("/dashboard/explain/latest")
 def dashboard_explain_latest():
     ex = read_json(LATEST_EXPLAIN)
     return ex or {}
 
-@app.get("/dashboard/features/latest")
-def dashboard_features_latest():
-    ft = read_json(LATEST_FEATURES)
-    return ft or {}
 
 @app.get("/dashboard/timeseries")
 def dashboard_timeseries(limit: int = Query(500, ge=1, le=5000)):
@@ -58,11 +137,10 @@ def dashboard_timeseries(limit: int = Query(500, ge=1, le=5000)):
       { data: [ {date: 'YYYY-MM-DD', actual: number|null, pred: number|null}, ... ] }
 
     Logic:
-    - read full actual history from data/cci.csv
-    - read latest_forecast.json and append:
-        pred at last_actual_month = last_actual_value
-        pred at forecast_month = cci_pred (actual=null)
-    - shade forecast region in frontend after last actual point
+    - read full actual history from data/indicators/cci.csv (or your CCI_CSV)
+    - read latest_forecast.json (new format: forecast_path[])
+    - set pred at last_actual_month = last actual value (connect line)
+    - append forecast_path points as pred (actual=null)
     """
     if not os.path.exists(CCI_CSV):
         return {"data": []}
@@ -70,7 +148,6 @@ def dashboard_timeseries(limit: int = Query(500, ge=1, le=5000)):
     df = pd.read_csv(CCI_CSV)
 
     if "date" not in df.columns or "cci_overall" not in df.columns:
-        # Fail-safe: return empty
         return {"data": []}
 
     df["date"] = pd.to_datetime(df["date"], errors="coerce")
@@ -82,36 +159,46 @@ def dashboard_timeseries(limit: int = Query(500, ge=1, le=5000)):
 
     rows = []
     for _, r in df.iterrows():
-        val = r["cci_overall"]
         try:
-            val = float(val)
+            actual_val = float(r["cci_overall"])
         except Exception:
-            val = None
-        rows.append({"date": r["date_str"], "actual": val, "pred": None})
+            actual_val = None
+        rows.append({"date": r["date_str"], "actual": actual_val, "pred": None})
 
+    # --- NEW forecast JSON format ---
     fc = read_json(LATEST_FORECAST)
-    if fc:
-        last_m = pd.to_datetime(fc.get("last_actual_month"))
-        fc_m = pd.to_datetime(fc.get("forecast_month"))
+    if fc and "forecast_path" in fc and isinstance(fc["forecast_path"], list):
+        # last_actual_month is the last time used to build features (end of training series)
+        last_actual_month = fc.get("last_actual_month")
+        if last_actual_month is not None:
+            feature_dt = pd.to_datetime(last_actual_month).to_period("M").to_timestamp()
+            feature_s = feature_dt.strftime("%Y-%m-%d")
 
-        last_val = float(fc.get("last_actual_value"))
-        pred_val = float(fc.get("cci_pred"))
+            # connect pred line to the last known actual at that month (if exists)
+            last_actual_value = None
+            for x in rows:
+                if x["date"] == feature_s:
+                    last_actual_value = x["actual"]
+                    if last_actual_value is not None:
+                        x["pred"] = last_actual_value
+                    break
 
-        last_s = last_m.to_period("M").to_timestamp().strftime("%Y-%m-%d")
-        fc_s = fc_m.to_period("M").to_timestamp().strftime("%Y-%m-%d")
+            # if not found in history but last_actual_month exists, add it
+            if last_actual_value is None:
+                # try to use last row actual
+                if len(rows) > 0:
+                    last_actual_value = rows[-1]["actual"]
+                rows.append({"date": feature_s, "actual": last_actual_value, "pred": last_actual_value})
 
-        # Put pred at the last actual month (so pred line connects)
-        found_last = False
-        for x in rows:
-            if x["date"] == last_s:
-                x["pred"] = last_val
-                found_last = True
-                break
-        if not found_last:
-            rows.append({"date": last_s, "actual": last_val, "pred": last_val})
-
-        # Append the forecast point
-        rows.append({"date": fc_s, "actual": None, "pred": pred_val})
+        # append forecast path
+        for p in fc["forecast_path"]:
+            try:
+                dt = pd.to_datetime(p.get("forecast_month")).to_period("M").to_timestamp()
+                dt_s = dt.strftime("%Y-%m-%d")
+                y_pred = float(p.get("y_pred"))
+            except Exception:
+                continue
+            rows.append({"date": dt_s, "actual": None, "pred": y_pred})
 
         rows = sorted(rows, key=lambda x: x["date"])
 

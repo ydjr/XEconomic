@@ -2,21 +2,25 @@
 # pipeline/predict_latest.py
 # ------------------------------------------------------------
 # PURPOSE (Production Forecast):
-# - Train on all available supervised rows (where target exists)
-# - Use the latest available feature row to predict the NEXT month
-# - Save artifacts for dashboard
+# - Train on all available data (where target exists)
+# - Predict next H months (path forecast)
+# - Explain each horizon with Darts SHAP
+# - Save artifacts in BOTH CSV + JSON formats
 #
-# OUTPUT
-# Saved: artifacts\latest_forecast.json
-# Saved: artifacts\latest_explain.json
-# Saved: artifacts\latest_features.json
+# OUTPUT (artifacts/)
+# - latest_forecast.csv, latest_forecast.json
+# - latest_explain.csv,  latest_explain.json
 # ============================================================
 
 import os
-import json
 import numpy as np
 import pandas as pd
-from xgboost import XGBRegressor
+
+from darts import TimeSeries
+from darts.models import XGBModel
+from darts.explainability.shap_explainer import ShapExplainer
+
+from utils import ensure_dir, save_csv, save_json
 
 # =====================
 # CONFIG
@@ -26,15 +30,16 @@ ART_DIR = "artifacts"
 
 DATE_COL = "date"
 TARGET_COL = "cci_overall"
-HORIZON = 1
 
-LAGS_TARGET = [1, 2, 3]
-LAGS_OTHER  = [1, 2, 3]
-
-USE_LOG_GDP = True
+HORIZON = 3
 TOPK_LOCAL = 15
 
-MODEL_PARAMS = dict(
+LAGS_TARGET = 3
+LAGS_PAST_COVS = 3
+
+USE_LOG_GDP = True
+
+XGB_PARAMS = dict(
     n_estimators=800,
     learning_rate=0.03,
     max_depth=4,
@@ -47,206 +52,172 @@ MODEL_PARAMS = dict(
 )
 
 # =====================
-# HELPERS
+# JSON CONVERTERS
 # =====================
-def ensure_dir(path: str):
-    os.makedirs(path, exist_ok=True)
+def forecast_df_to_json(df_forecast: pd.DataFrame) -> dict:
+    last_actual_month = str(df_forecast["last_actual_month"].iloc[0])
+    horizon = int(df_forecast["horizon"].max())
 
-def save_json(obj, path: str):
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(obj, f, ensure_ascii=False, indent=2)
-    print("Saved:", path)
+    forecast_path = []
+    for _, r in df_forecast.sort_values("horizon").iterrows():
+        forecast_path.append({
+            "horizon": int(r["horizon"]),
+            "forecast_month": str(r["forecast_month"]),
+            "y_pred": float(r["y_pred"]),
+        })
 
-def coerce_numeric(df: pd.DataFrame, date_col: str):
-    df = df.copy()
-    for c in df.columns:
-        if c != date_col:
-            df[c] = pd.to_numeric(df[c], errors="coerce")
-    return df
-
-def make_model():
-    return XGBRegressor(**MODEL_PARAMS)
-
-def import_shap():
-    try:
-        import shap
-        return shap
-    except ImportError:
-        raise ImportError("shap is not installed. Run: pip install shap")
+    return {
+        "model": "darts_xgb",
+        "last_actual_month": last_actual_month,
+        "horizon": horizon,
+        "forecast_path": forecast_path,
+    }
 
 
-# =====================
-# FEATURE BUILD
-# =====================
-def build_features_and_targets(
-    df_raw: pd.DataFrame,
-    date_col: str,
-    target_col: str,
-    horizon: int,
-    lags_target,
-    lags_other,
-    use_log_gdp: bool,
-):
-    """
-    Returns:
-      - df_feat: rows with date + lag features (keeps last month even if target is missing)
-      - df_train: subset of df_feat where target exists (for training)
-      - feature_cols: list of feature column names
-    """
-    df = df_raw.copy()
+def explain_df_to_json(df_explain: pd.DataFrame) -> dict:
+    last_actual_month = str(df_explain["last_actual_month"].iloc[0])
+    horizon = int(df_explain["horizon"].max())
 
-    df[date_col] = pd.to_datetime(df[date_col])
-    df = df.sort_values(date_col).reset_index(drop=True)
+    explain_path = []
+    for h, g in df_explain.groupby("horizon"):
+        g = g.sort_values("rank")
+        explain_path.append({
+            "horizon": int(h),
+            "forecast_month": str(g["forecast_month"].iloc[0]),
+            "topk": int(g["rank"].max()),
+            "explanations": [
+                {
+                    "feature": str(r["feature"]),
+                    "value": float(r["feature_value"]),
+                    "shap_value": float(r["shap_value"]),
+                }
+                for _, r in g.iterrows()
+            ]
+        })
 
-    df = coerce_numeric(df, date_col=date_col)
+    explain_path = sorted(explain_path, key=lambda x: x["horizon"])
 
-    if use_log_gdp and "gdp" in df.columns:
-        # log only if positive
-        if (df["gdp"] <= 0).any():
-            raise ValueError("gdp has non-positive values; cannot apply log(gdp).")
-        df["gdp"] = np.log(df["gdp"])
-
-    base_cols = [c for c in df.columns if c != date_col]
-
-    # Lag features
-    for col in base_cols:
-        lags = lags_target if col == target_col else lags_other
-        for L in lags:
-            df[f"{col}_lag{L}"] = df[col].shift(L)
-
-    lag_cols = [c for c in df.columns if "_lag" in c]
-
-    # Target (future CCI) get past val direction
-    # df["target"] = df[target_col].shift(-horizon)
-    df["target"] = df[target_col].shift(-1) - df[target_col]
-
-    # Keep feature table where lag features exist
-    df_feat = df[[date_col] + lag_cols + ["target"]].dropna(subset=lag_cols).reset_index(drop=True)
-    feature_cols = lag_cols
-
-    df_train = df_feat.dropna(subset=["target"]).reset_index(drop=True)
-
-    return df_feat, df_train, feature_cols
+    return {
+        "model": "darts_xgb",
+        "last_actual_month": last_actual_month,
+        "horizon": horizon,
+        "explain_path": explain_path,
+    }
 
 # =====================
 # MAIN
 # =====================
 def main():
     ensure_dir(ART_DIR)
-    shap = import_shap()
 
-    raw = pd.read_csv(INPUT_CSV)
+    df = pd.read_csv(INPUT_CSV)
+    df[DATE_COL] = pd.to_datetime(df[DATE_COL])
+    df = df.sort_values(DATE_COL).reset_index(drop=True)
 
-    df_feat, df_train, feature_cols = build_features_and_targets(
-        df_raw=raw,
-        date_col=DATE_COL,
-        target_col=TARGET_COL,
-        horizon=HORIZON,
-        lags_target=LAGS_TARGET,
-        lags_other=LAGS_OTHER,
-        use_log_gdp=USE_LOG_GDP,
+    # Ensure numeric
+    for c in df.columns:
+        if c != DATE_COL:
+            df[c] = pd.to_numeric(df[c], errors="coerce")
+
+    # Optional log(gdp)
+    if USE_LOG_GDP and "gdp" in df.columns:
+        if (df["gdp"] <= 0).any():
+            raise ValueError("gdp has non-positive values; cannot apply log(gdp).")
+        df["gdp"] = np.log(df["gdp"])
+
+    # Keep rows where target exists
+    df = df.dropna(subset=[TARGET_COL]).copy()
+
+    # Target series
+    y = TimeSeries.from_dataframe(df, time_col=DATE_COL, value_cols=TARGET_COL)
+    last_actual_month = y.end_time()
+
+    # Past covariates = all columns except date and target
+    cov_cols = [c for c in df.columns if c not in [DATE_COL, TARGET_COL]]
+    past_covs = None
+    if len(cov_cols) > 0:
+        past_covs = TimeSeries.from_dataframe(df, time_col=DATE_COL, value_cols=cov_cols)
+
+    # Train model
+    model = XGBModel(
+        lags=LAGS_TARGET,
+        lags_past_covariates=LAGS_PAST_COVS if past_covs is not None else None,
+        output_chunk_length=HORIZON,
+        **XGB_PARAMS,
+    )
+    model.fit(y, past_covariates=past_covs)
+
+    # Forecast path t+1..t+H
+    fc = model.predict(n=HORIZON, past_covariates=past_covs)
+    df_fc = fc.to_dataframe().reset_index()
+    time_col = df_fc.columns[0]
+    df_fc = df_fc.rename(columns={time_col: "forecast_month"})
+
+    df_fc["forecast_month"] = pd.to_datetime(df_fc["forecast_month"]).dt.strftime("%Y-%m-%d")
+    df_fc["horizon"] = np.arange(1, HORIZON + 1, dtype=int)
+    df_fc["last_actual_month"] = last_actual_month.strftime("%Y-%m-%d")
+    df_fc = df_fc.rename(columns={TARGET_COL: "y_pred"})
+
+    df_latest_forecast = df_fc[["last_actual_month", "forecast_month", "horizon", "y_pred"]].copy()
+
+    # Save forecast CSV + JSON
+    save_csv(df_latest_forecast, os.path.join(ART_DIR, "latest_forecast.csv"))
+    save_json(forecast_df_to_json(df_latest_forecast), os.path.join(ART_DIR, "latest_forecast.json"))
+
+    # Forecast path metadata for SHAP CSV/JSON
+    forecast_path = df_latest_forecast.sort_values("horizon")[["forecast_month", "horizon"]].to_dict(orient="records")
+
+    # =========================
+    # SHAP (Darts)
+    # =========================
+    explainer = ShapExplainer(model)
+    horizons = list(range(1, HORIZON + 1))
+
+    explain_results = explainer.explain(
+        foreground_series=y,
+        foreground_past_covariates=past_covs,
+        foreground_future_covariates=None,
+        horizons=horizons,
     )
 
-    if df_train.empty:
-        raise ValueError("No training rows available after building features/targets.")
+    rows = []
 
-    # Train
-    X_train = df_train[feature_cols]
-    y_train = df_train["target"]
+    for h in horizons:
+        shap_ts = explain_results.get_explanation(horizon=h)      # TimeSeries of SHAP values
+        feat_ts = explain_results.get_feature_values(horizon=h)   # TimeSeries of feature values
 
-    model = make_model()
-    model.fit(X_train, y_train)
+        shap_df = shap_ts.to_dataframe()
+        feat_df = feat_ts.to_dataframe()
 
-    # Latest feature row (this is the most recent month we can build lags for)
-    X_latest = df_feat.iloc[-1:][feature_cols]
-    latest_date = pd.to_datetime(df_feat.iloc[-1][DATE_COL])
-    # Forecast month = latest_date + horizon months
-    forecast_date = latest_date + pd.DateOffset(months=HORIZON)
+        # latest explainable timestamp
+        shap_last = shap_df.iloc[-1]
+        feat_last = feat_df.iloc[-1]
 
-    # y_pred = round(float(model.predict(X_latest)[0]), 1)
-    delta_pred = round(float(model.predict(X_latest)[0]), 1)  # ΔCCI
-
-    # Actual known CCI for latest_date
-    raw_sorted = raw.copy()
-    raw_sorted[DATE_COL] = pd.to_datetime(raw_sorted[DATE_COL])
-    raw_sorted = raw_sorted.sort_values(DATE_COL)
-    last_actual_date = raw_sorted[DATE_COL].max()
-    last_actual_value = float(raw_sorted.loc[raw_sorted[DATE_COL] == last_actual_date, TARGET_COL].iloc[0])
-    
-    cci_pred_level = round(last_actual_value + delta_pred, 1)
-
-    forecast_obj = {
-        "model": "xgboost",
-        "horizon": HORIZON,
-        "last_actual_month": last_actual_date.strftime("%Y-%m-%d"),
-        "last_actual_value": last_actual_value,
-        "feature_month_used": latest_date.strftime("%Y-%m-%d"),
-        "forecast_month": forecast_date.strftime("%Y-%m-%d"),
-        # "cci_pred": y_pred,
-        "delta_pred": delta_pred,
-        "cci_pred": cci_pred_level,
-
-    }
-
-    save_json(forecast_obj, os.path.join(ART_DIR, "latest_forecast.json"))
-
-    # -------------------------
-    # Local SHAP
-    # -------------------------
-    explainer = shap.TreeExplainer(model)
-    shap_val = explainer.shap_values(X_latest)
-    base = explainer.expected_value
-
-    local = pd.DataFrame({
-        "feature": feature_cols,
-        "value": X_latest.iloc[0].values,
-        "shap_value": shap_val[0]
-    })
-    local["abs_shap"] = np.abs(local["shap_value"])
-    local = local.sort_values("abs_shap", ascending=False).reset_index(drop=True)
-
-    top = local.head(TOPK_LOCAL).copy()
-
-    explanations = []
-    for _, r in top.iterrows():
-        explanations.append({
-            "feature": str(r["feature"]),
-            "value": float(r["value"]),
-            "shap_value": float(r["shap_value"]),
-            # "abs_shap": float(r["abs_shap"]),
+        local = pd.DataFrame({
+            "feature": shap_last.index.astype(str),
+            "feature_value": feat_last.values.astype(float),
+            "shap_value": shap_last.values.astype(float),
         })
-    
-    latest_explain = {
-        "model": "xgboost",
-        "horizon": HORIZON,
-        "feature_month_used": latest_date.strftime("%Y-%m-%d"),
-        "forecast_month": forecast_date.strftime("%Y-%m-%d"),
-        # "cci_pred": y_pred,
-        # "base_value": float(base) if np.isscalar(base) else float(np.array(base).reshape(-1)[0]),
-        "delta_pred": delta_pred,
-        "cci_pred": cci_pred_level,
-        "base_value_delta": float(base) if np.isscalar(base) else float(np.array(base).reshape(-1)[0]),
-        "base_value_level": round(last_actual_value + (float(base) if np.isscalar(base) else float(np.array(base).reshape(-1)[0])), 3),        
-        "topk": TOPK_LOCAL,
-        "explanations": explanations,
-    }
-    save_json(latest_explain, os.path.join(ART_DIR, "latest_explain.json"))
-    
-    # Optional debug: store top-level feature values used
-    latest_features = {
-        "feature_month_used": latest_date.strftime("%Y-%m-%d"),
-        "features": {c: float(X_latest.iloc[0][c]) for c in feature_cols},
-    }
-    save_json(latest_features, os.path.join(ART_DIR, "latest_features.json"))
+        local["abs_shap"] = np.abs(local["shap_value"])
+        local = local.sort_values("abs_shap", ascending=False).head(TOPK_LOCAL)
+        local["rank"] = range(1, len(local) + 1)
 
-    print("\n=== Production Forecast ===")
-    print("Last actual month :", forecast_obj["last_actual_month"])
-    print("Feature month used:", forecast_obj["feature_month_used"])
-    print("Forecast month    :", forecast_obj["forecast_month"])
-    # print("Predicted CCI     :", forecast_obj["cci_pred"])
-    print("CCI direction     :", forecast_obj["delta_pred"])
-    print("Predicted CCI     :", forecast_obj["cci_pred"])
+        for _, r in local.iterrows():
+            rows.append({
+                "last_actual_month": last_actual_month.strftime("%Y-%m-%d"),
+                "forecast_month": forecast_path[h - 1]["forecast_month"],
+                "horizon": h,
+                "feature": str(r["feature"]),
+                "feature_value": float(r["feature_value"]),
+                "shap_value": float(r["shap_value"]),
+                # "abs_shap": float(r["abs_shap"]),
+                "rank": int(r["rank"]),
+            })
 
+    df_latest_explain = pd.DataFrame(rows)
+
+    save_csv(df_latest_explain, os.path.join(ART_DIR, "latest_explain.csv"))
+    save_json(explain_df_to_json(df_latest_explain), os.path.join(ART_DIR, "latest_explain.json"))
 
 if __name__ == "__main__":
     main()
