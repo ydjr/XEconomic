@@ -44,6 +44,7 @@ XEconomic/
 │
 ├─ pipeline/            # Prediction pipeline
 │  └─ predict_latest.py
+|  └─ backtest.py
 │
 ├─ api/                 # FastAPI backend
 │  └─ main.py
@@ -51,7 +52,8 @@ XEconomic/
 ├─ artifacts/           # GENERATED FILES (Internal use)
 │  ├─ latest_forecast.json
 │  ├─ latest_explain.json
-│  └─ latest_features.json
+│  ├─ latest_explain.csv
+|  └─ latest_forecast.csv
 │
 ├─ dashboard/           # React + Vite frontend
 │  ├─ src/
