@@ -1,0 +1,24 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# Node
+node_modules/
+dist/
+
+# Vite
+.vite/
+
+# Artifacts (generated predictions)
+artifacts/
+# (optional) if you only want to ignore some:
+# artifacts/*.json
+# artifacts/*.csv
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Data indicators (generated)
+data/indicators/**/*.csv
