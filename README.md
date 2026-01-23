@@ -5,39 +5,12 @@ This project displays **Consumer Confidence Index (CCI)** predictions and **SHAP
 The system consists of a data pipeline, a FastAPI backend, and a React frontend. They **must** be run in the specific order outlined below to ensure data is available for visualization.
 
 ---
-
-## 📂 Project Structure
-```text
-XEconomic/
-│
-├─ pipeline/            # Prediction pipeline
-│  └─ predict_latest.py
-│
-├─ api/                 # FastAPI backend
-│  └─ main.py
-│
-├─ artifacts/           # GENERATED FILES (Internal use)
-│  ├─ latest_forecast.json
-│  ├─ latest_explain.json
-│  └─ latest_features.json
-│
-├─ dashboard/           # React + Vite frontend
-│  ├─ src/
-│  ├─ vite.config.js
-│  └─ package.json
-│
-├─ requirements.txt
-├─ README.md
-└─ .gitignore
-
 ### STEP 1 — ACTIVATE PYTHON ENVIRONMENT
 
 From the project root (`XEconomic/`):
 
-**Windows (PowerShell)**
-
-```bash
-.venv\Scripts\Activate.ps1
+Windows
+.venv/scripts/activate
 
 ### STEP 2 - RUN PREDICTION PIPELINE (NOT STABLE YET)
 This step generate data for the website
@@ -62,3 +35,29 @@ cd dashboard
 npm run dev
 
 Open browser: http://localhost:5173
+
+
+## 📂 Project Structure
+
+```text
+XEconomic/
+│
+├─ pipeline/            # Prediction pipeline
+│  └─ predict_latest.py
+│
+├─ api/                 # FastAPI backend
+│  └─ main.py
+│
+├─ artifacts/           # GENERATED FILES (Internal use)
+│  ├─ latest_forecast.json
+│  ├─ latest_explain.json
+│  └─ latest_features.json
+│
+├─ dashboard/           # React + Vite frontend
+│  ├─ src/
+│  ├─ vite.config.js
+│  └─ package.json
+│
+├─ requirements.txt
+├─ README.md
+└─ .gitignore
