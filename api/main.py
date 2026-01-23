@@ -134,13 +134,13 @@ def dashboard_explain_latest():
 def dashboard_timeseries(limit: int = Query(500, ge=1, le=5000)):
     """
     Returns:
-      { data: [ {date: 'YYYY-MM-DD', actual: number|null, pred: number|null}, ... ] }
+      { data: [ {date: 'YYYY-MM-DD', actual: number|null, pred: number|null, is_anchor: bool}, ... ] }
 
     Logic:
-    - read full actual history from data/indicators/cci.csv (or your CCI_CSV)
-    - read latest_forecast.json (new format: forecast_path[])
-    - set pred at last_actual_month = last actual value (connect line)
-    - append forecast_path points as pred (actual=null)
+    - read full actual history from CCI_CSV
+    - read latest_forecast.json with forecast_path[]
+    - set pred at last_actual_month = last actual value (anchor) with is_anchor=True (visual line connection)
+    - append forecast_path points as pred (actual=None) with is_anchor=False
     """
     if not os.path.exists(CCI_CSV):
         return {"data": []}
@@ -151,6 +151,7 @@ def dashboard_timeseries(limit: int = Query(500, ge=1, le=5000)):
         return {"data": []}
 
     df["date"] = pd.to_datetime(df["date"], errors="coerce")
+    df["cci_overall"] = pd.to_numeric(df["cci_overall"], errors="coerce")
     df = df.dropna(subset=["date"]).sort_values("date")
 
     # normalize monthly to first day of month
@@ -159,38 +160,40 @@ def dashboard_timeseries(limit: int = Query(500, ge=1, le=5000)):
 
     rows = []
     for _, r in df.iterrows():
+        actual_val = r["cci_overall"]
         try:
-            actual_val = float(r["cci_overall"])
+            actual_val = float(actual_val)
         except Exception:
             actual_val = None
-        rows.append({"date": r["date_str"], "actual": actual_val, "pred": None})
+        rows.append({"date": r["date_str"], "actual": actual_val, "pred": None, "is_anchor": False})
 
-    # --- NEW forecast JSON format ---
+    # --- forecast JSON format ---
     fc = read_json(LATEST_FORECAST)
-    if fc and "forecast_path" in fc and isinstance(fc["forecast_path"], list):
-        # last_actual_month is the last time used to build features (end of training series)
+
+    if fc and isinstance(fc.get("forecast_path"), list):
         last_actual_month = fc.get("last_actual_month")
-        if last_actual_month is not None:
+
+        # 1) Anchor point (connect line) — pred = actual at last_actual_month
+        if last_actual_month:
             feature_dt = pd.to_datetime(last_actual_month).to_period("M").to_timestamp()
             feature_s = feature_dt.strftime("%Y-%m-%d")
 
-            # connect pred line to the last known actual at that month (if exists)
-            last_actual_value = None
+            found = False
             for x in rows:
                 if x["date"] == feature_s:
-                    last_actual_value = x["actual"]
-                    if last_actual_value is not None:
-                        x["pred"] = last_actual_value
+                    # only set anchor if actual exists
+                    if x["actual"] is not None:
+                        x["pred"] = x["actual"]
+                        x["is_anchor"] = True
+                    found = True
                     break
 
-            # if not found in history but last_actual_month exists, add it
-            if last_actual_value is None:
-                # try to use last row actual
-                if len(rows) > 0:
-                    last_actual_value = rows[-1]["actual"]
-                rows.append({"date": feature_s, "actual": last_actual_value, "pred": last_actual_value})
+            # if that month not found in history, add a row (best effort)
+            if not found:
+                last_val = rows[-1]["actual"] if rows else None
+                rows.append({"date": feature_s, "actual": last_val, "pred": last_val, "is_anchor": True})
 
-        # append forecast path
+        # 2) Append forecast path points (real forecasts)
         for p in fc["forecast_path"]:
             try:
                 dt = pd.to_datetime(p.get("forecast_month")).to_period("M").to_timestamp()
@@ -198,8 +201,10 @@ def dashboard_timeseries(limit: int = Query(500, ge=1, le=5000)):
                 y_pred = float(p.get("y_pred"))
             except Exception:
                 continue
-            rows.append({"date": dt_s, "actual": None, "pred": y_pred})
 
+            rows.append({"date": dt_s, "actual": None, "pred": y_pred, "is_anchor": False})
+
+        # sort by date
         rows = sorted(rows, key=lambda x: x["date"])
 
     if limit and len(rows) > limit:

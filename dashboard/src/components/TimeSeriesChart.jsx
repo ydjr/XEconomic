@@ -19,6 +19,43 @@ export default function TimeSeriesChart({ data, title = "CCI – ประเท
   const shadeFrom = lastActual?.date || null;
   const shadeTo = safe.length ? safe[safe.length - 1].date : null;
 
+  function CustomTooltip({ active, payload, label }) {
+    if (!active || !payload || payload.length === 0) return null;
+
+    const row = payload[0]?.payload || {};
+    const isAnchor = row.is_anchor === true;
+
+    const actualItem = payload.find((p) => p.dataKey === "actual");
+    const predItem = payload.find((p) => p.dataKey === "pred");
+
+    const actualVal = actualItem?.value;
+    const predVal = predItem?.value;
+
+    return (
+      <div
+        style={{
+          background: "white",
+          border: "1px solid #e5e7eb",
+          padding: 10,
+          borderRadius: 10
+        }}
+      >
+        <div style={{ fontWeight: 800, marginBottom: 6 }}>{label}</div>
+
+        <div style={{ fontSize: 13, lineHeight: 1.6 }}>
+          <div>
+            Actual : {actualVal != null ? Number(actualVal).toFixed(1) : "-"}
+          </div>
+
+          {/* Hide Pred on anchor rows */}
+          <div>
+            Pred : {!isAnchor && predVal != null ? Number(predVal).toFixed(1) : "-"}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="card">
       <div className="card-pad">
@@ -32,7 +69,7 @@ export default function TimeSeriesChart({ data, title = "CCI – ประเท
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis dataKey="date" tick={{ fontSize: 11 }} />
             <YAxis tick={{ fontSize: 11 }} />
-            <Tooltip />
+            <Tooltip content={<CustomTooltip />} />
             <Legend />
 
             {/* Actual */}

@@ -25,6 +25,34 @@ function trendFromSummaryTrend(trend) {
   return map[trend] || { label: "N/A", tone: "neutral" };
 }
 
+function toMonthStart(d) {
+  const x = new Date(d);
+  x.setDate(1);
+  x.setHours(0, 0, 0, 0);
+  return x;
+}
+
+function addMonths(dateObj, months) {
+  const d = new Date(dateObj);
+  d.setMonth(d.getMonth() + months);
+  return d;
+}
+
+function parseYYYYMM(yyyy_mm) {
+  // input like "2024-03"
+  if (!yyyy_mm) return null;
+  const [y, m] = String(yyyy_mm).split("-").map(Number);
+  if (!y || !m) return null;
+  return new Date(y, m - 1, 1);
+}
+
+function inRange(dateStr, startDate, endDate) {
+  const d = toMonthStart(dateStr);
+  if (startDate && d < startDate) return false;
+  if (endDate && d > endDate) return false;
+  return true;
+}
+
 export default function App() {
   const { lang, setLang, t } = useLang();
   const [page, setPage] = React.useState("forecast");
@@ -33,6 +61,57 @@ export default function App() {
   const [explain, setExplain] = React.useState(null);
   const [series, setSeries] = React.useState([]);
   const [err, setErr] = React.useState("");
+
+  // zoom in preset (dashboard ts)
+  const [zoomPreset, setZoomPreset] = React.useState("3Y"); // "1Y"|"3Y"|"5Y"|"10Y"|"ALL"|"CUSTOM"
+  const [rangeStart, setRangeStart] = React.useState("");
+  const [rangeEnd, setRangeEnd] = React.useState("");
+
+  const filteredSeries = React.useMemo(() => {
+    if (!series || series.length === 0) return [];
+
+    const lastDateStr = series[series.length - 1]?.date;
+    const lastDate = lastDateStr ? new Date(lastDateStr) : null;
+
+    let start = null;
+    let end = lastDate;
+
+    const addMonths = (d, m) => {
+      const x = new Date(d);
+      x.setMonth(x.getMonth() + m);
+      return x;
+    };
+
+    const parseYYYYMM = (yyyy_mm) => {
+      if (!yyyy_mm) return null;
+      const [y, mo] = String(yyyy_mm).split("-").map(Number);
+      if (!y || !mo) return null;
+      return new Date(y, mo - 1, 1);
+    };
+
+    if (zoomPreset === "ALL") {
+      start = null;
+    } else if (zoomPreset === "1Y") {
+      start = lastDate ? addMonths(lastDate, -12) : null;
+    } else if (zoomPreset === "3Y") {
+      start = lastDate ? addMonths(lastDate, -36) : null;
+    } else if (zoomPreset === "5Y") {
+      start = lastDate ? addMonths(lastDate, -60) : null;
+    } else if (zoomPreset === "10Y") {
+      start = lastDate ? addMonths(lastDate, -120) : null;
+    } else if (zoomPreset === "CUSTOM") {
+      start = parseYYYYMM(rangeStart);
+      end = parseYYYYMM(rangeEnd) || lastDate;
+    }
+
+    return series.filter((x) => {
+      const d = new Date(x.date);
+      if (start && d < start) return false;
+      if (end && d > end) return false;
+      return true;
+    });
+  }, [series, zoomPreset, rangeStart, rangeEnd]);
+
 
   React.useEffect(() => {
     let alive = true;
@@ -43,7 +122,7 @@ export default function App() {
         const [s, e, ts] = await Promise.all([
           getSummary(),
           getLatestExplain(),
-          getTimeSeries(500)
+          getTimeSeries(2000)
         ]);
         if (!alive) return;
 
@@ -159,10 +238,71 @@ export default function App() {
                 <div className="metric-sub">{t("Updated monthly", "อัปเดตทุกเดือน")}</div>
               </div>
             </div>
+            <div className="card card-pad" style={{ marginBottom: 12 }}>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                <div style={{ fontWeight: 800, color: "#003d82" }}>
+                  {t("Zoom", "ซูมช่วงเวลา")}
+                </div>
+
+                {["1Y", "3Y", "5Y", "10Y", "ALL"].map((k) => (
+                  <button
+                    key={k}
+                    className={zoomPreset === k ? "btn active" : "btn"}
+                    onClick={() => setZoomPreset(k)}
+                  >
+                    {k}
+                  </button>
+                ))}
+
+                <button
+                  className={zoomPreset === "CUSTOM" ? "btn active" : "btn"}
+                  onClick={() => setZoomPreset("CUSTOM")}
+                >
+                  {t("Custom", "กำหนดเอง")}
+                </button>
+              </div>
+
+              {zoomPreset === "CUSTOM" ? (
+                <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+                  <div className="small">{t("Start", "เริ่ม")}</div>
+                  <input
+                    type="month"
+                    value={rangeStart}
+                    onChange={(e) => setRangeStart(e.target.value)}
+                  />
+
+                  <div className="small">{t("End", "สิ้นสุด")}</div>
+                  <input
+                    type="month"
+                    value={rangeEnd}
+                    onChange={(e) => setRangeEnd(e.target.value)}
+                  />
+
+                  <button
+                    className="btn"
+                    onClick={() => {
+                      // basic validation: if start > end, swap
+                      const s = parseYYYYMM(rangeStart);
+                      const e = parseYYYYMM(rangeEnd);
+                      if (s && e && s > e) {
+                        setRangeStart(rangeEnd);
+                        setRangeEnd(rangeStart);
+                      }
+                    }}
+                  >
+                    {t("Apply", "ใช้งาน")}
+                  </button>
+                </div>
+              ) : null}
+
+              <div className="small" style={{ marginTop: 8 }}>
+                {t("Showing points:", "จำนวนจุดที่แสดง:")} {filteredSeries.length}
+              </div>
+            </div>
 
             <div className="row">
               <div>
-                <TimeSeriesChart data={series} />
+                <TimeSeriesChart data={filteredSeries}/>
               </div>
 
               <div className="card">
