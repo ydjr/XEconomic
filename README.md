@@ -9,7 +9,9 @@ The system consists of a data pipeline, a FastAPI backend, and a React frontend.
 
 From the project root (`XEconomic/`):
 
-Windows
+Windows:
+python -m venv .venv
+pip install -r requirements.txt
 .venv/scripts/activate
 
 ### STEP 2 - RUN PREDICTION PIPELINE (NOT STABLE YET)
@@ -21,7 +23,8 @@ Expected outputs files:
 artifacts/
   latest_forecast.json
   latest_explain.json
-  latest_features.json
+  latest_forecast.csv
+  latest_explain.csv
 
 ### STEP 3 - START BACKEND SERVER (FASTAPI)
 
@@ -45,6 +48,7 @@ XEconomic/
 ├─ pipeline/            # Prediction pipeline
 │  └─ predict_latest.py
 |  └─ backtest.py
+|  └─ utils.py
 │
 ├─ api/                 # FastAPI backend
 │  └─ main.py
@@ -56,9 +60,17 @@ XEconomic/
 |  └─ latest_forecast.csv
 │
 ├─ dashboard/           # React + Vite frontend
-│  ├─ src/
 │  ├─ vite.config.js
-│  └─ package.json
+│  ├─ index.html
+│  ├─ package.json
+│  └─ src/
+|     ├─ api.js
+|     ├─ app.jsx
+|     ├─ main.jsx
+|     ├─ style.css
+|     └─ components/
+|        ├─ ShapBar.jsx
+|        └─ TimeSeriesChart.jsx
 │
 ├─ requirements.txt
 ├─ README.md
