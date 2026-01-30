@@ -4,6 +4,7 @@ This project displays **Consumer Confidence Index (CCI)** predictions and **SHAP
 
 The system consists of a data pipeline, a FastAPI backend, and a React frontend. They **must** be run in the specific order outlined below to ensure data is available for visualization.
 
+dataset >> https://drive.google.com/drive/folders/19Alecj2bQcHKSXlUxC9wWxjYVbDT_RT9?usp=sharing
 ---
 ### STEP 1 — ACTIVATE PYTHON ENVIRONMENT
 
