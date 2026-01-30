@@ -25,7 +25,7 @@ from utils import ensure_dir, save_csv, save_json
 # =====================
 # CONFIG
 # =====================
-INPUT_CSV = "./data/macro_monthly_overlapv2.csv"
+INPUT_CSV = "./data/merge_all_index.csv"
 ART_DIR = "artifacts"
 
 DATE_COL = "date"
