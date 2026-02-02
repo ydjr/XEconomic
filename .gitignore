@@ -12,9 +12,7 @@ dist/
 
 # Artifacts (generated predictions)
 artifacts/
-# (optional) if you only want to ignore some:
-# artifacts/*.json
-# artifacts/*.csv
+artifacts_alone/
 
 # OS
 .DS_Store
@@ -22,3 +20,11 @@ Thumbs.db
 
 # Data indicators (generated)
 data/indicators/**/*.csv
+
+pipeline/darts/**
+pipeline/wangchanberta_cls
+
+models/
+data/
+
+darts_explore.ipynb

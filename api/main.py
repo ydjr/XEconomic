@@ -42,10 +42,10 @@ def dashboard_summary():
 
     Returns:
       {
-        "latest_month": "YYYY-MM-DD",
-        "latest_value": 51.7,
-        "prev_month": "YYYY-MM-DD",
-        "prev_value": 52.5,
+        "last_actual_month": "YYYY-MM-DD",
+        "last_actual_value": 51.7,
+        "forecast_month": "YYYY-MM-DD",
+        "y_pred": 52.5,
         "mom_change": -0.8,
         "trend": "UP" | "DOWN" | "STABLE" | "N/A"
       }
