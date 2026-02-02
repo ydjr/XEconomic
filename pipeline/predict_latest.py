@@ -15,6 +15,7 @@
 import os
 import numpy as np
 import pandas as pd
+from pathlib import Path
 
 from darts import TimeSeries
 from darts.models import XGBModel
@@ -25,8 +26,10 @@ from utils import ensure_dir, save_csv, save_json
 # =====================
 # CONFIG
 # =====================
-INPUT_CSV = "./data/merge_all_index.csv"
-ART_DIR = "artifacts"
+BASE_DIR = Path(__file__).resolve().parents[1]
+DATA_DIR = BASE_DIR / "data"
+INPUT_CSV = DATA_DIR / "indicators/cci.csv"
+ART_DIR = BASE_DIR / "artifacts_v1"
 
 DATE_COL = "date"
 TARGET_COL = "cci_overall"
@@ -50,6 +53,15 @@ XGB_PARAMS = dict(
     n_jobs=-1,
     tree_method="hist",
 )
+
+DROP_COVARIATES = [
+    "export_price",
+    "import_price",
+    "cpi",
+    "unemployment",
+    "policy_rate",
+    "gdp",
+]
 
 # =====================
 # JSON CONVERTERS
@@ -119,24 +131,14 @@ def main():
         if c != DATE_COL:
             df[c] = pd.to_numeric(df[c], errors="coerce")
 
-    # Optional log(gdp)
-    if USE_LOG_GDP and "gdp" in df.columns:
-        if (df["gdp"] <= 0).any():
-            raise ValueError("gdp has non-positive values; cannot apply log(gdp).")
-        df["gdp"] = np.log(df["gdp"])
-
-    # Keep rows where target exists
-    df = df.dropna(subset=[TARGET_COL]).copy()
+    df = df.dropna(subset=[TARGET_COL])
 
     # Target series
     y = TimeSeries.from_dataframe(df, time_col=DATE_COL, value_cols=TARGET_COL)
     last_actual_month = y.end_time()
 
-    # Past covariates = all columns except date and target
-    cov_cols = [c for c in df.columns if c not in [DATE_COL, TARGET_COL]]
-    past_covs = None
-    if len(cov_cols) > 0:
-        past_covs = TimeSeries.from_dataframe(df, time_col=DATE_COL, value_cols=cov_cols)
+    cov_cols = [c for c in df.columns if c not in [DATE_COL, TARGET_COL] and c not in DROP_COVARIATES]
+    past_covs = TimeSeries.from_dataframe(df, time_col=DATE_COL, value_cols=cov_cols) if cov_cols else None
 
     # Train model
     model = XGBModel(
@@ -147,7 +149,6 @@ def main():
     )
     model.fit(y, past_covariates=past_covs)
 
-    # Forecast path t+1..t+H
     fc = model.predict(n=HORIZON, past_covariates=past_covs)
     df_fc = fc.to_dataframe().reset_index()
     time_col = df_fc.columns[0]
@@ -159,10 +160,11 @@ def main():
     df_fc = df_fc.rename(columns={TARGET_COL: "y_pred"})
 
     df_latest_forecast = df_fc[["last_actual_month", "forecast_month", "horizon", "y_pred"]].copy()
+    df_latest_forecast["y_pred"] = df_latest_forecast["y_pred"].round(1)
 
     # Save forecast CSV + JSON
-    save_csv(df_latest_forecast, os.path.join(ART_DIR, "latest_forecast.csv"))
-    save_json(forecast_df_to_json(df_latest_forecast), os.path.join(ART_DIR, "latest_forecast.json"))
+    save_csv(df_latest_forecast, os.path.join(ART_DIR, "latest_forecast_sent.csv"))
+    save_json(forecast_df_to_json(df_latest_forecast), os.path.join(ART_DIR, "latest_forecast_sent.json"))
 
     # Forecast path metadata for SHAP CSV/JSON
     forecast_path = df_latest_forecast.sort_values("horizon")[["forecast_month", "horizon"]].to_dict(orient="records")
@@ -210,14 +212,14 @@ def main():
                 "feature": str(r["feature"]),
                 "feature_value": float(r["feature_value"]),
                 "shap_value": float(r["shap_value"]),
-                # "abs_shap": float(r["abs_shap"]),
+                "abs_shap": float(r["abs_shap"]),
                 "rank": int(r["rank"]),
             })
 
     df_latest_explain = pd.DataFrame(rows)
 
-    save_csv(df_latest_explain, os.path.join(ART_DIR, "latest_explain.csv"))
-    save_json(explain_df_to_json(df_latest_explain), os.path.join(ART_DIR, "latest_explain.json"))
+    save_csv(df_latest_explain, os.path.join(ART_DIR, "latest_explain_sent.csv"))
+    save_json(explain_df_to_json(df_latest_explain), os.path.join(ART_DIR, "latest_explain_sent.json"))
 
 if __name__ == "__main__":
     main()

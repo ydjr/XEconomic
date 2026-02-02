@@ -25,12 +25,12 @@ def save_json(obj, path: str):
     print("Saved:", path)
 
 
-def mae(errors: np.ndarray) -> float:
-    return float(np.mean(np.abs(errors)))
+def mae(y_true: np.ndarray, y_pred: np.ndarray) -> float:
+    return float(np.mean(np.abs(y_true - y_pred)))
 
 
-def rmse(errors: np.ndarray) -> float:
-    return float(np.sqrt(np.mean(errors ** 2)))
+def rmse(y_true: np.ndarray, y_pred: np.ndarray) -> float:
+    return float(np.sqrt(np.mean((y_true - y_pred) ** 2)))
 
 
 def mape(y_true: np.ndarray, y_pred: np.ndarray) -> float:
