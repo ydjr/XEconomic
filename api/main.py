@@ -11,6 +11,8 @@ ART_DIR = os.path.join(ROOT, "artifacts")
 DATA_DIR = os.path.join(ROOT, "data")
 
 CCI_CSV = os.path.join(DATA_DIR, "indicators/cci.csv")
+NEWS_CSV = os.path.join(DATA_DIR, "2_news_cci_r.csv")
+
 
 LATEST_FORECAST = os.path.join(ART_DIR, "latest_forecast.json")
 LATEST_EXPLAIN = os.path.join(ART_DIR, "latest_explain.json")
