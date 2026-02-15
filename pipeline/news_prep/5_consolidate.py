@@ -83,21 +83,21 @@ def load_all_indicators(indicators_dir):
         freq='MS'
     )
     
-    # Import Price Index
-    indicators['impi'] = load_indicator(
-        indicators_dir / 'impi.csv',
-        value_col='value',
-        rename="impi",
-        freq='MS'
-    )
+    # # Import Price Index
+    # indicators['impi'] = load_indicator(
+    #     indicators_dir / 'impi.csv',
+    #     value_col='value',
+    #     rename="impi",
+    #     freq='MS'
+    # )
     
-    # Export Price Index  
-    indicators['expi'] = load_indicator(
-        indicators_dir / 'expi.csv',
-        value_col='value',
-        rename="expi",
-        freq='MS'
-    )
+    # # Export Price Index  
+    # indicators['expi'] = load_indicator(
+    #     indicators_dir / 'expi.csv',
+    #     value_col='value',
+    #     rename="expi",
+    #     freq='MS'
+    # )
     
     # GDP - quarterly, need to resample to monthly
     try:

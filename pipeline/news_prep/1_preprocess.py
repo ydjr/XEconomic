@@ -11,7 +11,7 @@ from pythainlp.util import normalize
 # =====================
 BASE_DIR = Path(__file__).resolve().parents[1]
 DATA_DIR = BASE_DIR / "data"
-INPUT_DIR = DATA_DIR / "news_summary"
+INPUT_DIR = DATA_DIR / "news_sum"
 OUTPUT_DIR = DATA_DIR / "1_cleaned_news"
 MIN_CHAR_LEN = 300
 
@@ -91,6 +91,7 @@ def process_file(path):
             continue
 
         cleaned.append({
+            "source_file": path.name,
             "agency": r.get("agency"),
             "article_id": r.get("id") or extract_article_id(r.get("url")),
             "section": r.get("section"),
