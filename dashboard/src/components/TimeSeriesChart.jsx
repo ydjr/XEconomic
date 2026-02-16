@@ -22,9 +22,6 @@ export default function TimeSeriesChart({ data, title = "CCI – ประเท
   function CustomTooltip({ active, payload, label }) {
     if (!active || !payload || payload.length === 0) return null;
 
-    const row = payload[0]?.payload || {};
-    const isAnchor = row.is_anchor === true;
-
     const actualItem = payload.find((p) => p.dataKey === "actual");
     const predItem = payload.find((p) => p.dataKey === "pred");
 
@@ -46,15 +43,14 @@ export default function TimeSeriesChart({ data, title = "CCI – ประเท
           <div>
             Actual : {actualVal != null ? Number(actualVal).toFixed(1) : "-"}
           </div>
-
-          {/* Hide Pred on anchor rows */}
           <div>
-            Pred : {!isAnchor && predVal != null ? Number(predVal).toFixed(1) : "-"}
+            Pred : {predVal != null ? Number(predVal).toFixed(1) : "-"}
           </div>
         </div>
       </div>
     );
   }
+
 
   return (
     <div className="card">
