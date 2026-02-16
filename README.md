@@ -36,6 +36,7 @@ uvicorn api.main:app --reload --host 0.0.0.0 --port 8000
 Open new terminal to run this command:
 
 cd dashboard
+npm install @supabase/supabase-js
 npm run dev
 
 Open browser: http://localhost:5173
