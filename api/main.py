@@ -11,6 +11,8 @@ ART_DIR = os.path.join(ROOT, "artifacts")
 DATA_DIR = os.path.join(ROOT, "data")
 
 CCI_CSV = os.path.join(DATA_DIR, "indicators/cci.csv")
+NEWS_CSV = os.path.join(DATA_DIR, "2_news_cci_r.csv")
+
 
 LATEST_FORECAST = os.path.join(ART_DIR, "latest_forecast.json")
 LATEST_EXPLAIN = os.path.join(ART_DIR, "latest_explain.json")
@@ -42,10 +44,10 @@ def dashboard_summary():
 
     Returns:
       {
-        "latest_month": "YYYY-MM-DD",
-        "latest_value": 51.7,
-        "prev_month": "YYYY-MM-DD",
-        "prev_value": 52.5,
+        "last_actual_month": "YYYY-MM-DD",
+        "last_actual_value": 51.7,
+        "forecast_month": "YYYY-MM-DD",
+        "y_pred": 52.5,
         "mom_change": -0.8,
         "trend": "UP" | "DOWN" | "STABLE" | "N/A"
       }

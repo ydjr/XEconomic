@@ -1,0 +1,163 @@
+{
+  "model": "darts_xgb",
+  "last_actual_month": "2025-07-01",
+  "horizon": 3,
+  "explain_path": [
+    {
+      "horizon": 1,
+      "forecast_month": "2025-08-01",
+      "topk": 9,
+      "explanations": [
+        {
+          "feature": "cci_overall_target_lag-1",
+          "value": 51.7,
+          "shap_value": -6.870707988739014
+        },
+        {
+          "feature": "cci_overall_target_lag-2",
+          "value": 52.7,
+          "shap_value": -3.55475115776062
+        },
+        {
+          "feature": "cci_overall_target_lag-3",
+          "value": 54.2,
+          "shap_value": -1.4015674591064453
+        },
+        {
+          "feature": "cci_current_pastcov_lag-1",
+          "value": 36.7,
+          "shap_value": -1.3128662109375
+        },
+        {
+          "feature": "cci_current_pastcov_lag-3",
+          "value": 38.8,
+          "shap_value": -1.1100791692733765
+        },
+        {
+          "feature": "cci_future_pastcov_lag-1",
+          "value": 58.9,
+          "shap_value": -0.8911168575286865
+        },
+        {
+          "feature": "cci_future_pastcov_lag-2",
+          "value": 60.1,
+          "shap_value": 0.25010642409324646
+        },
+        {
+          "feature": "cci_current_pastcov_lag-2",
+          "value": 37.6,
+          "shap_value": -0.163631871342659
+        },
+        {
+          "feature": "cci_future_pastcov_lag-3",
+          "value": 61.7,
+          "shap_value": 0.13637752830982208
+        }
+      ]
+    },
+    {
+      "horizon": 2,
+      "forecast_month": "2025-09-01",
+      "topk": 9,
+      "explanations": [
+        {
+          "feature": "cci_overall_target_lag-1",
+          "value": 51.7,
+          "shap_value": -7.313941478729248
+        },
+        {
+          "feature": "cci_current_pastcov_lag-3",
+          "value": 38.8,
+          "shap_value": -4.649698257446289
+        },
+        {
+          "feature": "cci_current_pastcov_lag-1",
+          "value": 36.7,
+          "shap_value": -1.745103120803833
+        },
+        {
+          "feature": "cci_current_pastcov_lag-2",
+          "value": 37.6,
+          "shap_value": -0.5951699614524841
+        },
+        {
+          "feature": "cci_future_pastcov_lag-2",
+          "value": 60.1,
+          "shap_value": 0.5039233565330505
+        },
+        {
+          "feature": "cci_overall_target_lag-2",
+          "value": 52.7,
+          "shap_value": -0.49289143085479736
+        },
+        {
+          "feature": "cci_future_pastcov_lag-1",
+          "value": 58.9,
+          "shap_value": -0.45044076442718506
+        },
+        {
+          "feature": "cci_future_pastcov_lag-3",
+          "value": 61.7,
+          "shap_value": 0.2748904526233673
+        },
+        {
+          "feature": "cci_overall_target_lag-3",
+          "value": 54.2,
+          "shap_value": 0.14843064546585083
+        }
+      ]
+    },
+    {
+      "horizon": 3,
+      "forecast_month": "2025-10-01",
+      "topk": 9,
+      "explanations": [
+        {
+          "feature": "cci_current_pastcov_lag-3",
+          "value": 38.8,
+          "shap_value": -8.092473983764648
+        },
+        {
+          "feature": "cci_overall_target_lag-1",
+          "value": 51.7,
+          "shap_value": -3.0573537349700928
+        },
+        {
+          "feature": "cci_current_pastcov_lag-2",
+          "value": 37.6,
+          "shap_value": -2.2846546173095703
+        },
+        {
+          "feature": "cci_current_pastcov_lag-1",
+          "value": 36.7,
+          "shap_value": -2.0561256408691406
+        },
+        {
+          "feature": "cci_overall_target_lag-3",
+          "value": 54.2,
+          "shap_value": 0.8268628120422363
+        },
+        {
+          "feature": "cci_future_pastcov_lag-2",
+          "value": 60.1,
+          "shap_value": 0.6303438544273376
+        },
+        {
+          "feature": "cci_future_pastcov_lag-3",
+          "value": 61.7,
+          "shap_value": 0.5235975980758667
+        },
+        {
+          "feature": "cci_overall_target_lag-2",
+          "value": 52.7,
+          "shap_value": 0.09590903669595718
+        },
+        {
+          "feature": "cci_future_pastcov_lag-1",
+          "value": 58.9,
+          "shap_value": 0.026944775134325027
+        }
+      ]
+    }
+  ]
+}
