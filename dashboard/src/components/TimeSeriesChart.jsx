@@ -40,12 +40,13 @@ export default function TimeSeriesChart({ data, title = "CCI – ประเท
         <div style={{ fontWeight: 800, marginBottom: 6 }}>{label}</div>
 
         <div style={{ fontSize: 13, lineHeight: 1.6 }}>
-          <div>
-            Actual : {actualVal != null ? Number(actualVal).toFixed(1) : "-"}
-          </div>
-          <div>
-            Pred : {predVal != null ? Number(predVal).toFixed(1) : "-"}
-          </div>
+          {actualVal != null ? (
+            <div>ค่าจริง : {Number(actualVal).toFixed(1)}</div>
+          ) : predVal != null ? (
+            <div>พยากรณ์ : {Number(predVal).toFixed(1)}</div>
+          ) : (
+            <div>-</div>
+          )}
         </div>
       </div>
     );

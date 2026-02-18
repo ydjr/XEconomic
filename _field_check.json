@@ -1,0 +1,26 @@
+{
+  "sentiment_score": [
+    "0",
+    "0.1",
+    "0.15",
+    "0.17",
+    "0.2",
+    "0.22",
+    "0.23",
+    "0.25",
+    "0.27",
+    "0.28"
+  ],
+  "CCI_pred": [
+    "1"
+  ],
+  "impact_type": [
+    "Negative",
+    "Neutral",
+    "Positive"
+  ],
+  "effect_type": [
+    "Long-term",
+    "Short-term"
+  ]
+}
