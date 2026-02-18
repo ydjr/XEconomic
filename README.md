@@ -12,8 +12,11 @@ From the project root (`XEconomic/`):
 
 Windows:
 python -m venv .venv
-pip install -r requirements.txt
+
 .venv/scripts/activate
+
+pip install -r requirements.txt
+
 
 ### STEP 2 - RUN PREDICTION PIPELINE (NOT STABLE YET)
 This step generate data for the website
