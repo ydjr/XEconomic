@@ -18,6 +18,7 @@ python -m venv .venv
 pip install -r requirements.txt
 
 
+
 ### STEP 2 - RUN PREDICTION PIPELINE (NOT STABLE YET)
 This step generate data for the website
 
@@ -30,10 +31,12 @@ artifacts/
   latest_forecast.csv
   latest_explain.csv
 
+
 ### STEP 3 - START BACKEND SERVER (FASTAPI)
 
 Keep this terminal open:
 uvicorn api.main:app --reload --host 0.0.0.0 --port 8000
+
 
 ### STEP 4 - START FRONTEND (VITE)
 Open new terminal to run this command:
