@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
 ART_DIR = os.path.join(ROOT, "artifacts")
-DATA_DIR = os.path.join(ROOT, "data")
+DATA_DIR = os.path.join(ROOT, "public", "data")
 
 CCI_CSV = os.path.join(DATA_DIR, "indicators/cci.csv")
 NEWS_CSV = os.path.join(DATA_DIR, "2_news_cci_r.csv")

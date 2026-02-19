@@ -1,9 +1,12 @@
 import React from "react"
 import { TrendingUp, Activity, BarChart3 } from "lucide-react"
-import wordcloudMock from "./assets/cci_impact_wordcloud.png"
+// word cloud image served from public/data/ via Vite
+const wordcloudSrc = "/data/cci_impact_wordcloud.png"
 import "./index.css"
 import { getSummary, getLatestExplain, getTimeSeries } from "./api.js"
 import { getAgencyVolumeLastNMonths } from "./newsSupabaseApi"
+import { getNewsSentimentFromCSV } from "./newsFileApi"
+
 
 import {
   LineChart,
@@ -73,16 +76,16 @@ const ASPECTS_TO_RUN = [
 ]
 
 const CHART_COLORS = [
-  "#003d82",
-  "#0066cc",
-  "#0ea5e9",
-  "#14b8a6",
-  "#059669",
-  "#f59e0b",
-  "#8b5cf6",
-  "#ec4899",
-  "#dc2626",
-  "#64748b",
+  "#4e79a7",   // steel blue
+  "#f28e2b",   // orange
+  "#e15759",   // red
+  "#76b7b2",   // teal
+  "#59a14f",   // green
+  "#edc948",   // yellow
+  "#b07aa1",   // purple
+  "#ff9da7",   // pink
+  "#9c755f",   // brown
+  "#bab0ac",   // gray
 ]
 
 const THAIRATH_COLOR = "#01B400"
@@ -217,7 +220,7 @@ function stackCountByMonth(items, getGroupKey, groupsOverride = null) {
 // --- HELPERS: Supabase agency rows -> Recharts stacked format ---
 function toAgencyStack(rows) {
   // rows: [{ month:'2025-08', agency:'Bangkok Post', count:12 }, ...]
-   if (!Array.isArray(rows)) return { data: [], groups: [] }
+  if (!Array.isArray(rows)) return { data: [], groups: [] }
   const monthMap = {}
   const groupsSet = new Set()
 
@@ -252,7 +255,41 @@ function useLang() {
 }
 
 function useNavigation() {
-  const [page, setPage] = React.useState("forecast") // forecast | analytics | aspectNews
+  // read initial page from URL hash (e.g. #analytics → "analytics")
+  const getPageFromHash = () => {
+    const hash = window.location.hash.replace("#", "")
+    if (["forecast", "analytics", "aspectNews"].includes(hash)) return hash
+    return "forecast"
+  }
+
+  const [page, setPageState] = React.useState(getPageFromHash)
+
+  // wrap setPage to also push browser history
+  const setPage = React.useCallback((newPage) => {
+    setPageState(newPage)
+    // only push if different from current hash
+    const currentHash = window.location.hash.replace("#", "")
+    if (currentHash !== newPage) {
+      window.history.pushState({ page: newPage }, "", `#${newPage}`)
+    }
+  }, [])
+
+  // listen to browser back/forward
+  React.useEffect(() => {
+    const onPopState = (e) => {
+      const pg = e.state?.page || getPageFromHash()
+      setPageState(pg)
+    }
+    window.addEventListener("popstate", onPopState)
+
+    // set initial history state if needed
+    if (!window.history.state?.page) {
+      window.history.replaceState({ page: getPageFromHash() }, "", `#${getPageFromHash()}`)
+    }
+
+    return () => window.removeEventListener("popstate", onPopState)
+  }, [])
+
   return { page, setPage }
 }
 
@@ -321,6 +358,48 @@ function thaiDateShort(dateStr) {
 }
 
 // --- UI SUB-COMPONENTS ---
+// --- CUSTOM MONTH PICKER (Locale Aware) ---
+function MonthYearPicker({ value, onChange, lang }) {
+  // value is "YYYY-MM"
+  const [yStr, mStr] = (value || "").split("-")
+  const year = parseInt(yStr) || new Date().getFullYear()
+  const month = (parseInt(mStr) || new Date().getMonth() + 1) - 1 // 0-11
+
+  const monthsTH = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"]
+  const monthsEN = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
+
+  const years = Array.from({ length: 25 }, (_, i) => 2010 + i) // 2010 - 2034
+
+  const handleChange = (newY, newM) => {
+    const m = String(newM + 1).padStart(2, "0")
+    onChange(`${newY}-${m}`)
+  }
+
+  return (
+    <div className="flex gap-1 border border-gray-300 rounded px-2 py-1 bg-white items-center shadow-sm hover:border-blue-400 transition-colors">
+      <select
+        value={month}
+        onChange={(e) => handleChange(year, parseInt(e.target.value))}
+        className="bg-transparent text-sm outline-none cursor-pointer font-medium hover:text-blue-700 pr-1"
+      >
+        {(lang === "th" ? monthsTH : monthsEN).map((mName, i) => (
+          <option key={i} value={i}>{mName}</option>
+        ))}
+      </select>
+      <span className="text-gray-300">|</span>
+      <select
+        value={year}
+        onChange={(e) => handleChange(parseInt(e.target.value), month)}
+        className="bg-transparent text-sm outline-none cursor-pointer font-medium hover:text-blue-700 pl-1"
+      >
+        {years.map((y) => (
+          <option key={y} value={y}>{lang === "th" ? y + 543 : y}</option>
+        ))}
+      </select>
+    </div>
+  )
+}
+
 function MetricCard({ icon: Icon, title, value, subtitle, tone }) {
   const colors = {
     up: { bg: "#d1fae5", text: "#059669" },
@@ -374,9 +453,8 @@ function TopNav({ t, page, setPage }) {
           <button
             key={tab.id}
             onClick={() => setPage(tab.id)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
-              active ? "bg-[#003d82] text-white" : "text-gray-700 hover:bg-gray-100"
-            }`}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${active ? "bg-[#1F3A5F] text-white" : "text-gray-700 hover:bg-gray-100"
+              }`}
           >
             <tab.icon className="w-4 h-4" />
             {t(tab.en, tab.th)}
@@ -388,19 +466,19 @@ function TopNav({ t, page, setPage }) {
 }
 
 // --- PAGE 1 RIGHT CARD: show aspects; click -> NEW PAGE ---
-function TopAspectsOnlyCard({ t, onSelectAspect }) {
+function TopAspectsOnlyCard({ t, news = [], onSelectAspect }) {
   const ranked = React.useMemo(() => {
     const counts = {}
-    ASPECTS_TO_RUN.forEach((a) => (counts[a] = 0))
-    newsUsed.forEach((n) => {
-      if (!n.aspect) return
-      if (counts[n.aspect] == null) counts[n.aspect] = 0
-      counts[n.aspect] += 1
+    // ไม่ต้อง init ด้วย ASPECTS_TO_RUN ก็ได้ ให้มันขึ้นตามข้อมูลจริง
+    news.forEach((n) => {
+      const a = n.aspect || "Other"
+      counts[a] = (counts[a] || 0) + 1
     })
     return Object.entries(counts)
       .map(([aspect, count]) => ({ aspect, count }))
       .sort((a, b) => b.count - a.count)
-  }, [])
+  }, [news])
+
 
   const top3 = ranked.slice(0, 3)
 
@@ -454,13 +532,33 @@ function TopAspectsOnlyCard({ t, onSelectAspect }) {
 
 // --- NEW PAGE: show news for selected aspect (sorted newest first) ---
 // requirement: show ONLY tag section (remove sentiment + entities)
-function AspectNewsPage({ t, lang, aspect, onBack }) {
+const PER_PAGE = 15
+
+function AspectNewsPage({ t, lang, aspect, news = [], onBack }) {
+  const [currentPage, setCurrentPage] = React.useState(1)
+
   const newsForAspect = React.useMemo(() => {
     if (!aspect) return []
-    return [...newsUsed]
-      .filter((n) => n.aspect === aspect)
+    return [...news]
+      .filter((n) => (n.aspect || "Unknown") === aspect)
       .sort((a, b) => b.date.localeCompare(a.date))
-  }, [aspect])
+  }, [aspect, news])
+
+  // reset page when aspect changes
+  React.useEffect(() => { setCurrentPage(1) }, [aspect])
+
+  const totalPages = Math.max(1, Math.ceil(newsForAspect.length / PER_PAGE))
+  const pagedNews = newsForAspect.slice((currentPage - 1) * PER_PAGE, currentPage * PER_PAGE)
+
+  // generate visible page numbers (max 5 around current)
+  const pageNumbers = React.useMemo(() => {
+    const pages = []
+    let start = Math.max(1, currentPage - 2)
+    let end = Math.min(totalPages, start + 4)
+    start = Math.max(1, end - 4)
+    for (let i = start; i <= end; i++) pages.push(i)
+    return pages
+  }, [currentPage, totalPages])
 
   return (
     <div className="space-y-6">
@@ -476,7 +574,14 @@ function AspectNewsPage({ t, lang, aspect, onBack }) {
           <CardTitle>
             {t("Aspect:", "ประเด็น:")} {aspect ?? t("Not selected", "ยังไม่ได้เลือก")}
           </CardTitle>
-          <CardDescription>{t("News list for the selected aspect", "รายการข่าวสำหรับประเด็นที่เลือก")}</CardDescription>
+          <CardDescription>
+            {t("News list for the selected aspect", "รายการข่าวสำหรับประเด็นที่เลือก")}
+            {newsForAspect.length > 0 && (
+              <span className="ml-2 text-gray-400">
+                ({t(`${newsForAspect.length} total`, `ทั้งหมด ${newsForAspect.length} ข่าว`)})
+              </span>
+            )}
+          </CardDescription>
         </CardHeader>
 
         <CardContent className="p-0">
@@ -485,32 +590,84 @@ function AspectNewsPage({ t, lang, aspect, onBack }) {
           ) : newsForAspect.length === 0 ? (
             <div className="p-6 text-sm text-gray-600">{t("No news found for this aspect.", "ไม่พบข่าวสำหรับประเด็นนี้")}</div>
           ) : (
-            <div className="divide-y divide-gray-100">
-              {newsForAspect.map((n, idx) => {
-                const displayDate = lang === "th" ? thaiDateShort(n.date) : n.date
-                const tagColor = tagColors[n.tag] || "#6b7280"
-                const tagLabel = lang === "th" ? (tagTH[n.tag] || n.tag) : n.tag
+            <>
+              <div className="divide-y divide-gray-100">
+                {pagedNews.map((n, idx) => {
+                  const displayDate = lang === "th" ? thaiDateShort(n.date) : n.date
+                  const tagColor = tagColors[n.tag] || "#6b7280"
+                  const tagLabel = lang === "th" ? (tagTH[n.tag] || n.tag) : n.tag
+                  const globalIdx = (currentPage - 1) * PER_PAGE + idx
 
-                return (
-                  <div key={`${n.date}-${idx}`} className="p-6 hover:bg-gray-50 transition">
-                    <div className="text-xs text-gray-500">
-                      {displayDate} • {n.source}
+                  return (
+                    <div key={`${n.date}-${globalIdx}`} className="p-6 hover:bg-gray-50 transition">
+                      <div className="text-xs text-gray-500">
+                        {displayDate} • {n.source}
+                      </div>
+                      <a href={n.url} target="_blank" rel="noreferrer" className="text-base font-semibold text-gray-900 mt-1 inline-block hover:underline">
+                        {n.title}
+                      </a>
+                      <div className="mt-2">
+                        <Badge
+                          variant="outline"
+                          className="text-[10px] px-2 py-0.5 border-0 font-semibold uppercase tracking-wider"
+                          style={{ backgroundColor: `${tagColor}15`, color: tagColor }}
+                        >
+                          {tagLabel}
+                        </Badge>
+                      </div>
                     </div>
-                    <div className="text-base font-semibold text-gray-900 mt-1">{n.title}</div>
+                  )
+                })}
+              </div>
 
-                    <div className="mt-2">
-                      <Badge
-                        variant="outline"
-                        className="text-[10px] px-2 py-0.5 border-0 font-semibold uppercase tracking-wider"
-                        style={{ backgroundColor: `${tagColor}15`, color: tagColor }}
-                      >
-                        {tagLabel}
-                      </Badge>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-center gap-2 p-4 border-t border-gray-100">
+                  <button
+                    onClick={() => { setCurrentPage((p) => Math.max(1, p - 1)); window.scrollTo({ top: 0, behavior: "smooth" }) }}
+                    disabled={currentPage === 1}
+                    className="px-3 py-1.5 rounded-lg border border-gray-200 text-sm font-medium transition disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-50"
+                  >
+                    ← {t("Prev", "ก่อนหน้า")}
+                  </button>
+
+                  {pageNumbers[0] > 1 && (
+                    <>
+                      <button onClick={() => { setCurrentPage(1); window.scrollTo({ top: 0, behavior: "smooth" }) }} className="w-9 h-9 rounded-lg border border-gray-200 text-sm font-medium hover:bg-gray-50 transition">1</button>
+                      {pageNumbers[0] > 2 && <span className="text-gray-400 text-sm">…</span>}
+                    </>
+                  )}
+
+                  {pageNumbers.map((p) => (
+                    <button
+                      key={p}
+                      onClick={() => { setCurrentPage(p); window.scrollTo({ top: 0, behavior: "smooth" }) }}
+                      className={`w-9 h-9 rounded-lg text-sm font-medium transition ${p === currentPage
+                        ? "bg-[#003d82] text-white shadow"
+                        : "border border-gray-200 hover:bg-gray-50"
+                        }`}
+                    >
+                      {p}
+                    </button>
+                  ))}
+
+                  {pageNumbers[pageNumbers.length - 1] < totalPages && (
+                    <>
+                      {pageNumbers[pageNumbers.length - 1] < totalPages - 1 && <span className="text-gray-400 text-sm">…</span>}
+                      <button onClick={() => { setCurrentPage(totalPages); window.scrollTo({ top: 0, behavior: "smooth" }) }} className="w-9 h-9 rounded-lg border border-gray-200 text-sm font-medium hover:bg-gray-50 transition">{totalPages}</button>
+                    </>
+                  )}
+
+                  <button
+                    onClick={() => { setCurrentPage((p) => Math.min(totalPages, p + 1)); window.scrollTo({ top: 0, behavior: "smooth" }) }}
+                    disabled={currentPage === totalPages}
+                    className="px-3 py-1.5 rounded-lg border border-gray-200 text-sm font-medium transition disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-50"
+                  >
+                    {t("Next", "ถัดไป")} →
+                  </button>
+                </div>
+              )}
+            </>
           )}
         </CardContent>
       </Card>
@@ -520,15 +677,8 @@ function AspectNewsPage({ t, lang, aspect, onBack }) {
 
 function ExplainBox({ t, lang, explain }) {
   const path = Array.isArray(explain?.explain_path) ? explain.explain_path : []
-  const maxH = Number(explain?.horizon || path.length || 0)
 
-  const [h, setH] = React.useState(1)
-
-  React.useEffect(() => {
-    if (maxH > 0 && h > maxH) setH(1)
-  }, [maxH])
-
-  const block = path.find((p) => Number(p?.horizon) === Number(h)) || path[0] || null
+  const block = path.find((p) => Number(p?.horizon) === 1) || path[0] || null
   const items = Array.isArray(block?.explanations) ? block.explanations : []
   const total = items.reduce((s, x) => s + Number(x?.shap_value || 0), 0)
 
@@ -552,17 +702,6 @@ function ExplainBox({ t, lang, explain }) {
         <CardTitle>{t("Model Explanation", "คำอธิบายโมเดล")}</CardTitle>
 
         <div className="flex gap-3 items-center mt-2 flex-wrap">
-          <div className="text-sm text-gray-600">{t("Horizon", "ระยะพยากรณ์")}</div>
-          <select
-            value={h}
-            onChange={(e) => setH(Number(e.target.value))}
-            className="border border-gray-300 rounded px-2 py-1 text-sm"
-          >
-            {Array.from({ length: maxH }, (_, i) => i + 1).map((k) => (
-              <option key={k} value={k}>{`h = ${k}`}</option>
-            ))}
-          </select>
-
           <Badge variant="outline">
             {t("Forecast month", "เดือนพยากรณ์")}: {forecastMonthLabel}
           </Badge>
@@ -570,25 +709,33 @@ function ExplainBox({ t, lang, explain }) {
       </CardHeader>
 
       <CardContent>
-        <div className="mb-4 p-3 rounded" style={{ backgroundColor: total >= 0 ? "#dbeafe" : "#fee2e2" }}>
-          <div className="font-medium text-sm" style={{ color: total >= 0 ? "#1e40af" : "#991b1b" }}>
-            {t("Sentiment", "ความรู้สึก")}: {sentiment}
+        {(explain?.reasoning || explain?.reasoning_en) ? (
+          <div className="p-4 bg-blue-50 rounded-lg border border-blue-100">
+            <p className="text-sm text-gray-800 leading-relaxed whitespace-pre-line">{lang === "en" ? (explain.reasoning_en || explain.reasoning) : (explain.reasoning || explain.reasoning_en)}</p>
           </div>
-          <div className="text-xs text-gray-600 mt-1">
-            {t("Net SHAP impact (approx.)", "ผลกระทบสุทธิจาก SHAP (โดยประมาณ)")}: {total.toFixed(3)}
-          </div>
-        </div>
-
-        <div className="space-y-2">
-          {items.slice(0, 6).map((x, idx) => (
-            <div key={idx} className="flex items-center justify-between border border-gray-100 rounded-lg p-3">
-              <div className="text-sm font-semibold text-gray-800">{x.feature}</div>
-              <div className="text-xs text-gray-600">
-                shap {Number(x.shap_value || 0).toFixed(3)} | val {Number(x.value || 0).toFixed(3)}
+        ) : (
+          <>
+            <div className="mb-4 p-3 rounded" style={{ backgroundColor: total >= 0 ? "#dbeafe" : "#fee2e2" }}>
+              <div className="font-medium text-sm" style={{ color: total >= 0 ? "#1e40af" : "#991b1b" }}>
+                {t("Sentiment", "ความรู้สึก")}: {sentiment}
+              </div>
+              <div className="text-xs text-gray-600 mt-1">
+                {t("Net SHAP impact (approx.)", "ผลกระทบสุทธิจาก SHAP (โดยประมาณ)")}: {total.toFixed(3)}
               </div>
             </div>
-          ))}
-        </div>
+
+            <div className="space-y-2">
+              {items.slice(0, 6).map((x, idx) => (
+                <div key={idx} className="flex items-center justify-between border border-gray-100 rounded-lg p-3">
+                  <div className="text-sm font-semibold text-gray-800">{x.feature}</div>
+                  <div className="text-xs text-gray-600">
+                    shap {Number(x.shap_value || 0).toFixed(3)} | val {Number(x.value || 0).toFixed(3)}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
       </CardContent>
     </Card>
   )
@@ -596,32 +743,32 @@ function ExplainBox({ t, lang, explain }) {
 
 
 // --- FORECAST PAGE (Page 1): right column shows ONLY aspects ---
-function ForecastPage({ t, lang, series, summary, explain,onSelectAspect }) 
-{const [explainDate, setExplainDate] = React.useState(
-  series?.[36]?.date || series?.[series.length - 1]?.date || ""
-)
+function ForecastPage({ t, lang, series, summary, explain, news = [], onSelectAspect }) {
+  const [explainDate, setExplainDate] = React.useState(
+    series?.[36]?.date || series?.[series.length - 1]?.date || ""
+  )
 
   const [dateRange, setDateRange] = React.useState(["", ""])
 
   React.useEffect(() => {
-  if (series?.length && !dateRange[0] && !dateRange[1]) {
-    setDateRange([series[0].date, series[series.length - 1].date])
-  }
+    if (series?.length && !dateRange[0] && !dateRange[1]) {
+      setDateRange([series[0].date, series[series.length - 1].date])
+    }
   }, [series])
 
 
-const filteredSeries = React.useMemo(() => {
-  if (!series?.length) return []
-  const start = dateRange[0] ? new Date(dateRange[0]) : null
-  const end = dateRange[1] ? new Date(dateRange[1]) : null
+  const filteredSeries = React.useMemo(() => {
+    if (!series?.length) return []
+    const start = dateRange[0] ? new Date(dateRange[0]) : null
+    const end = dateRange[1] ? new Date(dateRange[1]) : null
 
-  return series.filter((s) => {
-    const d = new Date(s.date)
-    if (start && d < start) return false
-    if (end && d > end) return false
-    return true
-  })
-}, [series, dateRange])
+    return series.filter((s) => {
+      const d = new Date(s.date)
+      if (start && d < start) return false
+      if (end && d > end) return false
+      return true
+    })
+  }, [series, dateRange])
 
 
   const metrics = React.useMemo(() => {
@@ -664,9 +811,9 @@ const filteredSeries = React.useMemo(() => {
               <CardTitle>{t("CCI – Thailand", "CCI – ประเทศไทย")}</CardTitle>
               <CardDescription>
                 <div className="flex flex-wrap gap-4 items-center">
-                  <input type="date" value={dateRange[0]} onChange={(e) => setDateRange([e.target.value, dateRange[1]])} className="border px-2 py-1 rounded" />
+                  <MonthYearPicker value={dateRange[0]?.slice(0, 7)} onChange={(v) => setDateRange([v + "-01", dateRange[1]])} lang={lang} />
                   →
-                  <input type="date" value={dateRange[1]} onChange={(e) => setDateRange([dateRange[0], e.target.value])} className="border px-2 py-1 rounded" />
+                  <MonthYearPicker value={dateRange[1]?.slice(0, 7)} onChange={(v) => setDateRange([dateRange[0], v + "-01"])} lang={lang} />
                 </div>
               </CardDescription>
             </CardHeader>
@@ -675,12 +822,25 @@ const filteredSeries = React.useMemo(() => {
               <ResponsiveContainer width="100%" height={400}>
                 <ComposedChart data={filteredSeries}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                  <XAxis dataKey="date" tick={{ fontSize: 11 }} />
+                  <XAxis dataKey="date" tick={{ fontSize: 11 }} tickFormatter={(v) => v ? v.slice(0, 7) : v} />
                   <YAxis domain={["dataMin - 5", "dataMax + 5"]} tick={{ fontSize: 11 }} />
-                  <ReTooltip contentStyle={{ backgroundColor: "rgba(255,255,255,0.95)", border: "1px solid #ddd" }} labelStyle={{ fontWeight: "bold" }} />
+                  <ReTooltip content={({ active, payload, label }) => {
+                    if (!active || !payload?.length) return null
+                    const actualItem = payload.find(p => p.dataKey === "actual")
+                    const predItem = payload.find(p => p.dataKey === "pred")
+                    const av = actualItem?.value
+                    const pv = predItem?.value
+                    return (
+                      <div style={{ background: "rgba(255,255,255,0.95)", border: "1px solid #ddd", padding: 10, borderRadius: 8 }}>
+                        <div style={{ fontWeight: "bold", marginBottom: 4 }}>{label}</div>
+                        {av != null && <div style={{ color: THEME.primary }}>{t("Actual", "ค่าจริง")} : {Number(av).toFixed(1)}</div>}
+                        {pv != null && av == null && <div style={{ color: THEME.primaryLight }}>{t("Forecast", "พยากรณ์")} : {Number(pv).toFixed(1)}</div>}
+                      </div>
+                    )
+                  }} />
                   <Legend verticalAlign="top" height={36} wrapperStyle={{ paddingBottom: "10px" }} />
                   <Line type="monotone" dataKey="actual" stroke={THEME.primary} strokeWidth={2} dot={{ r: 3 }} name={t("Actual", "ค่าจริง")} connectNulls={false} />
-                  <Line type="monotone" dataKey="pred" stroke={THEME.primaryLight} strokeWidth={2} strokeDasharray="5 5" dot={{ r: 3 }} name={t("Forecast", "พยากรณ์")} connectNulls={false}/>
+                  <Line type="monotone" dataKey="pred" stroke={THEME.primaryLight} strokeWidth={2} strokeDasharray="5 5" dot={{ r: 3 }} name={t("Forecast", "พยากรณ์")} connectNulls={false} />
                   {futureStartDate && (
                     <ReferenceArea
                       x1={futureStartDate}
@@ -696,7 +856,8 @@ const filteredSeries = React.useMemo(() => {
         </div>
 
         <div className="lg:col-span-1">
-          <TopAspectsOnlyCard t={t} onSelectAspect={onSelectAspect} />
+          <TopAspectsOnlyCard t={t} news={news} onSelectAspect={onSelectAspect} />
+
         </div>
       </div>
     </div>
@@ -704,12 +865,12 @@ const filteredSeries = React.useMemo(() => {
 }
 
 // --- ANALYTICS PAGE ---
-function AnalyticsPage({ t, lang }) {
+function AnalyticsPage({ t, lang, news = [] }) {
 
   const [agencyStack, setAgencyStack] = React.useState({ data: [], groups: [] })
   const [agencyErr, setAgencyErr] = React.useState("")
 
-  const news1y = React.useMemo(() => filterNewsLast12Months(newsUsed), [])
+  const news1y = React.useMemo(() => filterNewsLast12Months(news), [news])
   const aspectStack = React.useMemo(() => {
     return stackCountByMonth(news1y, (n) => n.aspect || "Unknown", ASPECTS_TO_RUN)
   }, [news1y])
@@ -731,20 +892,15 @@ function AnalyticsPage({ t, lang }) {
     return () => { alive = false }
   }, [])
 
-  const topEntities = React.useMemo(() => {
-    const entityCount = {}
-    newsUsed.forEach((n) => {
-      n.entities?.forEach((e) => {
-        entityCount[e] = (entityCount[e] || 0) + 1
-      })
-    })
-    return Object.entries(entityCount)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 8)
-      .map(([name, count]) => ({ name, count }))
+  const [topEntities, setTopEntities] = React.useState([])
+  React.useEffect(() => {
+    fetch("/data/top_entities.json")
+      .then((r) => r.json())
+      .then((data) => setTopEntities(data.slice(0, 12)))
+      .catch(() => setTopEntities([]))
   }, [])
 
-  
+
 
   // histogram & flow & scatter
   const sentimentHistogram = React.useMemo(() => {
@@ -758,17 +914,25 @@ function AnalyticsPage({ t, lang }) {
       { range: "40 to 60", min: 40, max: 60, count: 0 },
       { range: "> 60", min: 60, max: 100, count: 0 },
     ]
-    newsUsed.forEach((n) => {
-      const sentimentPct = n.sentiment * 100
+    // news.forEach((n) => {
+    //   const sentimentPct = n.sentiment * 100
+    //   bins.forEach((bin) => {
+    //     if (sentimentPct > bin.min && sentimentPct <= bin.max) bin.count++
+    //   })
+    // })
+
+    news.forEach((n) => {
+      const sentimentPct = (Number(n.sentiment) || 0) * 100
       bins.forEach((bin) => {
         if (sentimentPct > bin.min && sentimentPct <= bin.max) bin.count++
       })
     })
+
     return bins
-  }, [])
+  }, [news])
 
   const sentimentFlow = React.useMemo(() => {
-    const sorted = [...newsUsed].sort((a, b) => a.date.localeCompare(b.date))
+    const sorted = [...news].sort((a, b) => a.date.localeCompare(b.date))
     let cumulative = 0
     return sorted.map((n) => {
       cumulative += n.sentiment
@@ -779,18 +943,26 @@ function AnalyticsPage({ t, lang }) {
         negative: n.sentiment < 0 ? Math.abs(n.sentiment) : 0,
       }
     })
-  }, [])
+  }, [news])
 
-  const impactSentimentMatrix = React.useMemo(
-    () =>
-      newsUsed.map((n) => ({
-        sentiment: n.sentiment * 100,
-        impact: n.impact,
-        tag: n.tag,
-        title: n.title.substring(0, 25),
-      })),
-    []
-  )
+  const { shortTermData, longTermData } = React.useMemo(() => {
+    const impactMap = { Negative: -1, Neutral: 0, Positive: 1 }
+    const shortTerm = []
+    const longTerm = []
+    news.forEach((n) => {
+      const point = {
+        sentiment: Number(n.rawSentiment) || 0,
+        impact: impactMap[n.impactType] ?? 0,
+        headline: String(n.title || "").substring(0, 30),
+        impactLabel: n.impactType || "Neutral",
+        effectLabel: n.effectType || "Short-term",
+      }
+      if (n.effectType === "Long-term") longTerm.push(point)
+      else shortTerm.push(point)
+    })
+    return { shortTermData: shortTerm, longTermData: longTerm }
+  }, [news])
+
 
   return (
     <div className="space-y-8">
@@ -887,37 +1059,37 @@ function AnalyticsPage({ t, lang }) {
             <CardHeader>
               <CardTitle>{t("News Volume by Agency", "ปริมาณข่าวตามสำนักข่าว")}</CardTitle>
               <CardDescription>{t("Stacked by agency per month", "กราฟแท่งซ้อนตามสำนักข่าวรายเดือน")}</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {agencyErr && (
-                  <div className="mb-3 p-3 rounded border border-red-200 bg-red-50 text-red-700 text-sm">
-                    {agencyErr}
-                    </div>
-                  )}
-                  {!agencyErr && agencyStack.data.length === 0 ? (
-                    <div className="p-3 text-sm text-gray-600">กำลังโหลดข้อมูลจาก Supabase…</div>
-                  ) : (
-                  <ResponsiveContainer width="100%" height={320}>
-                    <BarChart data={agencyStack.data} margin={{ bottom: 20 }}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="month" tick={{ fontSize: 11 }} />
-                      <YAxis tick={{ fontSize: 11 }} />
-                      <ReTooltip />
-                      <Legend />
-                      {agencyStack.groups.map((agency, i) => (
-                        <Bar
+            </CardHeader>
+            <CardContent>
+              {agencyErr && (
+                <div className="mb-3 p-3 rounded border border-red-200 bg-red-50 text-red-700 text-sm">
+                  {agencyErr}
+                </div>
+              )}
+              {!agencyErr && agencyStack.data.length === 0 ? (
+                <div className="p-3 text-sm text-gray-600">กำลังโหลดข้อมูลจาก Supabase…</div>
+              ) : (
+                <ResponsiveContainer width="100%" height={320}>
+                  <BarChart data={agencyStack.data} margin={{ bottom: 20 }}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="month" tick={{ fontSize: 11 }} />
+                    <YAxis tick={{ fontSize: 11 }} />
+                    <ReTooltip />
+                    <Legend />
+                    {agencyStack.groups.map((agency, i) => (
+                      <Bar
                         key={agency}
                         dataKey={agency}
                         stackId="1"
                         fill={isThairathAgency(agency) ? THAIRATH_COLOR : CHART_COLORS[i % CHART_COLORS.length]}
                         name={agency}
-                        />
-                        ))}
-                        </BarChart>
-                        </ResponsiveContainer>
-                      )}
-                      </CardContent>
-                      </Card>
+                      />
+                    ))}
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
+            </CardContent>
+          </Card>
 
           <Card>
             <CardHeader>
@@ -980,15 +1152,29 @@ function AnalyticsPage({ t, lang }) {
           <Card>
             <CardHeader>
               <CardTitle>{t("Impact vs Sentiment Matrix", "เมทริกซ์ผลกระทบกับความรู้สึก")}</CardTitle>
+              <CardDescription>{t("Each dot = 1 news article. X=Sentiment, Y=Impact direction", "แต่ละจุด = 1 ข่าว, แกน X=Sentiment, แกน Y=ทิศทางผลกระทบ")}</CardDescription>
             </CardHeader>
             <CardContent>
-              <ResponsiveContainer width="100%" height={300}>
-                <ScatterChart margin={{ bottom: 20, left: 10 }}>
+              <ResponsiveContainer width="100%" height={320}>
+                <ScatterChart margin={{ bottom: 25, left: 20, right: 10, top: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="sentiment" tick={{ fontSize: 11 }} label={{ value: t("Sentiment %", "Sentiment %"), position: "insideBottom", offset: -15 }} />
-                  <YAxis dataKey="impact" tick={{ fontSize: 11 }} label={{ value: t("Impact", "ผลกระทบ"), angle: -90, position: "insideLeft", offset: 10 }} />
-                  <ReTooltip />
-                  <Scatter name={t("News", "ข่าว")} data={impactSentimentMatrix} fill="#3b82f6" />
+                  <XAxis dataKey="sentiment" tick={{ fontSize: 11 }} type="number" name="Sentiment" label={{ value: t("Sentiment Score", "Sentiment Score"), position: "insideBottom", offset: -15 }} />
+                  <YAxis dataKey="impact" tick={{ fontSize: 11 }} type="number" ticks={[-1, 0, 1]} tickFormatter={(v) => v === -1 ? "Negative" : v === 0 ? "Neutral" : "Positive"} label={{ value: t("Impact", "ผลกระทบ"), angle: -90, position: "insideLeft", offset: 5 }} />
+                  <ReTooltip content={({ payload }) => {
+                    if (!payload || !payload.length) return null
+                    const d = payload[0]?.payload
+                    return (
+                      <div className="bg-white border rounded shadow p-2 text-xs max-w-xs">
+                        <div className="font-semibold">{d?.headline}</div>
+                        <div>Sentiment: {d?.sentiment?.toFixed(2)}</div>
+                        <div>Impact: {d?.impactLabel}</div>
+                        <div>Effect: {d?.effectLabel}</div>
+                      </div>
+                    )
+                  }} />
+                  <Scatter name={t("Short-term", "ระยะสั้น")} data={shortTermData} fill="#3b82f6" opacity={0.6} />
+                  <Scatter name={t("Long-term", "ระยะยาว")} data={longTermData} fill="#f59e0b" opacity={0.6} />
+                  <Legend verticalAlign="top" height={30} />
                 </ScatterChart>
               </ResponsiveContainer>
             </CardContent>
@@ -1016,11 +1202,10 @@ function AnalyticsPage({ t, lang }) {
             <Card>
               <CardHeader>
                 <CardTitle>{t("Word Cloud", "คำที่ปรากฏบ่อย")}</CardTitle>
-                <CardDescription>{t("Mockup", "ตัวอย่างภาพ (Mockup)")}</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="w-full bg-white rounded-lg border border-gray-100 overflow-hidden">
-                  <img src={wordcloudMock} alt="wordcloud mock" className="w-full h-auto" />
+                  <img src={wordcloudSrc} alt="CCI Impact Word Cloud" className="w-full h-auto rounded" />
                 </div>
               </CardContent>
             </Card>
@@ -1037,10 +1222,13 @@ export default function App() {
   const { page, setPage } = useNavigation()
   const [selectedAspect, setSelectedAspect] = React.useState(null)
 
-    const [summary, setSummary] = React.useState(null)
+  const [summary, setSummary] = React.useState(null)
   const [explain, setExplain] = React.useState(null)
   const [series, setSeries] = React.useState([])
   const [err, setErr] = React.useState("")
+  const [newsReal, setNewsReal] = React.useState([])
+
+
 
   React.useEffect(() => {
     let alive = true
@@ -1048,16 +1236,18 @@ export default function App() {
     async function load() {
       setErr("")
       try {
-        const [s, e, ts] = await Promise.all([
+        const [s, e, ts, newsRows] = await Promise.all([
           getSummary(),
           getLatestExplain(),
           getTimeSeries(2000),
+          getNewsSentimentFromCSV(),
         ])
         if (!alive) return
 
         setSummary(s)
         setExplain(e)
         setSeries(ts?.data || [])
+        setNewsReal(newsRows || [])
       } catch (ex) {
         if (!alive) return
         setErr(String(ex?.message || ex))
@@ -1068,6 +1258,7 @@ export default function App() {
     return () => { alive = false }
   }, [])
 
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50">
       <div className="bg-[#1F3A5F] text-white shadow-lg sticky top-0 z-10">
@@ -1076,25 +1267,23 @@ export default function App() {
             <div className="flex items-center gap-3">
               <Activity className="w-8 h-8 text-white" />
               <div>
-                <h1 className="text-xl font-bold">{t("BOT CCI Forecast", "พยากรณ์ CCI ธปท.")}</h1>
-                <p className="text-sm text-blue-200">{t("Bank of Thailand", "ธนาคารแห่งประเทศไทย")}</p>
+                <h1 className="text-xl font-bold">{t("XEconomic", "XEconomic")}</h1>
+                <p className="text-sm text-blue-200">{t("BOT CCI Forecast", "BOT CCI Forecast")}</p>
               </div>
             </div>
 
             <div className="flex gap-2">
               <button
                 onClick={() => setLang("en")}
-                className={`px-3 py-1 text-xs font-bold rounded transition-all ${
-                  lang === "en" ? "bg-white text-[#1F3A5F]" : "text-white border border-white/40 hover:bg-white/10"
-                }`}
+                className={`px-3 py-1 text-xs font-bold rounded transition-all ${lang === "en" ? "bg-white text-[#1F3A5F]" : "text-white border border-white/40 hover:bg-white/10"
+                  }`}
               >
                 EN
               </button>
               <button
                 onClick={() => setLang("th")}
-                className={`px-3 py-1 text-xs font-bold rounded transition-all ${
-                  lang === "th" ? "bg-white text-[#1F3A5F]" : "text-white border border-white/40 hover:bg-white/10"
-                }`}
+                className={`px-3 py-1 text-xs font-bold rounded transition-all ${lang === "th" ? "bg-white text-[#1F3A5F]" : "text-white border border-white/40 hover:bg-white/10"
+                  }`}
               >
                 ไทย
               </button>
@@ -1105,20 +1294,21 @@ export default function App() {
 
       <div className="max-w-7xl mx-auto px-6 py-8">
         <TopNav t={t} page={page} setPage={setPage} />
-        
+
         {page === "forecast" && (
           <ForecastPage
-          t={t}
-          lang={lang}
-          series={series}
-          summary={summary}
-          explain={explain}
-          onSelectAspect={(aspect) => {
-            setSelectedAspect(aspect)
-            setPage("aspectNews")
-          }}
-       />
-      )}
+            t={t}
+            lang={lang}
+            series={series}
+            summary={summary}
+            explain={explain}
+            news={newsReal}
+            onSelectAspect={(aspect) => {
+              setSelectedAspect(aspect)
+              setPage("aspectNews")
+            }}
+          />
+        )}
 
 
         {page === "aspectNews" && (
@@ -1126,11 +1316,13 @@ export default function App() {
             t={t}
             lang={lang}
             aspect={selectedAspect}
+            news={newsReal}
             onBack={() => setPage("forecast")}
           />
         )}
 
-        {page === "analytics" && <AnalyticsPage t={t} lang={lang} />}
+        {page === "analytics" && <AnalyticsPage t={t} lang={lang} news={newsReal} />}
+
       </div>
 
       <div className="bg-gray-100 border-t border-gray-200 mt-12">
