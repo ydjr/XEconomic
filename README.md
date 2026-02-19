@@ -20,7 +20,7 @@ pip install -r requirements.txt
 
 
 
-### STEP 2 - RUN PREDICTION PIPELINE (NOT STABLE YET)
+### STEP 2 - RUN PREDICTION PIPELINE (this will predict for 2025-08 only)
 This step generate data for the website
 
 python pipeline/backtest.py
