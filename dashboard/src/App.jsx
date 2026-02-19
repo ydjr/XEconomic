@@ -1,12 +1,9 @@
 import React from "react"
 import { TrendingUp, Activity, BarChart3 } from "lucide-react"
-// word cloud image served from public/data/ via Vite
-const wordcloudSrc = "/data/cci_impact_wordcloud.png"
+import wordcloudImg from "./assets/cci_impact_wordcloud.png"
 import "./index.css"
-import { getSummary, getLatestExplain, getTimeSeries } from "./api.js"
+import { getSummary, getLatestExplain, getTimeSeries, getNews, getShap } from "./api.js"
 import { getAgencyVolumeLastNMonths } from "./newsSupabaseApi"
-import { getNewsSentimentFromCSV } from "./newsFileApi"
-
 
 import {
   LineChart,
@@ -676,70 +673,64 @@ function AspectNewsPage({ t, lang, aspect, news = [], onBack }) {
 }
 
 function ExplainBox({ t, lang, explain }) {
-  const path = Array.isArray(explain?.explain_path) ? explain.explain_path : []
+  // backend returns: { data: [ { date, predicted, direction, reasoning, ... } ] }
+  const row = Array.isArray(explain?.data) ? explain.data[0] : null
 
-  const block = path.find((p) => Number(p?.horizon) === 1) || path[0] || null
-  const items = Array.isArray(block?.explanations) ? block.explanations : []
-  const total = items.reduce((s, x) => s + Number(x?.shap_value || 0), 0)
-
-  if (!block) {
+  if (!row) {
     return (
       <Card>
         <CardHeader>
           <CardTitle>{t("Model Explanation", "คำอธิบายโมเดล")}</CardTitle>
-          <CardDescription>{t("No explain data yet. Run pipeline and copy artifacts.", "ยังไม่มี explain data — ต้องรัน pipeline และคัดลอก artifacts")}</CardDescription>
+          <CardDescription>
+            {t("No explain data yet.", "ยังไม่มี explain data")}
+          </CardDescription>
         </CardHeader>
       </Card>
     )
   }
 
-  const sentiment = total >= 0 ? t("Positive (+)", "บวก (+)") : t("Negative (-)", "ลบ (-)")
-  const forecastMonthLabel = lang === "th" ? thaiMonth(block.forecast_month) : String(block.forecast_month).slice(0, 7)
+  const forecastMonthLabel =
+    lang === "th" ? thaiMonth(`${row.date}-01`) : String(row.date)
+
+  const directionLabelTH =
+    row.direction === "เพิ่มขึ้น" ? "เพิ่มขึ้น" :
+    row.direction === "ลดลง" ? "ลดลง" :
+    row.direction || "-"
 
   return (
     <Card>
       <CardHeader>
         <CardTitle>{t("Model Explanation", "คำอธิบายโมเดล")}</CardTitle>
-
         <div className="flex gap-3 items-center mt-2 flex-wrap">
           <Badge variant="outline">
             {t("Forecast month", "เดือนพยากรณ์")}: {forecastMonthLabel}
+          </Badge>
+          <Badge variant="outline">
+            {t("Predicted", "ค่าพยากรณ์")}: {row.predicted != null ? Number(row.predicted).toFixed(2) : "-"}
+          </Badge>
+          <Badge variant="outline">
+            {t("Direction", "ทิศทาง")}: {lang === "th" ? directionLabelTH : (row.direction || "-")}
           </Badge>
         </div>
       </CardHeader>
 
       <CardContent>
-        {(explain?.reasoning || explain?.reasoning_en) ? (
+        {row.reasoning ? (
           <div className="p-4 bg-blue-50 rounded-lg border border-blue-100">
-            <p className="text-sm text-gray-800 leading-relaxed whitespace-pre-line">{lang === "en" ? (explain.reasoning_en || explain.reasoning) : (explain.reasoning || explain.reasoning_en)}</p>
+            <p className="text-sm text-gray-800 leading-relaxed whitespace-pre-line">
+              {row.reasoning}
+            </p>
           </div>
         ) : (
-          <>
-            <div className="mb-4 p-3 rounded" style={{ backgroundColor: total >= 0 ? "#dbeafe" : "#fee2e2" }}>
-              <div className="font-medium text-sm" style={{ color: total >= 0 ? "#1e40af" : "#991b1b" }}>
-                {t("Sentiment", "ความรู้สึก")}: {sentiment}
-              </div>
-              <div className="text-xs text-gray-600 mt-1">
-                {t("Net SHAP impact (approx.)", "ผลกระทบสุทธิจาก SHAP (โดยประมาณ)")}: {total.toFixed(3)}
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              {items.slice(0, 6).map((x, idx) => (
-                <div key={idx} className="flex items-center justify-between border border-gray-100 rounded-lg p-3">
-                  <div className="text-sm font-semibold text-gray-800">{x.feature}</div>
-                  <div className="text-xs text-gray-600">
-                    shap {Number(x.shap_value || 0).toFixed(3)} | val {Number(x.value || 0).toFixed(3)}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </>
+          <div className="text-sm text-gray-600">
+            {t("No reasoning text.", "ไม่มีข้อความอธิบาย")}
+          </div>
         )}
       </CardContent>
     </Card>
   )
 }
+
 
 
 // --- FORECAST PAGE (Page 1): right column shows ONLY aspects ---
@@ -865,7 +856,7 @@ function ForecastPage({ t, lang, series, summary, explain, news = [], onSelectAs
 }
 
 // --- ANALYTICS PAGE ---
-function AnalyticsPage({ t, lang, news = [] }) {
+function AnalyticsPage({ t, lang, news = [], shapData = [] }) {
 
   const [agencyStack, setAgencyStack] = React.useState({ data: [], groups: [] })
   const [agencyErr, setAgencyErr] = React.useState("")
@@ -874,6 +865,29 @@ function AnalyticsPage({ t, lang, news = [] }) {
   const aspectStack = React.useMemo(() => {
     return stackCountByMonth(news1y, (n) => n.aspect || "Unknown", ASPECTS_TO_RUN)
   }, [news1y])
+  const shapArr = React.useMemo(() => {
+    // shapData อาจเป็น { data: [...] } หรือเป็น array อยู่แล้ว
+    const raw = Array.isArray(shapData) ? shapData : (shapData?.data ?? [])
+    return raw
+  }, [shapData])
+
+  const shapRows = React.useMemo(() => {
+    return shapArr
+      .map((d) => ({
+        name: String(d.name),
+        value: Number(d.value) || 0,
+        absValue: Math.abs(Number(d.value) || 0),
+      }))
+      .sort((a, b) => b.absValue - a.absValue)
+  }, [shapArr])
+
+  // debug ดูใน console
+  React.useEffect(() => {
+    console.log("shapData prop =", shapData)
+    console.log("shapArr length =", shapArr.length)
+    console.table(shapRows.slice(0, 5))
+  }, [shapData, shapArr, shapRows])
+
 
   React.useEffect(() => {
     let alive = true
@@ -914,12 +928,6 @@ function AnalyticsPage({ t, lang, news = [] }) {
       { range: "40 to 60", min: 40, max: 60, count: 0 },
       { range: "> 60", min: 60, max: 100, count: 0 },
     ]
-    // news.forEach((n) => {
-    //   const sentimentPct = n.sentiment * 100
-    //   bins.forEach((bin) => {
-    //     if (sentimentPct > bin.min && sentimentPct <= bin.max) bin.count++
-    //   })
-    // })
 
     news.forEach((n) => {
       const sentimentPct = (Number(n.sentiment) || 0) * 100
@@ -962,7 +970,7 @@ function AnalyticsPage({ t, lang, news = [] }) {
     })
     return { shortTermData: shortTerm, longTermData: longTerm }
   }, [news])
-
+  
 
   return (
     <div className="space-y-8">
@@ -1182,20 +1190,25 @@ function AnalyticsPage({ t, lang, news = [] }) {
 
           <Card>
             <CardHeader>
-              <CardTitle>{t("Top Entities", "ตัวละครเด่น")}</CardTitle>
+              <CardTitle>{t("Feature Importance", "ปัจจัยที่สำคัญ")}</CardTitle>
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={350}>
-                <BarChart data={topEntities} margin={{ bottom: 60 }}>
+                <BarChart
+                  data={shapRows}
+                  layout="vertical"
+                  margin={{ top: 10, right: 40, left: 20, bottom: 10 }}
+                >
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" tick={{ fontSize: 11 }} angle={-45} textAnchor="end" interval={0} />
-                  <YAxis tick={{ fontSize: 11 }} />
+                  <XAxis type="number" />
+                  <YAxis type="category" dataKey="name" width={200} />
                   <ReTooltip />
-                  <Bar dataKey="count" fill="#8b5cf6" name={t("Mentions", "การกล่าวถึง")} />
+                  <Bar dataKey="absValue" name={t("Importance", "ความสำคัญ")} />
                 </BarChart>
               </ResponsiveContainer>
             </CardContent>
           </Card>
+
 
           {/* Word Cloud (full width) */}
           <div className="lg:col-span-2">
@@ -1205,7 +1218,11 @@ function AnalyticsPage({ t, lang, news = [] }) {
               </CardHeader>
               <CardContent>
                 <div className="w-full bg-white rounded-lg border border-gray-100 overflow-hidden">
-                  <img src={wordcloudSrc} alt="CCI Impact Word Cloud" className="w-full h-auto rounded" />
+                  <img
+                    src={wordcloudImg}
+                    alt="CCI Impact Word Cloud"
+                    className="w-full h-auto rounded"
+                  />
                 </div>
               </CardContent>
             </Card>
@@ -1227,6 +1244,7 @@ export default function App() {
   const [series, setSeries] = React.useState([])
   const [err, setErr] = React.useState("")
   const [newsReal, setNewsReal] = React.useState([])
+  const [shapData, setShapData] = React.useState([])
 
 
 
@@ -1236,23 +1254,26 @@ export default function App() {
     async function load() {
       setErr("")
       try {
-        const [s, e, ts, newsRows] = await Promise.all([
+        const [s, e, ts, newsRows, shapRes] = await Promise.allSettled([
           getSummary(),
           getLatestExplain(),
           getTimeSeries(2000),
-          getNewsSentimentFromCSV(),
+          getNews(),
+          getShap(),
         ])
-        if (!alive) return
 
-        setSummary(s)
-        setExplain(e)
-        setSeries(ts?.data || [])
-        setNewsReal(newsRows || [])
+        setSummary(s.status === "fulfilled" ? s.value : null)
+        setExplain(e.status === "fulfilled" ? e.value : null)
+        setSeries(ts.status === "fulfilled" ? (ts.value?.data || []) : [])
+        setNewsReal(newsRows.status === "fulfilled" ? (newsRows.value?.data || []) : [])
+        setShapData(shapRes.status === "fulfilled" ? (shapRes.value?.data || []) : [])
+
       } catch (ex) {
         if (!alive) return
         setErr(String(ex?.message || ex))
       }
     }
+
 
     load()
     return () => { alive = false }
@@ -1321,7 +1342,7 @@ export default function App() {
           />
         )}
 
-        {page === "analytics" && <AnalyticsPage t={t} lang={lang} news={newsReal} />}
+        {page === "analytics" && <AnalyticsPage t={t} lang={lang} news={newsReal} shapData={shapData} />}
 
       </div>
 

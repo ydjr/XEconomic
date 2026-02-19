@@ -5,20 +5,18 @@ import numpy as np
 from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
 
-# Project root = one level above /api
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
 ART_DIR = os.path.join(ROOT, "artifacts")
-DATA_DIR = os.path.join(ROOT, "public", "data")
+DATA_DIR = os.path.join(ROOT, "data")
 
 CCI_CSV = os.path.join(DATA_DIR, "indicators/cci.csv")
-NEWS_CSV = os.path.join(DATA_DIR, "2_news_cci_r.csv")
-
-
-LATEST_FORECAST = os.path.join(ART_DIR, "latest_forecast.json")
-LATEST_EXPLAIN = os.path.join(ART_DIR, "latest_explain.json")
 
 DASHBOARD_CSV = os.path.join(ART_DIR, "cci_dashboard_latest.csv")
+EXPLAIN_CSV = os.path.join(ART_DIR, "reasoning_2025-08_to_2025-08.csv") # explain path from cream
+NEWS_CSV = os.path.join(DATA_DIR, "news_sentiment_summary_all.csv")
+
+SHAP_CSV = os.path.join(ART_DIR, "shap_predicted_month_rank.csv")
 
 app = FastAPI(title="CCI Forecast API", version="1.0.0")
 
@@ -131,8 +129,12 @@ def dashboard_summary():
 
 @app.get("/dashboard/explain/latest")
 def dashboard_explain_latest():
-    ex = read_json(LATEST_EXPLAIN)
-    return ex or {}
+    if not os.path.exists(EXPLAIN_CSV):
+        return {}
+    df = pd.read_csv(EXPLAIN_CSV)
+    df = df.replace({np.nan: None})
+    return {"data": df.to_dict(orient="records")}
+
 
 
 @app.get("/dashboard/timeseries")
@@ -169,5 +171,88 @@ def dashboard_timeseries(limit: int = Query(500, ge=1, le=5000)):
     df = df.replace({np.nan: None})
 
     rows = df[["date", "actual", "pred"]].to_dict(orient="records")
+
+    return {"data": rows}
+
+
+@app.get("/dashboard/news")
+def dashboard_news(limit: int = Query(2000, ge=1, le=20000)):
+    if not os.path.exists(NEWS_CSV):
+        return {"data": []}
+
+    df = pd.read_csv(NEWS_CSV)
+
+    # ปรับชื่อคอลัมน์ให้ตรงกับไฟล์คุณ
+    # จากรูปไฟล์คุณมี: id, category, subtype, published_at, headline, ... sentiment_score, impact_type, effect_type, aspects
+    for c in ["published_at", "headline"]:
+        if c not in df.columns:
+            return {"data": []}
+
+    df["date"] = pd.to_datetime(df["published_at"], errors="coerce")
+    df = df.dropna(subset=["date"])
+    df = df.sort_values("date")
+
+    if limit and len(df) > limit:
+        df = df.tail(limit)
+
+    def infer_source(url: str):
+        u = str(url or "")
+        if "thairath.co.th" in u: return "Thairath"
+        if "thaipbs.or.th" in u: return "Thai PBS"
+        try:
+            from urllib.parse import urlparse
+            host = urlparse(u).netloc.replace("www.", "")
+            return host
+        except:
+            return ""
+
+    # map ให้เป็น schema ที่ frontend ใช้
+    rows = []
+    for _, r in df.iterrows():
+        date_str = r["date"].strftime("%Y-%m-%d")
+        rows.append({
+            "id": r.get("id"),
+            "date": date_str,
+            "title": r.get("headline", "") or "",
+            "url": r.get("url", "") or "",
+            "aspect": r.get("aspects", "Other") or "Other",
+            "tag": r.get("category", "") or "",
+            "source": infer_source(r.get("url", "")) or (r.get("subtype", "") or ""),
+            "rawSentiment": float(r.get("sentiment_score")) if pd.notna(r.get("sentiment_score")) else 0.0,
+            "impactType": r.get("impact_type", "Neutral") or "Neutral",
+            "effectType": r.get("effect_type", "") or "",
+        })
+
+    return {"data": rows}
+
+
+@app.get("/dashboard/shap")
+def dashboard_shap(limit: int = Query(10, ge=1, le=50)):
+
+    if not os.path.exists(SHAP_CSV):
+        return {"data": []}
+
+    df = pd.read_csv(SHAP_CSV)
+
+    # make sure required columns exist
+    required_cols = {"feature", "shap_value"}
+    if not required_cols.issubset(df.columns):
+        return {"data": []}
+
+    df["shap_value"] = pd.to_numeric(df["shap_value"], errors="coerce")
+    df = df.dropna(subset=["shap_value"])
+
+    # sort by absolute importance
+    df = df.reindex(df["shap_value"].abs().sort_values(ascending=False).index)
+
+    df = df.head(limit)
+
+    rows = [
+        {
+            "name": row["feature"],
+            "value": float(row["shap_value"])
+        }
+        for _, row in df.iterrows()
+    ]
 
     return {"data": rows}

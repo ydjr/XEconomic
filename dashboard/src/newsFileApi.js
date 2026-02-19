@@ -27,34 +27,34 @@ function inferSourceFromUrl(url) {
   }
 }
 
-export async function getNewsSentimentFromCSV() {
+// export async function getNewsSentimentFromCSV() {
     
-  const res = await fetch("/data/news_sentiment_summary_all.csv")
-  if (!res.ok) throw new Error("โหลดไฟล์ news_sentiment_summary_all.csv ไม่สำเร็จ (เช็ค public/data)")
+//   const res = await fetch("./data/news_sentiment_summary_all.csv")
+//   if (!res.ok) throw new Error("โหลดไฟล์ news_sentiment_summary_all.csv ไม่สำเร็จ (เช็ค data)")
 
-  const text = await res.text()
-  const parsed = Papa.parse(text, { header: true, skipEmptyLines: true })
+//   const text = await res.text()
+//   const parsed = Papa.parse(text, { header: true, skipEmptyLines: true })
 
-  return (parsed.data || [])
-    .map((r) => {
-      const date = r.published_at ? String(r.published_at).slice(0, 10) : ""
-      const impactType = r.impact_type || "Neutral"
-      const sentiment = toSignedSentiment(r.sentiment_score, impactType)
+//   return (parsed.data || [])
+//     .map((r) => {
+//       const date = r.published_at ? String(r.published_at).slice(0, 10) : ""
+//       const impactType = r.impact_type || "Neutral"
+//       const sentiment = toSignedSentiment(r.sentiment_score, impactType)
 
-      return {
-        id: r.id,
-        date,
-        title: r.headline || "",
-        url: r.url || "",
-        aspect: r.aspects || "Other",
-        tag: r.category || "",
-        source: inferSourceFromUrl(r.url) || r.subtype || "",
-        sentiment,
-        impact: impactToNumber(impactType), 
-        impactType,
-        effectType: r.effect_type || "",
-        rawSentiment: Number(r.sentiment_score),
-      }
-    })
-    .filter((x) => x.date && x.title)
-}
+//       return {
+//         id: r.id,
+//         date,
+//         title: r.headline || "",
+//         url: r.url || "",
+//         aspect: r.aspects || "Other",
+//         tag: r.category || "",
+//         source: inferSourceFromUrl(r.url) || r.subtype || "",
+//         sentiment,
+//         impact: impactToNumber(impactType), 
+//         impactType,
+//         effectType: r.effect_type || "",
+//         rawSentiment: Number(r.sentiment_score),
+//       }
+//     })
+//     .filter((x) => x.date && x.title)
+// }
