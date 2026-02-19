@@ -358,6 +358,48 @@ function thaiDateShort(dateStr) {
 }
 
 // --- UI SUB-COMPONENTS ---
+// --- CUSTOM MONTH PICKER (Locale Aware) ---
+function MonthYearPicker({ value, onChange, lang }) {
+  // value is "YYYY-MM"
+  const [yStr, mStr] = (value || "").split("-")
+  const year = parseInt(yStr) || new Date().getFullYear()
+  const month = (parseInt(mStr) || new Date().getMonth() + 1) - 1 // 0-11
+
+  const monthsTH = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"]
+  const monthsEN = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
+
+  const years = Array.from({ length: 25 }, (_, i) => 2010 + i) // 2010 - 2034
+
+  const handleChange = (newY, newM) => {
+    const m = String(newM + 1).padStart(2, "0")
+    onChange(`${newY}-${m}`)
+  }
+
+  return (
+    <div className="flex gap-1 border border-gray-300 rounded px-2 py-1 bg-white items-center shadow-sm hover:border-blue-400 transition-colors">
+      <select
+        value={month}
+        onChange={(e) => handleChange(year, parseInt(e.target.value))}
+        className="bg-transparent text-sm outline-none cursor-pointer font-medium hover:text-blue-700 pr-1"
+      >
+        {(lang === "th" ? monthsTH : monthsEN).map((mName, i) => (
+          <option key={i} value={i}>{mName}</option>
+        ))}
+      </select>
+      <span className="text-gray-300">|</span>
+      <select
+        value={year}
+        onChange={(e) => handleChange(parseInt(e.target.value), month)}
+        className="bg-transparent text-sm outline-none cursor-pointer font-medium hover:text-blue-700 pl-1"
+      >
+        {years.map((y) => (
+          <option key={y} value={y}>{lang === "th" ? y + 543 : y}</option>
+        ))}
+      </select>
+    </div>
+  )
+}
+
 function MetricCard({ icon: Icon, title, value, subtitle, tone }) {
   const colors = {
     up: { bg: "#d1fae5", text: "#059669" },
@@ -411,7 +453,7 @@ function TopNav({ t, page, setPage }) {
           <button
             key={tab.id}
             onClick={() => setPage(tab.id)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${active ? "bg-[#003d82] text-white" : "text-gray-700 hover:bg-gray-100"
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${active ? "bg-[#1F3A5F] text-white" : "text-gray-700 hover:bg-gray-100"
               }`}
           >
             <tab.icon className="w-4 h-4" />
@@ -635,15 +677,8 @@ function AspectNewsPage({ t, lang, aspect, news = [], onBack }) {
 
 function ExplainBox({ t, lang, explain }) {
   const path = Array.isArray(explain?.explain_path) ? explain.explain_path : []
-  const maxH = Number(explain?.horizon || path.length || 0)
 
-  const [h, setH] = React.useState(1)
-
-  React.useEffect(() => {
-    if (maxH > 0 && h > maxH) setH(1)
-  }, [maxH])
-
-  const block = path.find((p) => Number(p?.horizon) === Number(h)) || path[0] || null
+  const block = path.find((p) => Number(p?.horizon) === 1) || path[0] || null
   const items = Array.isArray(block?.explanations) ? block.explanations : []
   const total = items.reduce((s, x) => s + Number(x?.shap_value || 0), 0)
 
@@ -667,17 +702,6 @@ function ExplainBox({ t, lang, explain }) {
         <CardTitle>{t("Model Explanation", "คำอธิบายโมเดล")}</CardTitle>
 
         <div className="flex gap-3 items-center mt-2 flex-wrap">
-          <div className="text-sm text-gray-600">{t("Horizon", "ระยะพยากรณ์")}</div>
-          <select
-            value={h}
-            onChange={(e) => setH(Number(e.target.value))}
-            className="border border-gray-300 rounded px-2 py-1 text-sm"
-          >
-            {Array.from({ length: maxH }, (_, i) => i + 1).map((k) => (
-              <option key={k} value={k}>{`h = ${k}`}</option>
-            ))}
-          </select>
-
           <Badge variant="outline">
             {t("Forecast month", "เดือนพยากรณ์")}: {forecastMonthLabel}
           </Badge>
@@ -685,25 +709,33 @@ function ExplainBox({ t, lang, explain }) {
       </CardHeader>
 
       <CardContent>
-        <div className="mb-4 p-3 rounded" style={{ backgroundColor: total >= 0 ? "#dbeafe" : "#fee2e2" }}>
-          <div className="font-medium text-sm" style={{ color: total >= 0 ? "#1e40af" : "#991b1b" }}>
-            {t("Sentiment", "ความรู้สึก")}: {sentiment}
+        {(explain?.reasoning || explain?.reasoning_en) ? (
+          <div className="p-4 bg-blue-50 rounded-lg border border-blue-100">
+            <p className="text-sm text-gray-800 leading-relaxed whitespace-pre-line">{lang === "en" ? (explain.reasoning_en || explain.reasoning) : (explain.reasoning || explain.reasoning_en)}</p>
           </div>
-          <div className="text-xs text-gray-600 mt-1">
-            {t("Net SHAP impact (approx.)", "ผลกระทบสุทธิจาก SHAP (โดยประมาณ)")}: {total.toFixed(3)}
-          </div>
-        </div>
-
-        <div className="space-y-2">
-          {items.slice(0, 6).map((x, idx) => (
-            <div key={idx} className="flex items-center justify-between border border-gray-100 rounded-lg p-3">
-              <div className="text-sm font-semibold text-gray-800">{x.feature}</div>
-              <div className="text-xs text-gray-600">
-                shap {Number(x.shap_value || 0).toFixed(3)} | val {Number(x.value || 0).toFixed(3)}
+        ) : (
+          <>
+            <div className="mb-4 p-3 rounded" style={{ backgroundColor: total >= 0 ? "#dbeafe" : "#fee2e2" }}>
+              <div className="font-medium text-sm" style={{ color: total >= 0 ? "#1e40af" : "#991b1b" }}>
+                {t("Sentiment", "ความรู้สึก")}: {sentiment}
+              </div>
+              <div className="text-xs text-gray-600 mt-1">
+                {t("Net SHAP impact (approx.)", "ผลกระทบสุทธิจาก SHAP (โดยประมาณ)")}: {total.toFixed(3)}
               </div>
             </div>
-          ))}
-        </div>
+
+            <div className="space-y-2">
+              {items.slice(0, 6).map((x, idx) => (
+                <div key={idx} className="flex items-center justify-between border border-gray-100 rounded-lg p-3">
+                  <div className="text-sm font-semibold text-gray-800">{x.feature}</div>
+                  <div className="text-xs text-gray-600">
+                    shap {Number(x.shap_value || 0).toFixed(3)} | val {Number(x.value || 0).toFixed(3)}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
       </CardContent>
     </Card>
   )
@@ -779,9 +811,9 @@ function ForecastPage({ t, lang, series, summary, explain, news = [], onSelectAs
               <CardTitle>{t("CCI – Thailand", "CCI – ประเทศไทย")}</CardTitle>
               <CardDescription>
                 <div className="flex flex-wrap gap-4 items-center">
-                  <input type="date" value={dateRange[0]} onChange={(e) => setDateRange([e.target.value, dateRange[1]])} className="border px-2 py-1 rounded" />
+                  <MonthYearPicker value={dateRange[0]?.slice(0, 7)} onChange={(v) => setDateRange([v + "-01", dateRange[1]])} lang={lang} />
                   →
-                  <input type="date" value={dateRange[1]} onChange={(e) => setDateRange([dateRange[0], e.target.value])} className="border px-2 py-1 rounded" />
+                  <MonthYearPicker value={dateRange[1]?.slice(0, 7)} onChange={(v) => setDateRange([dateRange[0], v + "-01"])} lang={lang} />
                 </div>
               </CardDescription>
             </CardHeader>
@@ -790,7 +822,7 @@ function ForecastPage({ t, lang, series, summary, explain, news = [], onSelectAs
               <ResponsiveContainer width="100%" height={400}>
                 <ComposedChart data={filteredSeries}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                  <XAxis dataKey="date" tick={{ fontSize: 11 }} />
+                  <XAxis dataKey="date" tick={{ fontSize: 11 }} tickFormatter={(v) => v ? v.slice(0, 7) : v} />
                   <YAxis domain={["dataMin - 5", "dataMax + 5"]} tick={{ fontSize: 11 }} />
                   <ReTooltip content={({ active, payload, label }) => {
                     if (!active || !payload?.length) return null
@@ -1235,8 +1267,8 @@ export default function App() {
             <div className="flex items-center gap-3">
               <Activity className="w-8 h-8 text-white" />
               <div>
-                <h1 className="text-xl font-bold">{t("BOT CCI Forecast", "พยากรณ์ CCI ธปท.")}</h1>
-                <p className="text-sm text-blue-200">{t("Bank of Thailand", "ธนาคารแห่งประเทศไทย")}</p>
+                <h1 className="text-xl font-bold">{t("XEconomic", "XEconomic")}</h1>
+                <p className="text-sm text-blue-200">{t("BOT CCI Forecast", "BOT CCI Forecast")}</p>
               </div>
             </div>
 
