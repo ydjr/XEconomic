@@ -21,10 +21,15 @@ Thumbs.db
 # Data indicators (generated)
 data/indicators/**/*.csv
 
-pipeline/darts/**
+pipeline/darts
 pipeline/wangchanberta_cls
 
 models/
 data/
 
 darts_explore.ipynb
+THSarabun Bold.ttf
+THSarabun.ttf
+
+package-lock.json
+package.json

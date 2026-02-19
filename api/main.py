@@ -1,6 +1,7 @@
 import os
 import json
 import pandas as pd
+import numpy as np
 from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -16,6 +17,8 @@ NEWS_CSV = os.path.join(DATA_DIR, "2_news_cci_r.csv")
 
 LATEST_FORECAST = os.path.join(ART_DIR, "latest_forecast.json")
 LATEST_EXPLAIN = os.path.join(ART_DIR, "latest_explain.json")
+
+DASHBOARD_CSV = os.path.join(ART_DIR, "cci_dashboard_latest.csv")
 
 app = FastAPI(title="CCI Forecast API", version="1.0.0")
 
@@ -61,7 +64,7 @@ def dashboard_summary():
             "mom_change": None,
             "trend": "N/A",
         }
-
+    
     df = pd.read_csv(CCI_CSV)
 
     if "date" not in df.columns or "cci_overall" not in df.columns:
@@ -134,82 +137,37 @@ def dashboard_explain_latest():
 
 @app.get("/dashboard/timeseries")
 def dashboard_timeseries(limit: int = Query(500, ge=1, le=5000)):
-    """
-    Returns:
-      { data: [ {date: 'YYYY-MM-DD', actual: number|null, pred: number|null, is_anchor: bool}, ... ] }
-
-    Logic:
-    - read full actual history from CCI_CSV
-    - read latest_forecast.json with forecast_path[]
-    - set pred at last_actual_month = last actual value (anchor) with is_anchor=True (visual line connection)
-    - append forecast_path points as pred (actual=None) with is_anchor=False
-    """
-    if not os.path.exists(CCI_CSV):
+    if not os.path.exists(DASHBOARD_CSV):
         return {"data": []}
 
-    df = pd.read_csv(CCI_CSV)
+    df = pd.read_csv(DASHBOARD_CSV)
 
-    if "date" not in df.columns or "cci_overall" not in df.columns:
+    required_cols = {"date", "actual", "pred"}
+    if not required_cols.issubset(df.columns):
         return {"data": []}
 
+    # Parse date safely
     df["date"] = pd.to_datetime(df["date"], errors="coerce")
-    df["cci_overall"] = pd.to_numeric(df["cci_overall"], errors="coerce")
     df = df.dropna(subset=["date"]).sort_values("date")
 
-    # normalize monthly to first day of month
+    # Normalize monthly
     df["date"] = df["date"].dt.to_period("M").dt.to_timestamp()
-    df["date_str"] = df["date"].dt.strftime("%Y-%m-%d")
 
-    rows = []
-    for _, r in df.iterrows():
-        actual_val = r["cci_overall"]
-        try:
-            actual_val = float(actual_val)
-        except Exception:
-            actual_val = None
-        rows.append({"date": r["date_str"], "actual": actual_val, "pred": None, "is_anchor": False})
+    # Ensure numeric columns
+    df["actual"] = pd.to_numeric(df["actual"], errors="coerce")
+    df["pred"] = pd.to_numeric(df["pred"], errors="coerce")
 
-    # --- forecast JSON format ---
-    fc = read_json(LATEST_FORECAST)
+    # Apply limit
+    if limit and len(df) > limit:
+        df = df.tail(limit)
 
-    if fc and isinstance(fc.get("forecast_path"), list):
-        last_actual_month = fc.get("last_actual_month")
+    
+    # Convert date to string for frontend
+    df["date"] = df["date"].dt.strftime("%Y-%m-%d")
 
-        # 1) Anchor point (connect line) — pred = actual at last_actual_month
-        if last_actual_month:
-            feature_dt = pd.to_datetime(last_actual_month).to_period("M").to_timestamp()
-            feature_s = feature_dt.strftime("%Y-%m-%d")
+    # IMPORTANT: Replace NaN with None (fix JSON error)
+    df = df.replace({np.nan: None})
 
-            found = False
-            for x in rows:
-                if x["date"] == feature_s:
-                    # only set anchor if actual exists
-                    if x["actual"] is not None:
-                        x["pred"] = x["actual"]
-                        x["is_anchor"] = True
-                    found = True
-                    break
-
-            # if that month not found in history, add a row (best effort)
-            if not found:
-                last_val = rows[-1]["actual"] if rows else None
-                rows.append({"date": feature_s, "actual": last_val, "pred": last_val, "is_anchor": True})
-
-        # 2) Append forecast path points (real forecasts)
-        for p in fc["forecast_path"]:
-            try:
-                dt = pd.to_datetime(p.get("forecast_month")).to_period("M").to_timestamp()
-                dt_s = dt.strftime("%Y-%m-%d")
-                y_pred = float(p.get("y_pred"))
-            except Exception:
-                continue
-
-            rows.append({"date": dt_s, "actual": None, "pred": y_pred, "is_anchor": False})
-
-        # sort by date
-        rows = sorted(rows, key=lambda x: x["date"])
-
-    if limit and len(rows) > limit:
-        rows = rows[-limit:]
+    rows = df[["date", "actual", "pred"]].to_dict(orient="records")
 
     return {"data": rows}

@@ -15,10 +15,10 @@ warnings.filterwarnings("ignore")
 # CONFIG
 # =========================
 BASE_DIR = Path(__file__).resolve().parents[1]
-DATA_CSV = BASE_DIR / "data" / "merge_all_index.csv"
+DATA_CSV = BASE_DIR / "data" / "avg_sent_indi.csv"
 
-ART_DIR = BASE_DIR / "artifacts" / "backtest_cci"
-MODELS_DIR = BASE_DIR / "models" / "backtest_cci"
+ART_DIR = BASE_DIR / "artifacts" / "backtest"
+MODELS_DIR = BASE_DIR / "models" / "backtest"
 ART_DIR.mkdir(parents=True, exist_ok=True)
 MODELS_DIR.mkdir(parents=True, exist_ok=True)
 

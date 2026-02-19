@@ -17,7 +17,7 @@ past_cov = TimeSeries.from_dataframe(df, time_col="date", value_cols=cov_cols, f
 # ======================
 # LOAD MODEL + PREDICT
 # ======================
-model = XGBModel.load("models/backtest_avg_sent_indi/xgb_weights.pkl")
+model = XGBModel.load("models/backtest/xgb_weights.pkl")
 
 forecast = model.predict(
     n=1,
@@ -73,3 +73,34 @@ rank_df["shap_value"] = last_shap[rank_df["feature"]].values
 rank_df.to_csv("artifacts/shap_predicted_month_rank.csv", index=False)
 print("Saved artifacts/shap_predicted_month_rank.csv")
 print(rank_df.head(10))
+
+# ======================
+# CREATE DASHBOARD FILE
+# ======================
+
+# historical actual
+hist_df = target.to_dataframe().reset_index()
+hist_df.columns = ["date", "actual"]
+
+# prediction
+pred_df.columns = ["date", "pred"]
+
+# merge
+dashboard_df = pd.merge(
+    hist_df,
+    pred_df,
+    on="date",
+    how="outer"
+)
+
+# mark forecast rows
+dashboard_df["is_forecast"] = (
+    dashboard_df["pred"].notna() &
+    dashboard_df["actual"].isna()
+).astype(int)
+
+dashboard_df = dashboard_df.sort_values("date")
+dashboard_df["pred"] = dashboard_df["pred"].round(1)
+
+dashboard_df.to_csv("artifacts/cci_dashboard_latest.csv", index=False)
+print("Saved artifacts/cci_dashboard_latest.csv")
