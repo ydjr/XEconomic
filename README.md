@@ -48,7 +48,7 @@ npm run dev
 Open browser: http://localhost:5173
 
 
-## 📂 Project Structure (not the latest version)
+## 📂 Project Structure
 
 ```text
 XEconomic/
