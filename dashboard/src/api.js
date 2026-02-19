@@ -18,3 +18,11 @@ export function getLatestExplain() {
 export function getTimeSeries(limit = 500) {
   return getJSON(`/dashboard/timeseries?limit=${limit}`);
 }
+
+export function getNews(limit = 2000) {
+  return getJSON(`/dashboard/news?limit=${limit}`);
+}
+
+export async function getShap() {
+  return getJSON(`/dashboard/shap`);
+}
