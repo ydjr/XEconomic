@@ -705,12 +705,12 @@ function ExplainBox({ t, lang, explain }) {
           <Badge variant="outline">
             {t("Forecast month", "เดือนพยากรณ์")}: {forecastMonthLabel}
           </Badge>
-          <Badge variant="outline">
+          {/* <Badge variant="outline">
             {t("Predicted", "ค่าพยากรณ์")}: {row.predicted != null ? Number(row.predicted).toFixed(2) : "-"}
           </Badge>
           <Badge variant="outline">
             {t("Direction", "ทิศทาง")}: {lang === "th" ? directionLabelTH : (row.direction || "-")}
-          </Badge>
+          </Badge> */}
         </div>
       </CardHeader>
 
@@ -1289,7 +1289,7 @@ export default function App() {
               <Activity className="w-8 h-8 text-white" />
               <div>
                 <h1 className="text-xl font-bold">{t("XEconomic", "XEconomic")}</h1>
-                <p className="text-sm text-blue-200">{t("BOT CCI Forecast", "BOT CCI Forecast")}</p>
+                <p className="text-sm text-blue-200">{t("CCI Forecast and XAI", "CCI Forecast and XAI")}</p>
               </div>
             </div>
 

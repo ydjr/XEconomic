@@ -14,7 +14,7 @@ CCI_CSV = os.path.join(DATA_DIR, "indicators/cci.csv")
 
 DASHBOARD_CSV = os.path.join(ART_DIR, "cci_dashboard_latest.csv")
 EXPLAIN_CSV = os.path.join(ART_DIR, "reasoning_2025-08_to_2025-08.csv") # explain path from cream
-NEWS_CSV = os.path.join(DATA_DIR, "news_sentiment_summary_all.csv")
+NEWS_CSV = os.path.join(DATA_DIR, "absa_2024-2025.csv")
 
 SHAP_CSV = os.path.join(ART_DIR, "shap_predicted_month_rank.csv")
 
@@ -215,7 +215,7 @@ def dashboard_news(limit: int = Query(2000, ge=1, le=20000)):
             "date": date_str,
             "title": r.get("headline", "") or "",
             "url": r.get("url", "") or "",
-            "aspect": r.get("aspects", "Other") or "Other",
+            "aspect": r.get("Aspect") or "Other",
             "tag": r.get("category", "") or "",
             "source": infer_source(r.get("url", "")) or (r.get("subtype", "") or ""),
             "rawSentiment": float(r.get("sentiment_score")) if pd.notna(r.get("sentiment_score")) else 0.0,
