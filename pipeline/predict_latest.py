@@ -6,12 +6,12 @@ from darts.explainability.shap_explainer import ShapExplainer
 # ======================
 # LOAD DATA
 # ======================
-df = pd.read_csv("data/avg_sent_indi.csv")
+df = pd.read_csv("data/darts_dataset.csv")
 df["date"] = pd.to_datetime(df["date"])
 df = df.sort_values("date")
 
-target = TimeSeries.from_dataframe(df, time_col="date", value_cols="cci_overall", freq="MS")
-cov_cols = [c for c in df.columns if c not in ["date", "cci_overall"]]
+target = TimeSeries.from_dataframe(df, time_col="date", value_cols="cci", freq="MS")
+cov_cols = [c for c in df.columns if c not in ["date", "cci"]]
 past_cov = TimeSeries.from_dataframe(df, time_col="date", value_cols=cov_cols, freq="MS")
 
 # ======================
@@ -49,7 +49,7 @@ explain_results = explainer.explain(
 )
 
 shap_ts = explain_results.get_explanation(horizon=1)
-shap_df = shap_ts.to_dataframe()  # keep this ONE dataframe
+shap_df = shap_ts.to_dataframe()
 
 # save full shap (with date column)
 shap_out = shap_df.copy()
@@ -73,34 +73,3 @@ rank_df["shap_value"] = last_shap[rank_df["feature"]].values
 rank_df.to_csv("artifacts/shap_predicted_month_rank.csv", index=False)
 print("Saved artifacts/shap_predicted_month_rank.csv")
 print(rank_df.head(10))
-
-# ======================
-# CREATE DASHBOARD FILE
-# ======================
-
-# historical actual
-hist_df = target.to_dataframe().reset_index()
-hist_df.columns = ["date", "actual"]
-
-# prediction
-pred_df.columns = ["date", "pred"]
-
-# merge
-dashboard_df = pd.merge(
-    hist_df,
-    pred_df,
-    on="date",
-    how="outer"
-)
-
-# mark forecast rows
-dashboard_df["is_forecast"] = (
-    dashboard_df["pred"].notna() &
-    dashboard_df["actual"].isna()
-).astype(int)
-
-dashboard_df = dashboard_df.sort_values("date")
-dashboard_df["pred"] = dashboard_df["pred"].round(1)
-
-dashboard_df.to_csv("artifacts/cci_dashboard_latest.csv", index=False)
-print("Saved artifacts/cci_dashboard_latest.csv")

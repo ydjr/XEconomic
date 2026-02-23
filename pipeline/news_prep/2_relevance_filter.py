@@ -8,7 +8,7 @@ from transformers import AutoTokenizer, AutoModelForSequenceClassification
 # =====================
 # CONFIG
 # =====================
-MODEL_DIR = "./wangchanberta_cls/best_model"
+MODEL_DIR = "../wangchanberta_cls/best_model"
 BASE_DIR = Path(__file__).resolve().parents[1]
 DATA_DIR = BASE_DIR / "data"
 INPUT_CSV = DATA_DIR /  "1_cleaned_news/all_news.csv"

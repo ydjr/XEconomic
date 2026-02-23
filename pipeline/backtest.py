@@ -1,4 +1,3 @@
-# backtest_simple.py
 import json
 import warnings
 from pathlib import Path
@@ -15,7 +14,7 @@ warnings.filterwarnings("ignore")
 # CONFIG
 # =========================
 BASE_DIR = Path(__file__).resolve().parents[1]
-DATA_CSV = BASE_DIR / "data" / "avg_sent_indi.csv"
+DATA_CSV = BASE_DIR / "data" / "darts_dataset.csv"
 
 ART_DIR = BASE_DIR / "artifacts" / "backtest"
 MODELS_DIR = BASE_DIR / "models" / "backtest"
@@ -23,7 +22,7 @@ ART_DIR.mkdir(parents=True, exist_ok=True)
 MODELS_DIR.mkdir(parents=True, exist_ok=True)
 
 DATE_COL = "date"
-TARGET_COL = "cci_overall"
+TARGET_COL = "cci"
 
 FORECAST_HORIZON = 1
 STRIDE = 1
