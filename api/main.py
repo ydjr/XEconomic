@@ -12,7 +12,8 @@ DATA_DIR = os.path.join(ROOT, "data")
 
 CCI_CSV = os.path.join(DATA_DIR, "indicators/cci.csv")
 
-DASHBOARD_CSV = os.path.join(ART_DIR, "cci_dashboard_latest.csv")
+# DASHBOARD_CSV = os.path.join(ART_DIR, "cci_dashboard_latest.csv")
+PRED_LATEST_CSV = os.path.join(ART_DIR, "pred_latest.csv")
 EXPLAIN_CSV = os.path.join(ART_DIR, "reasoning_2025-08_to_2025-08.csv") # explain path from cream
 NEWS_CSV = os.path.join(DATA_DIR, "absa_2024-2025.csv")
 
@@ -48,7 +49,7 @@ def dashboard_summary():
         "last_actual_month": "YYYY-MM-DD",
         "last_actual_value": 51.7,
         "forecast_month": "YYYY-MM-DD",
-        "y_pred": 52.5,
+        "cci_pred": 52.5,
         "mom_change": -0.8,
         "trend": "UP" | "DOWN" | "STABLE" | "N/A"
       }
@@ -135,42 +136,53 @@ def dashboard_explain_latest():
     df = df.replace({np.nan: None})
     return {"data": df.to_dict(orient="records")}
 
-
-
 @app.get("/dashboard/timeseries")
 def dashboard_timeseries(limit: int = Query(500, ge=1, le=5000)):
-    if not os.path.exists(DASHBOARD_CSV):
+
+    if not os.path.exists(CCI_CSV):
         return {"data": []}
 
-    df = pd.read_csv(DASHBOARD_CSV)
+    # ---- Load actual CCI ----
+    df_actual = pd.read_csv(CCI_CSV)
 
-    required_cols = {"date", "actual", "pred"}
-    if not required_cols.issubset(df.columns):
+    if "date" not in df_actual.columns or "cci_overall" not in df_actual.columns:
         return {"data": []}
 
-    # Parse date safely
-    df["date"] = pd.to_datetime(df["date"], errors="coerce")
-    df = df.dropna(subset=["date"]).sort_values("date")
+    df_actual["date"] = pd.to_datetime(df_actual["date"], errors="coerce")
+    df_actual["actual"] = pd.to_numeric(df_actual["cci_overall"], errors="coerce")
 
-    # Normalize monthly
-    df["date"] = df["date"].dt.to_period("M").dt.to_timestamp()
+    df_actual = df_actual.dropna(subset=["date", "actual"])
+    df_actual["date"] = df_actual["date"].dt.to_period("M").dt.to_timestamp()
 
-    # Ensure numeric columns
-    df["actual"] = pd.to_numeric(df["actual"], errors="coerce")
-    df["pred"] = pd.to_numeric(df["pred"], errors="coerce")
+    df_actual = df_actual[["date", "actual"]]
 
-    # Apply limit
+    # ---- Load prediction ----
+    if os.path.exists(PRED_LATEST_CSV):
+        df_pred = pd.read_csv(PRED_LATEST_CSV)
+
+        if "date" in df_pred.columns and "cci_pred" in df_pred.columns:
+            df_pred["date"] = pd.to_datetime(df_pred["date"], errors="coerce")
+            df_pred["pred"] = pd.to_numeric(df_pred["cci_pred"], errors="coerce")
+            df_pred["date"] = df_pred["date"].dt.to_period("M").dt.to_timestamp()
+            df_pred = df_pred[["date", "pred"]]
+        else:
+            df_pred = pd.DataFrame(columns=["date", "pred"])
+    else:
+        df_pred = pd.DataFrame(columns=["date", "pred"])
+
+    # ---- Merge ----
+    df = pd.merge(df_actual, df_pred, on="date", how="outer")
+
+    df = df.sort_values("date")
+
+    # apply limit
     if limit and len(df) > limit:
         df = df.tail(limit)
 
-    
-    # Convert date to string for frontend
     df["date"] = df["date"].dt.strftime("%Y-%m-%d")
-
-    # IMPORTANT: Replace NaN with None (fix JSON error)
     df = df.replace({np.nan: None})
 
-    rows = df[["date", "actual", "pred"]].to_dict(orient="records")
+    rows = df.to_dict(orient="records")
 
     return {"data": rows}
 
