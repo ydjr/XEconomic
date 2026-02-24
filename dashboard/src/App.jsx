@@ -763,11 +763,27 @@ function ForecastPage({ t, lang, series, summary, explain, news = [], onSelectAs
 
 
   const metrics = React.useMemo(() => {
+    // Prefer backend (authoritative)
+    if (summary?.latest_value != null && summary?.prev_value != null) {
+      const curr = Number(summary.latest_value)
+      const prev = Number(summary.prev_value)
+      const momPts = Number(summary.mom_change) // points
+      const momPct = prev !== 0 ? (momPts / prev) * 100 : null
+
+      const tone =
+        summary.trend === "UP" ? "up" :
+        summary.trend === "DOWN" ? "down" : "neutral"
+
+      return { curr, prev, momPts, momPct, tone }
+    }
+
+    // Fallback: compute from series if summary missing
     const curr = currentCCI(filteredSeries)
     const prev = prevCCI(filteredSeries)
-    const pct = pctChange(curr, prev)
-    return { curr, prev, pct, tr: trendLabel(filteredSeries) }
-  }, [filteredSeries])
+    const momPct = pctChange(curr, prev)
+    const tone = momPct == null ? "neutral" : momPct > 0 ? "up" : "down"
+    return { curr, prev, momPts: null, momPct, tone }
+  }, [summary, filteredSeries])
 
   const futureStart = series.findIndex((s) => s.actual === null)
   const futureStartDate = futureStart >= 0 ? series[futureStart].date : filteredSeries[Math.floor(filteredSeries.length * 0.75)]?.date
@@ -780,8 +796,14 @@ function ForecastPage({ t, lang, series, summary, explain, news = [], onSelectAs
           icon={BarChart3}
           title={t("Current CCI", "ค่า CCI ล่าสุด")}
           value={metrics.curr != null ? metrics.curr.toFixed(1) : "-"}
-          subtitle={metrics.pct != null ? `MoM ${metrics.pct >= 0 ? "↑" : "↓"} ${Math.abs(metrics.pct).toFixed(1)}%` : "N/A"}
-          tone={metrics.pct == null ? "neutral" : metrics.pct > 0 ? "up" : "down"}
+          subtitle={
+            metrics.momPts != null
+              ? `MoM ${metrics.momPts >= 0 ? "↑" : "↓"} ${Math.abs(metrics.momPts).toFixed(1)} pts`
+              : (metrics.momPct != null
+                  ? `MoM ${metrics.momPct >= 0 ? "↑" : "↓"} ${Math.abs(metrics.momPct).toFixed(1)}%`
+                  : "N/A")
+          }
+          tone={metrics.tone}
         />
         <MetricCard
           icon={Activity}
@@ -918,22 +940,30 @@ function AnalyticsPage({ t, lang, news = [], shapData = [] }) {
 
   // histogram & flow & scatter
   const sentimentHistogram = React.useMemo(() => {
-    const bins = [
-      { range: "< -60", min: -100, max: -60, count: 0 },
-      { range: "-60 to -40", min: -60, max: -40, count: 0 },
-      { range: "-40 to -20", min: -40, max: -20, count: 0 },
-      { range: "-20 to 0", min: -20, max: 0, count: 0 },
-      { range: "0 to 20", min: 0, max: 20, count: 0 },
-      { range: "20 to 40", min: 20, max: 40, count: 0 },
-      { range: "40 to 60", min: 40, max: 60, count: 0 },
-      { range: "> 60", min: 60, max: 100, count: 0 },
-    ]
+    const bins = Array.from({ length: 10 }, (_, i) => {
+      const min = i / 10
+      const max = (i + 1) / 10
+
+      let color = "#dc2626" // red default
+      if (max > 0.6) color = "#16a34a"       // green
+      else if (min >= 0.4 && max <= 0.6) color = "#9ca3af" // grey
+
+      return {
+        range: `${min.toFixed(1)}–${max.toFixed(1)}`,
+        min,
+        max,
+        count: 0,
+        fill: color,
+      }
+    })
 
     news.forEach((n) => {
-      const sentimentPct = (Number(n.sentiment) || 0) * 100
-      bins.forEach((bin) => {
-        if (sentimentPct > bin.min && sentimentPct <= bin.max) bin.count++
-      })
+      const s = Number(n.rawSentiment)
+      if (!Number.isFinite(s)) return
+
+      const val = Math.max(0, Math.min(1, s))
+      const idx = val === 1 ? 9 : Math.floor(val * 10)
+      bins[idx].count += 1
     })
 
     return bins
@@ -1348,7 +1378,7 @@ export default function App() {
 
       <div className="bg-gray-100 border-t border-gray-200 mt-12">
         <div className="max-w-7xl mx-auto px-6 py-4 text-center text-sm text-gray-600">
-          © 2026 SP40-Aj.Suppawong by Cream Ploy Jean P.Oat P.Pufah
+          © Copyright SP2025-40 XEconomics
         </div>
       </div>
     </div>

@@ -23,6 +23,7 @@ data/indicators/**/*.csv
 
 pipeline/darts
 pipeline/wangchanberta_cls
+pipeline/feature_selection.py
 
 models/
 data/

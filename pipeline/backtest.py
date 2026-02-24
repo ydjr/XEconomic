@@ -14,7 +14,7 @@ warnings.filterwarnings("ignore")
 # CONFIG
 # =========================
 BASE_DIR = Path(__file__).resolve().parents[1]
-DATA_CSV = BASE_DIR / "data" / "darts_dataset.csv"
+DATA_CSV = BASE_DIR / "data" / "avg_sent_indi.csv"
 
 ART_DIR = BASE_DIR / "artifacts" / "backtest"
 MODELS_DIR = BASE_DIR / "models" / "backtest"
@@ -22,7 +22,7 @@ ART_DIR.mkdir(parents=True, exist_ok=True)
 MODELS_DIR.mkdir(parents=True, exist_ok=True)
 
 DATE_COL = "date"
-TARGET_COL = "cci"
+TARGET_COL = "cci_overall"
 
 FORECAST_HORIZON = 1
 STRIDE = 1
@@ -123,8 +123,8 @@ def main():
             raise ValueError("No past covariates found in CSV, but you requested using past_covariates.")
         
         PARAMS = {
-            "lags": [1, 2, 3, 6],
-            "lags_past_covariates": [1, 2, 3, 6],
+            "lags": [1,2,3,6],
+            "lags_past_covariates": [1,2,3,6],
             "output_chunk_length": [1],
             "random_state": [42],
             **MODEL_PARAMS[name],
