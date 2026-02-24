@@ -6,12 +6,12 @@ from darts.explainability.shap_explainer import ShapExplainer
 # ======================
 # LOAD DATA
 # ======================
-df = pd.read_csv("data/darts_dataset.csv")
+df = pd.read_csv("data/avg_sent_indi.csv")
 df["date"] = pd.to_datetime(df["date"])
 df = df.sort_values("date")
 
-target = TimeSeries.from_dataframe(df, time_col="date", value_cols="cci", freq="MS")
-cov_cols = [c for c in df.columns if c not in ["date", "cci"]]
+target = TimeSeries.from_dataframe(df, time_col="date", value_cols="cci_overall", freq="MS")
+cov_cols = [c for c in df.columns if c not in ["date", "cci_overall"]]
 past_cov = TimeSeries.from_dataframe(df, time_col="date", value_cols=cov_cols, freq="MS")
 
 # ======================

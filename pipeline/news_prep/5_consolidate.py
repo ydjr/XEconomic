@@ -29,9 +29,10 @@ def load_indicator(filepath, value_col, rename, freq="MS", resample_method=None)
     return ts
 
 
-def load_all_indicators(indicators_dir):
+def load_all_indicators(indicators_dir: Path):
     indicators = {}
 
+    # target
     cci_ts = load_indicator(
         indicators_dir / "cci.csv",
         value_col="cci_overall",
@@ -39,7 +40,70 @@ def load_all_indicators(indicators_dir):
         freq="MS",
     )
 
-    # Keep others optional / commented as you had
+    # covariates
+    indicators["cpi"] = load_indicator(
+        indicators_dir / "cpi.csv",
+        value_col="value",
+        rename="cpi",
+        freq="MS",
+    )
+
+    indicators["gdp"] = load_indicator(
+        indicators_dir / "gdp_monthly.csv",
+        value_col="value",
+        rename="gdp",
+        freq="MS",
+    )
+
+    # indicators["exchange_rate"] = load_indicator(
+    #     indicators_dir / "exchange_rate.csv",
+    #     value_col="value",
+    #     rename="exchange_rate",
+    #     freq="MS",
+    # )
+
+    indicators["policy_rate"] = load_indicator(
+        indicators_dir / "policy_rate.csv",
+        value_col="value",
+        rename="policy_rate",
+        freq="MS",
+    )
+
+    # indicators["export_vol"] = load_indicator(
+    #     indicators_dir / "export_vol.csv",
+    #     value_col="value",
+    #     rename="export_vol",
+    #     freq="MS",
+    # )
+
+    # indicators["tourist_arrivals"] = load_indicator(
+    #     indicators_dir / "tourist_arrivals.csv",
+    #     value_col="value",
+    #     rename="tourist_arrivals",
+    #     freq="MS",
+    # )
+
+    indicators["unemployment_rate"] = load_indicator(
+        indicators_dir / "unemployment_rate.csv",
+        value_col="value",
+        rename="unemployment_rate",
+        freq="MS",
+    )
+
+    indicators["impi"] = load_indicator(
+        indicators_dir / "impi.csv",
+        value_col="value",
+        rename="impi",
+        freq="MS",
+    )
+
+    indicators["expi"] = load_indicator(
+        indicators_dir / "expi.csv",
+        value_col="value",
+        rename="expi",
+        freq="MS",
+    )
+
     return cci_ts, indicators
 
 
@@ -166,7 +230,7 @@ def main():
     )
     parser.add_argument(
         "--output",
-        default="data/darts_dataset.pkl",
+        default="data/2024-2025.pkl",
         help="Output pickle path",
     )
     args = parser.parse_args()
