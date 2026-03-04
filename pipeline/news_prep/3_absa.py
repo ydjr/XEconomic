@@ -2,26 +2,23 @@ import csv
 import json
 import os
 import re
+import argparse
 import time
 from tqdm import tqdm
-from dataclasses import dataclass
-from typing import Dict, Any, Optional, List
-import requests
+from typing import Dict, Any
+import torch
+from transformers import AutoModelForCausalLM, AutoTokenizer
 
 # ========================================
 # CONFIGURATION
 # ========================================
-INPUT_CSV = r"D:\ICT\senior_project\code\sentiment\outputs_thai2\cci_2024.csv"
-OUTPUT_DIR = r"D:\ICT\senior_project\code\sentiment\outputs_thai2\cci_2024_results"
-
-# Ollama Settings
-OLLAMA_URL = "http://localhost:11434/api/generate"
-MODEL_NAME = "llama3.1:8b"
+MODEL_NAME = "meta-llama/Llama-3.1-8B"
 TEMPERATURE = 0.1
+MAX_NEW_TOKENS = 256
 MAX_RETRIES = 3
 
 # Processing Limits
-PROCESS_LIMIT = None  # Set to a number (e.g., 50) for testing
+PROCESS_LIMIT = None  # Set to a number (e.g., 5) for testing
 # ========================================
 
 FACTORS = {
@@ -39,10 +36,9 @@ FACTORS_LIST = list(FACTORS.keys())
 EFFECT_TYPES = ["Short-term", "Long-term"]
 
 # -----------------------------
-# PROMPT SETTINGS (NO RATIONALITY / NO EMOJIS)
+# PROMPT SETTINGS
 # -----------------------------
-SYSTEM_PROMPT = f"""
-You are a Thai Economic Analyst. Analyze the news and return ONLY a JSON object.
+SYSTEM_PROMPT = f"""You are a Thai Economic Analyst. Analyze the news and return ONLY a JSON object.
 
 ### ASPECT CATEGORIES:
 {", ".join(FACTORS_LIST)}
@@ -58,14 +54,54 @@ You are a Thai Economic Analyst. Analyze the news and return ONLY a JSON object.
 1) Output JSON ONLY. No extra text.
 2) sentiment_score: 0.00-0.39 (Negative), 0.40-0.60 (Neutral), 0.61-1.00 (Positive).
 3) effect_type: Short-term (temporary/immediate), Long-term (structural/policy).
-4) Aspect: Must be exactly one from the list provided.
-""".strip()
+4) Aspect: Must be exactly one from the list provided."""
 
-REPAIR_PROMPT = """
-Your previous output was invalid. 
+REPAIR_PROMPT = """Your previous output was invalid. 
 Return ONLY valid JSON with fields: sentiment_score, Aspect, effect_type.
-Ensure Aspect is from the allowed list.
-"""
+Ensure Aspect is from the allowed list."""
+
+# -----------------------------
+# MODEL LOADING
+# -----------------------------
+def load_model(model_name: str):
+    """Load HuggingFace model and tokenizer."""
+    print(f"Loading tokenizer for {model_name}...")
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    if tokenizer.pad_token is None:
+        tokenizer.pad_token = tokenizer.eos_token
+
+    print(f"Loading model {model_name}...")
+    model = AutoModelForCausalLM.from_pretrained(
+        model_name,
+        torch_dtype=torch.float16,
+        device_map="auto",
+    )
+    model.eval()
+    print(f"Model loaded on: {model.device}")
+    return model, tokenizer
+
+# -----------------------------
+# LLM INFERENCE
+# -----------------------------
+def call_llm(prompt: str, model, tokenizer) -> str:
+    """Generate text using HuggingFace model."""
+    inputs = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=2048)
+    inputs = {k: v.to(model.device) for k, v in inputs.items()}
+
+    with torch.no_grad():
+        outputs = model.generate(
+            **inputs,
+            max_new_tokens=MAX_NEW_TOKENS,
+            temperature=TEMPERATURE,
+            do_sample=True,
+            top_p=0.9,
+            pad_token_id=tokenizer.pad_token_id,
+        )
+
+    # Decode only the newly generated tokens (exclude the input prompt)
+    generated_ids = outputs[0][inputs["input_ids"].shape[1]:]
+    response = tokenizer.decode(generated_ids, skip_special_tokens=True)
+    return response.strip()
 
 # -----------------------------
 # LOGIC FUNCTIONS
@@ -78,24 +114,10 @@ def get_impact_type(score: float) -> str:
 
 def get_monthly_filename(date_str: str) -> str:
     """Extract YYYY-MM from published_at to name the CSV."""
-    # Expected format: 2024-02-13... or similar
-    match = re.search(r'(\d{{4}})-(\d{{2}})', date_str)
+    match = re.search(r'(\d{4})-(\d{2})', date_str)
     if match:
         return f"sentiment_results_{match.group(1)}_{match.group(2)}.csv"
     return "sentiment_results.csv"
-
-def call_ollama(prompt: str) -> str:
-    payload = {
-        "model": MODEL_NAME,
-        "prompt": prompt,
-        "stream": False,
-        "temperature": TEMPERATURE,
-    }
-    try:
-        r = requests.post(OLLAMA_URL, json=payload, timeout=60)
-        return r.json().get("response", "")
-    except Exception as e:
-        return ""
 
 def extract_json(text: str) -> Dict[str, Any]:
     text = re.sub(r'```json\s*|```', '', text).strip()
@@ -106,7 +128,7 @@ def extract_json(text: str) -> Dict[str, Any]:
 def validate_and_fix(obj: Dict[str, Any]) -> Dict[str, Any]:
     # Check Aspect
     if obj.get("Aspect") not in FACTORS_LIST:
-        obj["Aspect"] = "เศรษฐกิจไทย" # Safe default
+        obj["Aspect"] = "เศรษฐกิจไทย"  # Safe default
     # Check Score
     try:
         score = float(obj.get("sentiment_score", 0.5))
@@ -122,28 +144,42 @@ def validate_and_fix(obj: Dict[str, Any]) -> Dict[str, Any]:
 # MAIN PIPELINE
 # -----------------------------
 def main():
-    os.makedirs(OUTPUT_DIR, exist_ok=True)
+    parser = argparse.ArgumentParser(description="ABSA pipeline using Llama-3.1-8B")
+    parser.add_argument("--input", type=str, required=True, help="Path to input CSV file (e.g., all_news_clean.csv)")
+    parser.add_argument("--output", type=str, required=True, help="Path to output directory for results")
+    parser.add_argument("--limit", type=int, default=None, help="Limit number of rows to process (for testing)")
+    args = parser.parse_args()
+
+    input_csv = args.input
+    output_dir = args.output
+    process_limit = args.limit or PROCESS_LIMIT
+
+    os.makedirs(output_dir, exist_ok=True)
+
+    # Load model
+    model, tokenizer = load_model(MODEL_NAME)
     print(f"Starting processing with {MODEL_NAME}...")
 
     # Load CSV
     rows = []
-    with open(INPUT_CSV, "r", encoding="utf-8-sig") as f:
+    with open(input_csv, "r", encoding="utf-8-sig") as f:
         reader = csv.DictReader(f)
         for r in reader:
-            if str(r.get("CCI_pred")) == "1":
-                rows.append(r)
-            if PROCESS_LIMIT and len(rows) >= PROCESS_LIMIT:
+            rows.append(r)
+            if process_limit and len(rows) >= process_limit:
                 break
+
+    print(f"Loaded {len(rows)} rows to process.")
 
     for r in tqdm(rows, desc="Analyzing"):
         news_text = f"ข่าว: {r.get('summary', r.get('headline', ''))}"
-        
+
         # LLM Logic with Repair Loop
         final_result = None
         current_prompt = SYSTEM_PROMPT + "\n\n" + news_text
-        
+
         for attempt in range(MAX_RETRIES + 1):
-            raw_response = call_ollama(current_prompt)
+            raw_response = call_llm(current_prompt, model, tokenizer)
             try:
                 data = extract_json(raw_response)
                 final_result = validate_and_fix(data)
@@ -160,8 +196,8 @@ def main():
 
         # Determine Output File
         fname = get_monthly_filename(r.get("published_at", "2026-01"))
-        fpath = os.path.join(OUTPUT_DIR, fname)
-        
+        fpath = os.path.join(output_dir, fname)
+
         # Merge data
         output_row = {**r, **final_result}
 
