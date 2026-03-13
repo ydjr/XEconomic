@@ -45,13 +45,13 @@ def normalize_text(text):
 
     text = normalize(str(text))
     
-    text = re.sub(r"(\(*?\))", "", text)
+    # text = re.sub(r"(\(*?\))", "", text)
     text = re.sub(r"(อ่านต่อทั้งหมด.*?ที่นี่)", "", text)
     text = re.sub(r"(คลิกอ่านต่อ)", "", text)
     text = re.sub(r"อ่าน.*?หนังสือพิมพ์ไทยรัฐ.*?ที่นี่", "", text)
     text = re.sub(r"ติดตามข้อมูลด้าน[\s\S]*$", "", text)
     
-    text = re.sub(r"[^\w\sก-๙.]", "", text)
+    # text = re.sub(r"[^\w\sก-๙.]", "", text)
     text = re.sub(r"\s+", " ", text)
     text = text.strip()
     
