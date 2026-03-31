@@ -13,11 +13,11 @@ DATA_DIR = os.path.join(ROOT, "data")
 CCI_CSV = os.path.join(DATA_DIR, "indicators/cci.csv")
 
 # DASHBOARD_CSV = os.path.join(ART_DIR, "cci_dashboard_latest.csv")
-PRED_LATEST_CSV = os.path.join(ART_DIR, "pred_latest.csv")
-EXPLAIN_CSV = os.path.join(ART_DIR, "reasoning_2025-08_to_2025-08.csv") # explain path from cream
-NEWS_CSV = os.path.join(DATA_DIR, "absa_2024-2025.csv")
+PRED_LATEST_CSV = os.path.join(ART_DIR, "yada_prep.csv")
+EXPLAIN_CSV = os.path.join(ART_DIR, "reasoning_oneshot.csv") # explain path from cream
+NEWS_CSV = os.path.join(DATA_DIR, "gemma27b_2024-2025.csv")
 
-SHAP_CSV = os.path.join(ART_DIR, "shap_predicted_month_rank.csv")
+SHAP_CSV = os.path.join(ART_DIR, "shap_top3_unique.csv")
 
 app = FastAPI(title="CCI Forecast API", version="1.0.0")
 
@@ -136,6 +136,32 @@ def dashboard_explain_latest():
     df = df.replace({np.nan: None})
     return {"data": df.to_dict(orient="records")}
 
+@app.get("/dashboard/explain/all")
+def dashboard_explain_all():
+    if not os.path.exists(EXPLAIN_CSV):
+        return {"data": []}
+    df = pd.read_csv(EXPLAIN_CSV)
+    df = df.replace({np.nan: None})
+    # normalize date to YYYY-MM
+    if "date" in df.columns:
+        df["date"] = pd.to_datetime(df["date"], errors="coerce").dt.strftime("%Y-%m")
+    df = df.sort_values("date")
+    return {"data": df.to_dict(orient="records")}
+
+@app.get("/dashboard/explain/by-date")
+def dashboard_explain_by_date(date: str = Query(...)):
+    """date format: YYYY-MM"""
+    if not os.path.exists(EXPLAIN_CSV):
+        return {"data": None}
+    df = pd.read_csv(EXPLAIN_CSV)
+    df = df.replace({np.nan: None})
+    if "date" in df.columns:
+        df["date"] = pd.to_datetime(df["date"], errors="coerce").dt.strftime("%Y-%m")
+    row = df[df["date"] == date]
+    if row.empty:
+        return {"data": None}
+    return {"data": row.iloc[0].to_dict()}
+
 @app.get("/dashboard/timeseries")
 def dashboard_timeseries(limit: int = Query(500, ge=1, le=5000)):
 
@@ -160,9 +186,10 @@ def dashboard_timeseries(limit: int = Query(500, ge=1, le=5000)):
     if os.path.exists(PRED_LATEST_CSV):
         df_pred = pd.read_csv(PRED_LATEST_CSV)
 
-        if "date" in df_pred.columns and "cci_pred" in df_pred.columns:
+        pred_col = "predicted" if "predicted" in df_pred.columns else "cci_pred"
+        if "date" in df_pred.columns and pred_col in df_pred.columns:
             df_pred["date"] = pd.to_datetime(df_pred["date"], errors="coerce")
-            df_pred["pred"] = pd.to_numeric(df_pred["cci_pred"], errors="coerce")
+            df_pred["pred"] = pd.to_numeric(df_pred[pred_col], errors="coerce")
             df_pred["date"] = df_pred["date"].dt.to_period("M").dt.to_timestamp()
             df_pred = df_pred[["date", "pred"]]
         else:
@@ -194,7 +221,7 @@ def dashboard_news(limit: int = Query(2000, ge=1, le=20000)):
 
     df = pd.read_csv(NEWS_CSV)
 
-    # ปรับชื่อคอลัมน์ให้ตรงกับไฟล์คุณ
+    # ปรับชื่อคอลัมน์ให้ตรงกับไฟล์คุณ wtf krai tum wa
     # จากรูปไฟล์คุณมี: id, category, subtype, published_at, headline, ... sentiment_score, impact_type, effect_type, aspects
     for c in ["published_at", "headline"]:
         if c not in df.columns:
