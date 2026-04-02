@@ -13,7 +13,7 @@ DATA_DIR = os.path.join(ROOT, "data")
 CCI_CSV = os.path.join(DATA_DIR, "indicators/cci.csv")
 
 # DASHBOARD_CSV = os.path.join(ART_DIR, "cci_dashboard_latest.csv")
-PRED_LATEST_CSV = os.path.join(ART_DIR, "yada_prep.csv")
+PRED_LATEST_CSV = os.path.join(ART_DIR, "pred_direction.csv")
 EXPLAIN_CSV = os.path.join(ART_DIR, "reasoning_oneshot.csv") # explain path from cream
 NEWS_CSV = os.path.join(DATA_DIR, "gemma27b_2024-2025.csv")
 
@@ -191,11 +191,11 @@ def dashboard_timeseries(limit: int = Query(500, ge=1, le=5000)):
             df_pred["date"] = pd.to_datetime(df_pred["date"], errors="coerce")
             df_pred["pred"] = pd.to_numeric(df_pred[pred_col], errors="coerce")
             df_pred["date"] = df_pred["date"].dt.to_period("M").dt.to_timestamp()
-            df_pred = df_pred[["date", "pred"]]
+            df_pred = df_pred[["date", "pred", "direction"]]
         else:
-            df_pred = pd.DataFrame(columns=["date", "pred"])
+            df_pred = pd.DataFrame(columns=["date", "pred", "direction"])
     else:
-        df_pred = pd.DataFrame(columns=["date", "pred"])
+        df_pred = pd.DataFrame(columns=["date", "pred", "direction"])
 
     # ---- Merge ----
     df = pd.merge(df_actual, df_pred, on="date", how="outer")

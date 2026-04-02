@@ -90,9 +90,8 @@ const Badge = ({ children, variant = "secondary", className = "", style = {} }) 
 
   return (
     <span
-      className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${
-        styles[variant] || styles.secondary
-      } ${className}`}
+      className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${styles[variant] || styles.secondary
+        } ${className}`}
       style={variant === "navy" ? { backgroundColor: THEME.navy, ...style } : style}
     >
       {children}
@@ -359,9 +358,8 @@ function TopNav({ t, page, setPage }) {
           <button
             key={tab.id}
             onClick={() => setPage(tab.id)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl font-medium transition ${
-              active ? "text-white" : "text-gray-700 hover:bg-white"
-            }`}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl font-medium transition ${active ? "text-white" : "text-gray-700 hover:bg-white"
+              }`}
             style={{
               backgroundColor: active ? THEME.navy : "transparent",
               boxShadow: active ? "0 8px 20px rgba(22,58,112,0.18)" : "none",
@@ -431,34 +429,421 @@ function ForecastMonthSelector({ t, selectedMonth, onSelectMonth, futureMonths, 
   )
 }
 
-function HeroMetricCard({ title, value, subtitle, tone = "neutral", highlight = false }) {
-  const toneMap = toneClasses(tone)
+function ForecastSummaryCard({ t, lang, month, predicted, direction }) {
+  const info = normalizeDirection(direction, t)
+  const tone = toneClasses(info.tone)
+
+  const arrow =
+    info.tone === "up" ? "↑" :
+      info.tone === "down" ? "↓" :
+        "→"
 
   return (
-    <div
-      className="rounded-2xl p-6 border h-full"
-      style={{
-        background: highlight ? `linear-gradient(135deg, ${THEME.navy} 0%, ${THEME.blue} 100%)` : "#FFFFFF",
-        borderColor: highlight ? "transparent" : THEME.border,
-        boxShadow: highlight ? "0 18px 40px rgba(22,58,112,0.18)" : "0 10px 30px rgba(22,58,112,0.06)",
-      }}
-    >
-      <div className={`text-sm font-medium ${highlight ? "text-blue-100" : "text-gray-500"}`}>{title}</div>
-      <div className={`mt-3 text-4xl font-black ${highlight ? "text-white" : "text-gray-900"}`}>{value}</div>
-      {subtitle ? (
-        <div
-          className={`mt-2 text-sm ${highlight ? "text-blue-100" : ""}`}
-          style={!highlight ? { color: toneMap.text } : {}}
-        >
-          {subtitle}
+    <Card>
+      <CardContent className="p-6">
+        <div className="text-sm font-semibold text-gray-500 mb-1">
+          {t("Forecast target", "เป้าหมายพยากรณ์")}
         </div>
-      ) : null}
+
+        <div className="text-xl font-bold text-gray-800 mb-5">
+          {monthLabel(month, lang)}
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] items-center gap-4">
+          <div>
+            <div className="text-5xl font-black text-gray-900 leading-none">
+              {predicted != null ? Number(predicted).toFixed(1) : "-"}
+            </div>
+            <div className="text-sm text-gray-500 mt-2">
+              Forecast CCI
+            </div>
+          </div>
+
+          <div
+            className="text-5xl font-light text-center"
+            style={{ color: tone.text }}
+          >
+            {arrow}
+          </div>
+
+          <div className="md:text-left text-center">
+            <div
+              className="inline-flex px-3 py-1 rounded-full text-sm font-semibold mb-2"
+              style={{
+                backgroundColor: tone.bg,
+                color: tone.text,
+              }}
+            >
+              {info.tone === "up"
+                ? t("Up", "เพิ่มขึ้น")
+                : info.tone === "down"
+                  ? t("Down", "ลดลง")
+                  : t("Stable", "ทรงตัว")}
+            </div>
+
+            <div className="text-sm text-gray-700">
+              {direction || t("No direction data", "ไม่มีข้อมูลทิศทาง")}
+            </div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+function TopAspectsOnlyCard({ t, news = [], onSelectAspect, selectedForecastMonth, lang }) {
+  const getPrevious3Months = React.useCallback((targetMonth) => {
+    if (!targetMonth) return []
+
+    const [year, month] = targetMonth.split("-").map(Number)
+    const base = new Date(year, month - 1, 1)
+
+    const months = []
+    for (let i = 3; i >= 1; i--) {
+      const d = new Date(base)
+      d.setMonth(d.getMonth() - i)
+      const y = d.getFullYear()
+      const m = String(d.getMonth() + 1).padStart(2, "0")
+      months.push(`${y}-${m}`)
+    }
+    return months
+  }, [])
+
+  const backwardMonths = React.useMemo(
+    () => getPrevious3Months(selectedForecastMonth),
+    [getPrevious3Months, selectedForecastMonth]
+  )
+
+  const filteredNews = React.useMemo(() => {
+    if (!backwardMonths.length) return []
+    return news.filter((n) => backwardMonths.includes(String(n.date || "").slice(0, 7)))
+  }, [news, backwardMonths])
+
+  const ranked = React.useMemo(() => {
+    const counts = {}
+    filteredNews.forEach((n) => {
+      const aspect = n.aspect || "Other"
+      counts[aspect] = (counts[aspect] || 0) + 1
+    })
+
+    return Object.entries(counts)
+      .map(([aspect, count]) => ({ aspect, count }))
+      .sort((a, b) => b.count - a.count)
+  }, [filteredNews])
+
+  const periodText =
+    backwardMonths.length === 3
+      ? lang === "th"
+        ? `${thaiMonthYear(backwardMonths[0])} - ${thaiMonthYear(backwardMonths[2])}`
+        : `${backwardMonths[0]} to ${backwardMonths[2]}`
+      : "-"
+
+  return (
+    <Card className="h-full">
+      <CardHeader>
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+          <div>
+            <CardTitle>{t("Related aspects", "ประเด็นที่เกี่ยวข้อง")}</CardTitle>
+            <CardDescription>
+              {t(
+                "News counts from the 3 months before the selected forecast month",
+                "จำนวนข่าวจาก 3 เดือนย้อนหลังของเดือนพยากรณ์ที่เลือก"
+              )}
+            </CardDescription>
+          </div>
+
+          <Badge variant="outline">
+            {t("Period", "ช่วงเวลา")}: {periodText}
+          </Badge>
+        </div>
+      </CardHeader>
+
+      {/* ✅ ONLY CHANGE HERE */}
+      <CardContent className="min-h-[320px]">
+        {ranked.length === 0 ? (
+          <div className="text-sm text-gray-500">
+            {t("No aspect data for this period.", "ไม่พบข้อมูลประเด็นสำหรับช่วงเวลานี้")}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-4">
+            {ranked.map((item) => (
+              <button
+                key={item.aspect}
+                onClick={() => onSelectAspect?.(item.aspect)}
+                className="w-full px-4 py-3 rounded-xl border hover:bg-slate-50 transition text-left"
+                style={{ borderColor: THEME.border }}
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-sm font-semibold text-gray-800">{item.aspect}</span>
+                  <Badge variant="secondary">{item.count}</Badge>
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
+function ForecastChart({ t, lang, series, selectedMonth }) {
+  const filteredSeries = React.useMemo(() => {
+    if (!series || series.length === 0) return []
+
+    const lastDate = new Date(series[series.length - 1].date)
+    const cutoff = new Date(lastDate)
+    cutoff.setFullYear(cutoff.getFullYear() - 2)
+
+    return series.filter((d) => new Date(d.date) >= cutoff)
+  }, [series])
+
+  const chartData = React.useMemo(
+    () => buildSelectedMonthChartData(filteredSeries, selectedMonth),
+    [filteredSeries, selectedMonth]
+  )
+
+  const forecastStartDate = React.useMemo(() => {
+    const firstForecast = filteredSeries.find((s) => s.actual == null && s.pred != null)
+    return firstForecast?.date || null
+  }, [filteredSeries])
+
+  const selectedDate = selectedMonth ? `${selectedMonth}-01` : null
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{t("CCI timeline", "กราฟ CCI")}</CardTitle>
+        <CardDescription>{t("Actual values and future forecast on one chart", "แสดงค่าจริงและค่าพยากรณ์ในกราฟเดียว")}</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="w-full overflow-x-auto">
+          <div style={{ width: chartData.length * 50, height: 420 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <ComposedChart data={chartData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                <XAxis
+                  dataKey="date"
+                  tick={{ fontSize: 11 }}
+                  tickFormatter={(v) =>
+                    lang === "th" ? thaiMonthYear(v).replace(" ", "\n") : String(v).slice(0, 7)
+                  }
+                />
+                <YAxis tick={{ fontSize: 11 }} />
+                <ReTooltip
+                  content={({ active, payload, label }) => {
+                    if (!active || !payload?.length) return null
+
+                    const actualItem = payload.find((p) => p.dataKey === "actual")
+                    const predItem = payload.find((p) => p.dataKey === "pred")
+
+                    return (
+                      <div
+                        className="rounded-xl border bg-white p-3 shadow-lg"
+                        style={{ borderColor: THEME.border }}
+                      >
+                        <div className="font-semibold text-gray-900 mb-1">
+                          {monthLabel(label, lang)}
+                        </div>
+                        {actualItem?.value != null ? (
+                          <div className="text-sm" style={{ color: THEME.navy }}>
+                            {t("Actual", "ค่าจริง")}: {Number(actualItem.value).toFixed(2)}
+                          </div>
+                        ) : null}
+                        {predItem?.value != null ? (
+                          <div className="text-sm" style={{ color: THEME.blue }}>
+                            {t("Forecast", "พยากรณ์")}: {Number(predItem.value).toFixed(2)}
+                          </div>
+                        ) : null}
+                      </div>
+                    )
+                  }}
+                />
+                <Legend verticalAlign="top" height={40} />
+
+                {forecastStartDate ? (
+                  <ReferenceArea x1={forecastStartDate} fill={THEME.blue} fillOpacity={0.05} />
+                ) : null}
+
+                {selectedDate ? (
+                  <ReferenceLine
+                    x={selectedDate}
+                    stroke={THEME.blue}
+                    strokeDasharray="4 4"
+                    label={{
+                      value: t("Selected", "เดือนที่เลือก"),
+                      position: "insideTopRight",
+                      fontSize: 11,
+                      fill: THEME.blue,
+                    }}
+                  />
+                ) : null}
+
+                <Line
+                  type="monotone"
+                  dataKey="actual"
+                  stroke={THEME.navy}
+                  strokeWidth={2.5}
+                  dot={{ r: 3 }}
+                  name={t("Actual", "ค่าจริง")}
+                  connectNulls={false}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="pred"
+                  stroke={THEME.blue}
+                  strokeWidth={2.5}
+                  dot={{ r: 3 }}
+                  strokeDasharray="6 6"
+                  name={t("Forecast", "พยากรณ์")}
+                  connectNulls={false}
+                />
+                {/* <Line
+                  type="monotone"
+                  dataKey="selectedPred"
+                  stroke={THEME.blue}
+                  strokeWidth={4}
+                  dot={{ r: 5 }}
+                  activeDot={{ r: 6 }}
+                  name={t("Selected forecast", "ค่าพยากรณ์ที่เลือก")}
+                  connectNulls={false}
+                /> */}
+              </ComposedChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+function ForecastPage({ t, lang, series, summary, allExplain, news = [], onSelectAspect }) {
+  const forecastMonths = React.useMemo(() => {
+    if (!series || series.length === 0) return []
+
+    const lastDate = series[series.length - 1]?.date
+    if (!lastDate) return []
+
+    const base = new Date(lastDate)
+
+    const months = []
+    for (let i = 1; i <= 3; i++) {
+      const d = new Date(base)
+      d.setMonth(d.getMonth() + i)
+
+      const y = d.getFullYear()
+      const m = String(d.getMonth() + 1).padStart(2, "0")
+
+      months.push(`${y}-${m}`)
+    }
+
+    return months
+  }, [series])
+
+  const explainMonths = React.useMemo(
+    () =>
+      [...new Set((allExplain || []).map((r) => r.date).filter(Boolean))].sort((a, b) =>
+        a.localeCompare(b)
+      ),
+    [allExplain]
+  )
+
+  const seriesMonths = React.useMemo(
+    () =>
+      [...new Set((series || []).map((r) => r.date?.slice(0, 7)).filter(Boolean))].sort((a, b) =>
+        a.localeCompare(b)
+      ),
+    [series]
+  )
+
+  const availableFutureMonths = React.useMemo(
+    () => forecastMonths.filter((m) => explainMonths.includes(m) || seriesMonths.includes(m)),
+    [forecastMonths, explainMonths, seriesMonths]
+  )
+
+  const historicalMonths = React.useMemo(
+    () => explainMonths.filter((m) => !forecastMonths.includes(m)),
+    [explainMonths, forecastMonths]
+  )
+
+  const [selectedForecastMonth, setSelectedForecastMonth] = React.useState("2025-08")
+
+  React.useEffect(() => {
+    const allPossibleMonths = [...new Set([...availableFutureMonths, ...historicalMonths])].sort((a, b) =>
+      a.localeCompare(b)
+    )
+
+    if (!allPossibleMonths.length) return
+
+    if (!allPossibleMonths.includes(selectedForecastMonth)) {
+      if (availableFutureMonths.length > 0) {
+        setSelectedForecastMonth(availableFutureMonths[0])
+      } else {
+        setSelectedForecastMonth(allPossibleMonths[allPossibleMonths.length - 1])
+      }
+    }
+  }, [availableFutureMonths, historicalMonths, selectedForecastMonth])
+
+  const activeRow = React.useMemo(
+    () => allExplain.find((r) => r.date === selectedForecastMonth) || null,
+    [allExplain, selectedForecastMonth]
+  )
+
+  const selectedSeriesRow = React.useMemo(
+    () => series.find((r) => r.date?.slice(0, 7) === selectedForecastMonth) || null,
+    [series, selectedForecastMonth]
+  )
+
+  return (
+    <div className="space-y-6">
+      <ForecastSummaryCard
+        t={t}
+        lang={lang}
+        month={selectedForecastMonth}
+        predicted={selectedSeriesRow?.pred}
+        direction={selectedSeriesRow?.direction}
+      />
+
+      <ForecastMonthSelector
+        t={t}
+        selectedMonth={selectedForecastMonth}
+        onSelectMonth={setSelectedForecastMonth}
+        futureMonths={availableFutureMonths}
+        historicalMonths={historicalMonths}
+        lang={lang}
+      />
+
+      <ForecastChart
+        t={t}
+        lang={lang}
+        series={series}
+        selectedMonth={selectedForecastMonth}
+      />
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+        <div className="lg:col-span-2">
+          <ReasoningPanel
+            t={t}
+            lang={lang}
+            activeRow={activeRow}
+            selectedMonth={selectedForecastMonth}
+          />
+        </div>
+
+        <div className="lg:col-span-1">
+          <TopAspectsOnlyCard
+            t={t}
+            news={news}
+            onSelectAspect={onSelectAspect}
+            selectedForecastMonth={selectedForecastMonth}
+            lang={lang}
+          />
+        </div>
+      </div>
     </div>
   )
 }
 
 function ReasoningPanel({ t, lang, activeRow, selectedMonth }) {
-  const shapTags = parseTop3Shap(activeRow?.top3_shap)
   const directionInfo = normalizeDirection(activeRow?.direction, t)
   const directionTone = toneClasses(directionInfo.tone)
 
@@ -471,20 +856,14 @@ function ReasoningPanel({ t, lang, activeRow, selectedMonth }) {
               <Activity className="w-5 h-5" style={{ color: THEME.blue }} />
               {t("Forecast reasoning", "เหตุผลประกอบการพยากรณ์")}
             </CardTitle>
-            <CardDescription>{t("Narrative explanation for the selected month", "คำอธิบายเชิงเหตุผลสำหรับเดือนที่เลือก")}</CardDescription>
+            <CardDescription>
+              {t("Narrative explanation for the selected month", "คำอธิบายเชิงเหตุผลสำหรับเดือนที่เลือก")}
+            </CardDescription>
           </div>
 
           <div className="flex flex-wrap gap-2">
             <Badge variant="outline">
               {t("Month", "เดือน")}: {monthLabel(selectedMonth, lang)}
-            </Badge>
-            {activeRow?.predicted != null ? (
-              <Badge variant="navy">
-                {t("Predicted CCI", "CCI พยากรณ์")}: {Number(activeRow.predicted).toFixed(2)}
-              </Badge>
-            ) : null}
-            <Badge variant={directionInfo.tone === "up" ? "positive" : directionInfo.tone === "down" ? "negative" : "secondary"}>
-              {directionInfo.badge}
             </Badge>
           </div>
         </div>
@@ -492,319 +871,35 @@ function ReasoningPanel({ t, lang, activeRow, selectedMonth }) {
 
       <CardContent>
         {activeRow ? (
-          <div className="space-y-5">
-            {/* {shapTags.length > 0 ? (
-              <div>
-                <div className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-2">
-                  {t("Key drivers", "ปัจจัยขับเคลื่อนหลัก")}
+          <div
+            className="rounded-2xl p-5 border"
+            style={{
+              backgroundColor: directionTone.soft,
+              borderColor: THEME.border,
+            }}
+          >
+            <div className="flex items-start gap-4">
+              <div
+                className="w-1.5 self-stretch rounded-full"
+                style={{ backgroundColor: directionTone.text }}
+              />
+              <div className="flex-1">
+                <div className="text-sm font-semibold mb-2" style={{ color: directionTone.text }}>
+                  {t("Model interpretation", "บทวิเคราะห์ของโมเดล")}
                 </div>
-                <div className="flex flex-wrap gap-2">
-                  {shapTags.map((tag) => (
-                    <span
-                      key={tag}
-                      className="px-3 py-1.5 rounded-full text-xs font-semibold"
-                      style={{
-                        backgroundColor: "#EFF6FF",
-                        color: THEME.blue,
-                        border: "1px solid #DBEAFE",
-                      }}
-                    >
-                      #{tag}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            ) : null} */}
-
-            <div
-              className="rounded-2xl p-5 border"
-              style={{
-                backgroundColor: directionTone.soft,
-                borderColor: THEME.border,
-              }}
-            >
-              <div className="flex items-start gap-4">
-                <div
-                  className="w-1.5 self-stretch rounded-full"
-                  style={{ backgroundColor: directionTone.text }}
-                />
-                <div className="flex-1">
-                  <div className="text-sm font-semibold mb-2" style={{ color: directionTone.text }}>
-                    {t("Model interpretation", "บทวิเคราะห์ของโมเดล")}
-                  </div>
-                  <p className="text-[15px] leading-8 text-gray-700 whitespace-pre-line">
-                    {activeRow.reasoning || t("No reasoning available.", "ยังไม่มีคำอธิบาย")}
-                  </p>
-                </div>
+                <p className="text-[15px] leading-8 text-gray-700 whitespace-pre-line">
+                  {activeRow?.reasoning || t("No reasoning available.", "ยังไม่มีคำอธิบาย")}
+                </p>
               </div>
             </div>
           </div>
         ) : (
-          <div className="text-sm text-gray-500">{t("No explanation found for this month.", "ไม่พบคำอธิบายสำหรับเดือนนี้")}</div>
+          <div className="text-sm text-gray-500">
+            {t("No explanation found for this month.", "ไม่พบคำอธิบายสำหรับเดือนนี้")}
+          </div>
         )}
       </CardContent>
     </Card>
-  )
-}
-
-function TopAspectsOnlyCard({ t, news = [], onSelectAspect }) {
-  const ranked = React.useMemo(() => {
-    const counts = {}
-    news.forEach((n) => {
-      const aspect = n.aspect || "Other"
-      counts[aspect] = (counts[aspect] || 0) + 1
-    })
-    return Object.entries(counts)
-      .map(([aspect, count]) => ({ aspect, count }))
-      .sort((a, b) => b.count - a.count)
-  }, [news])
-
-  const top3 = ranked.slice(0, 3)
-
-  return (
-    <Card className="h-full">
-      <CardHeader>
-        <CardTitle>{t("Top aspects", "ประเด็นหลัก (Aspect)")}</CardTitle>
-        <CardDescription>{t("Click an aspect to open its related news page", "คลิกประเด็นเพื่อเปิดหน้ารวมข่าวของประเด็นนั้น")}</CardDescription>
-      </CardHeader>
-
-      <CardContent className="space-y-5">
-        <div>
-          <div className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-2">{t("Top 3", "Top 3")}</div>
-          <div className="grid grid-cols-1 gap-2">
-            {top3.map((item) => (
-              <button
-                key={item.aspect}
-                onClick={() => onSelectAspect?.(item.aspect)}
-                className="text-left rounded-xl p-4 border bg-white hover:bg-slate-50 transition"
-                style={{ borderColor: THEME.border }}
-              >
-                <div className="flex items-center justify-between gap-3">
-                  <div className="font-semibold text-gray-900">{item.aspect}</div>
-                  <Badge variant="outline">
-                    {t("news", "ข่าว")}: {item.count}
-                  </Badge>
-                </div>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div>
-          <div className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-2">{t("All aspects", "ทุกประเด็น")}</div>
-          <div className="flex flex-wrap gap-2">
-            {ranked.map((item) => (
-              <button
-                key={item.aspect}
-                onClick={() => onSelectAspect?.(item.aspect)}
-                className="px-3 py-2 rounded-xl border hover:bg-slate-50 transition"
-                style={{ borderColor: THEME.border }}
-              >
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium text-gray-800">{item.aspect}</span>
-                  <Badge variant="secondary">{item.count}</Badge>
-                </div>
-              </button>
-            ))}
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  )
-}
-
-function ForecastChart({ t, lang, series, selectedMonth }) {
-  const chartData = React.useMemo(() => buildSelectedMonthChartData(series, selectedMonth), [series, selectedMonth])
-
-  const forecastStartDate = React.useMemo(() => {
-    const firstForecast = series.find((s) => s.actual == null && s.pred != null)
-    return firstForecast?.date || null
-  }, [series])
-
-  const selectedDate = selectedMonth ? `${selectedMonth}-01` : null
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{t("CCI timeline", "กราฟ CCI")}</CardTitle>
-        <CardDescription>{t("Actual values and future forecast on one chart", "แสดงค่าจริงและค่าพยากรณ์ในกราฟเดียว")}</CardDescription>
-      </CardHeader>
-
-      <CardContent>
-        <ResponsiveContainer width="100%" height={420}>
-          <ComposedChart data={chartData}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-            <XAxis
-              dataKey="date"
-              tick={{ fontSize: 11 }}
-              tickFormatter={(v) => (lang === "th" ? thaiMonthYear(v).replace(" ", "\n") : String(v).slice(0, 7))}
-            />
-            <YAxis tick={{ fontSize: 11 }} />
-            <ReTooltip
-              content={({ active, payload, label }) => {
-                if (!active || !payload?.length) return null
-
-                const actualItem = payload.find((p) => p.dataKey === "actual")
-                const predItem = payload.find((p) => p.dataKey === "pred")
-
-                return (
-                  <div className="rounded-xl border bg-white p-3 shadow-lg" style={{ borderColor: THEME.border }}>
-                    <div className="font-semibold text-gray-900 mb-1">{monthLabel(label, lang)}</div>
-                    {actualItem?.value != null ? (
-                      <div className="text-sm" style={{ color: THEME.navy }}>
-                        {t("Actual", "ค่าจริง")}: {Number(actualItem.value).toFixed(2)}
-                      </div>
-                    ) : null}
-                    {predItem?.value != null ? (
-                      <div className="text-sm" style={{ color: THEME.blue }}>
-                        {t("Forecast", "พยากรณ์")}: {Number(predItem.value).toFixed(2)}
-                      </div>
-                    ) : null}
-                  </div>
-                )
-              }}
-            />
-            <Legend verticalAlign="top" height={40} />
-
-            {forecastStartDate ? <ReferenceArea x1={forecastStartDate} fill={THEME.blue} fillOpacity={0.05} /> : null}
-
-            {selectedDate ? (
-              <ReferenceLine
-                x={selectedDate}
-                stroke={THEME.blue}
-                strokeDasharray="4 4"
-                label={{
-                  value: t("Selected", "เดือนที่เลือก"),
-                  position: "insideTopRight",
-                  fontSize: 11,
-                  fill: THEME.blue,
-                }}
-              />
-            ) : null}
-
-            <Line
-              type="monotone"
-              dataKey="actual"
-              stroke={THEME.navy}
-              strokeWidth={2.5}
-              dot={{ r: 3 }}
-              name={t("Actual", "ค่าจริง")}
-              connectNulls={false}
-            />
-            <Line
-              type="monotone"
-              dataKey="pred"
-              stroke={THEME.blue}
-              strokeWidth={2.5}
-              dot={{ r: 3 }}
-              strokeDasharray="6 6"
-              name={t("Forecast", "พยากรณ์")}
-              connectNulls={false}
-            />
-            <Line
-              type="monotone"
-              dataKey="selectedPred"
-              stroke={THEME.blue}
-              strokeWidth={4}
-              dot={{ r: 5 }}
-              activeDot={{ r: 6 }}
-              name={t("Selected forecast", "ค่าพยากรณ์ที่เลือก")}
-              connectNulls={false}
-            />
-          </ComposedChart>
-        </ResponsiveContainer>
-      </CardContent>
-    </Card>
-  )
-}
-
-function ForecastPage({ t, lang, series, summary, allExplain, news = [], onSelectAspect }) {
-  const forecastMonths = React.useMemo(() => ["2025-08", "2025-09", "2025-10"], [])
-  const allMonths = React.useMemo(
-    () => [...new Set((allExplain || []).map((r) => r.date).filter(Boolean))].sort((a, b) => a.localeCompare(b)),
-    [allExplain]
-  )
-  const historicalMonths = React.useMemo(() => allMonths.filter((m) => !forecastMonths.includes(m)), [allMonths, forecastMonths])
-
-  const [selectedForecastMonth, setSelectedForecastMonth] = React.useState("2025-08")
-
-  React.useEffect(() => {
-    if (!allMonths.length) return
-
-    if (!allMonths.includes(selectedForecastMonth)) {
-      if (forecastMonths.some((m) => allMonths.includes(m))) {
-        const firstFuture = forecastMonths.find((m) => allMonths.includes(m))
-        if (firstFuture) setSelectedForecastMonth(firstFuture)
-      } else {
-        setSelectedForecastMonth(allMonths[allMonths.length - 1])
-      }
-    }
-  }, [allMonths, selectedForecastMonth, forecastMonths])
-
-  const activeRow = React.useMemo(
-    () => allExplain.find((r) => r.date === selectedForecastMonth) || null,
-    [allExplain, selectedForecastMonth]
-  )
-
-  const latestActualValue = summary?.latest_value
-  const latestActualMonth = summary?.latest_month
-  const momChange = summary?.mom_change
-  const latestTrendTone = summary?.trend === "UP" ? "up" : summary?.trend === "DOWN" ? "down" : "neutral"
-  const forecastDirection = normalizeDirection(activeRow?.direction, t)
-
-  const latestSubtitle =
-    momChange == null
-      ? t("No monthly change available", "ไม่มีข้อมูลการเปลี่ยนแปลงรายเดือน")
-      : `${t("MoM", "MoM")} ${momChange >= 0 ? "↑" : "↓"} ${Math.abs(Number(momChange)).toFixed(2)} ${t("pts", "จุด")}`
-
-  const targetSubtitle = activeRow
-    ? `${t("Target month", "เดือนเป้าหมาย")}: ${monthLabel(selectedForecastMonth, lang)}`
-    : t("No forecast available", "ยังไม่มีค่าพยากรณ์")
-
-  return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {/* <HeroMetricCard
-          title={t("Latest actual", "ค่าจริงล่าสุด")}
-          value={latestActualValue != null ? Number(latestActualValue).toFixed(1) : "-"}
-          subtitle={`${monthLabel(latestActualMonth, lang)} • ${latestSubtitle}`}
-          tone={latestTrendTone}
-        /> */}
-        <HeroMetricCard
-          title={t("Forecast target", "เป้าหมายพยากรณ์")}
-          value={activeRow?.predicted != null ? Number(activeRow.predicted).toFixed(2) : "-"}
-          subtitle={targetSubtitle}
-          tone={forecastDirection.tone}
-          highlight
-        />
-        {/* <HeroMetricCard
-          title={t("Model status", "สถานะโมเดล")}
-          value={t("Ready", "พร้อมใช้งาน")}
-          subtitle={t("XAI explanation available", "มีคำอธิบายเชิง XAI")}
-          tone="neutral"
-        /> */}
-      </div>
-
-      <ForecastMonthSelector
-        t={t}
-        selectedMonth={selectedForecastMonth}
-        onSelectMonth={setSelectedForecastMonth}
-        futureMonths={forecastMonths.filter((m) => allMonths.includes(m) || forecastMonths.includes(m))}
-        historicalMonths={historicalMonths}
-        lang={lang}
-      />
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-        <div className="lg:col-span-2 space-y-6">
-          <ReasoningPanel t={t} lang={lang} activeRow={activeRow} selectedMonth={selectedForecastMonth} />
-          <ForecastChart t={t} lang={lang} series={series} selectedMonth={selectedForecastMonth} />
-        </div>
-
-        <div className="lg:col-span-1">
-          <TopAspectsOnlyCard t={t} news={news} onSelectAspect={onSelectAspect} />
-        </div>
-      </div>
-    </div>
   )
 }
 
@@ -1323,18 +1418,16 @@ export default function App() {
             <div className="flex gap-2">
               <button
                 onClick={() => setLang("en")}
-                className={`px-3 py-1 text-xs font-bold rounded-lg transition-all ${
-                  lang === "en" ? "bg-white" : "text-white border border-white/40 hover:bg-white/10"
-                }`}
+                className={`px-3 py-1 text-xs font-bold rounded-lg transition-all ${lang === "en" ? "bg-white" : "text-white border border-white/40 hover:bg-white/10"
+                  }`}
                 style={lang === "en" ? { color: THEME.navy } : {}}
               >
                 EN
               </button>
               <button
                 onClick={() => setLang("th")}
-                className={`px-3 py-1 text-xs font-bold rounded-lg transition-all ${
-                  lang === "th" ? "bg-white" : "text-white border border-white/40 hover:bg-white/10"
-                }`}
+                className={`px-3 py-1 text-xs font-bold rounded-lg transition-all ${lang === "th" ? "bg-white" : "text-white border border-white/40 hover:bg-white/10"
+                  }`}
                 style={lang === "th" ? { color: THEME.navy } : {}}
               >
                 ไทย
