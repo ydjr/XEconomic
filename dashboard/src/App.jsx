@@ -22,6 +22,7 @@ import {
   ComposedChart,
   Area,
   ReferenceLine,
+  Brush,
 } from "recharts"
 
 const THEME = {
@@ -78,6 +79,62 @@ const tagColors = {
   personal_finance: "#ec4899",
   business_marketing: "#14b8a6",
 }
+
+// ── Skeleton shimmer component ──
+const Skeleton = ({ className = "", style = {} }) => (
+  <div
+    className={`rounded-lg ${className}`}
+    style={{
+      background: "linear-gradient(90deg, #E6ECF5 25%, #F4F7FC 50%, #E6ECF5 75%)",
+      backgroundSize: "200% 100%",
+      animation: "shimmer 1.4s ease-in-out infinite",
+      ...style,
+    }}
+  />
+)
+
+// ── Global keyframes injected once ──
+if (typeof document !== "undefined" && !document.getElementById("xecon-styles")) {
+  const style = document.createElement("style")
+  style.id = "xecon-styles"
+  style.textContent = `
+    @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+    @keyframes soft-pulse { 0%,100%{opacity:1} 50%{opacity:0.6} }
+    @keyframes fade-in { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
+    .xecon-fade-in { animation: fade-in 0.35s ease both; }
+    .xecon-pulse { animation: soft-pulse 2.4s ease-in-out infinite; }
+    .xecon-aspect-btn:hover { background: #EEF3FB !important; transform: translateX(2px); }
+    .xecon-aspect-btn { transition: background 0.15s, transform 0.15s, box-shadow 0.15s; cursor: pointer; }
+    .xecon-aspect-btn:hover .xecon-arrow { opacity: 1 !important; transform: translateX(2px); }
+    .xecon-arrow { transition: opacity 0.15s, transform 0.15s; }
+    .xecon-news-row:hover { background: #F4F7FC; }
+    .xecon-news-row { transition: background 0.12s; }
+    .xecon-pill-fade::after {
+      content: '';
+      position: absolute;
+      right: 0; top: 0; bottom: 0;
+      width: 40px;
+      background: linear-gradient(to right, transparent, #1a4280);
+      pointer-events: none;
+    }
+  `
+  document.head.appendChild(style)
+}
+
+// ── Empty state component ──
+const EmptyState = ({ icon, title, description, action }) => (
+  <div className="flex flex-col items-center justify-center py-14 text-center xecon-fade-in">
+    <div
+      className="flex items-center justify-center rounded-2xl mb-4"
+      style={{ width: 56, height: 56, background: "#F4F7FC", color: THEME.blue, fontSize: 26 }}
+    >
+      {icon}
+    </div>
+    <div className="text-base font-semibold text-gray-700 mb-1">{title}</div>
+    {description && <div className="text-sm text-gray-400 max-w-xs">{description}</div>}
+    {action && <div className="mt-4">{action}</div>}
+  </div>
+)
 
 const Badge = ({ children, variant = "secondary", className = "", style = {} }) => {
   const styles = {
@@ -349,7 +406,8 @@ function ForecastSummaryCard({
   month,
   predicted,
   direction,
-  previousMonthActual,
+  comparisonValue,
+  comparisonBasis,
 }) {
   const info = normalizeDirection(direction, t)
   const tone = toneClasses(info.tone)
@@ -376,19 +434,18 @@ function ForecastSummaryCard({
             style={{ borderColor: THEME.border, backgroundColor: "#FFFFFF" }}
           >
             <div className="text-xs text-gray-500 mb-1">
-              {t("Previous month actual data", "ข้อมูลจริงของเดือนก่อนหน้า")}
+              {comparisonBasis === "predicted"
+                ? t("Previous month predicted data", "ข้อมูลพยากรณ์ของเดือนก่อนหน้า")
+                : t("Previous month actual data", "ข้อมูลจริงของเดือนก่อนหน้า")}
             </div>
             <div className="text-3xl font-black text-gray-900 leading-none">
-              {previousMonthActual != null ? Number(previousMonthActual).toFixed(1) : "-"}
+              {comparisonValue != null ? Number(comparisonValue).toFixed(1) : "-"}
             </div>
           </div>
 
           <div
-            className="rounded-2xl border p-4 flex-1"
-            style={{
-              borderColor: THEME.border,
-              backgroundColor: tone.soft,
-            }}
+            className="rounded-2xl border p-4 flex-1 xecon-fade-in"
+            style={{ borderColor: THEME.border, backgroundColor: tone.soft }}
           >
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
               <div className="min-w-0">
@@ -398,22 +455,27 @@ function ForecastSummaryCard({
                 <div className="text-4xl font-black text-gray-900 leading-none mb-2">
                   {predicted != null ? Number(predicted).toFixed(1) : "-"}
                 </div>
+                {/* Delta — lives directly under the predicted number */}
+                {predicted != null && comparisonValue != null && Number(comparisonValue) !== 0 && (() => {
+                  const delta = Number(predicted) - Number(comparisonValue)
+                  const pct = (delta / Math.abs(Number(comparisonValue))) * 100
+                  const isPos = delta >= 0
+                  return (
+                    <div
+                      className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full"
+                      style={{ backgroundColor: isPos ? "#DCFCE7" : "#FEE2E2", color: isPos ? THEME.success : THEME.danger }}
+                    >
+                      {isPos ? "↑" : "↓"}
+                      {isPos ? "+" : ""}{delta.toFixed(1)} ({isPos ? "+" : ""}{pct.toFixed(1)}%)
+                      <span className="font-normal opacity-70 ml-0.5">{t("vs prev", "เทียบเดือนก่อน")}</span>
+                    </div>
+                  )
+                })()}
               </div>
 
               <div className="flex items-center gap-4 md:justify-end">
-                {/* <div className="text-sm text-gray-600">
-                  {t(
-                    "Direction compared target month predicted data to the previous month actual data",
-                    "ทิศทางเมื่อเปรียบเทียบข้อมูลพยากรณ์ของเดือนเป้าหมายกับข้อมูลจริงของเดือนก่อนหน้า"
-                  )}
-                </div> */}
                 <div
-                  className={`text-6xl font-light leading-none ${info.tone === "up"
-                    ? "animate-bounce"
-                    : info.tone === "down"
-                      ? "animate-pulse"
-                      : ""
-                    }`}
+                  className="text-6xl font-light leading-none xecon-pulse"
                   style={{ color: tone.text }}
                 >
                   {arrow}
@@ -422,10 +484,7 @@ function ForecastSummaryCard({
                 <div className="flex flex-col">
                   <div
                     className="inline-flex w-fit px-3 py-1 rounded-full text-sm font-semibold mb-2"
-                    style={{
-                      backgroundColor: tone.bg,
-                      color: tone.text,
-                    }}
+                    style={{ backgroundColor: tone.bg, color: tone.text }}
                   >
                     {info.tone === "up"
                       ? t("Up", "เพิ่มขึ้น")
@@ -433,7 +492,6 @@ function ForecastSummaryCard({
                         ? t("Down", "ลดลง")
                         : t("Stable", "ทรงตัว")}
                   </div>
-
                   <div className="text-sm text-gray-700">
                     {direction || t("No direction data", "ไม่มีข้อมูล")}
                   </div>
@@ -509,28 +567,39 @@ function TopAspectsOnlyCard({ t, news = [], onSelectAspect, selectedForecastMont
           </div>
 
           <Badge variant="outline">
-            {t("Period", "ช่วงเวลา")}: {periodText}
+            {t("Period", "ช่วงเวลา")} : {periodText}
           </Badge>
         </div>
       </CardHeader>
 
       <CardContent className="min-h-[320px]">
         {ranked.length === 0 ? (
-          <div className="text-sm text-gray-500">
-            {t("No aspect data for this period.", "ไม่พบข้อมูลประเด็นสำหรับช่วงเวลานี้")}
-          </div>
+          <EmptyState
+            icon="📰"
+            title={t("No aspects found", "ไม่พบประเด็น")}
+            description={t(
+              "No news data available for the 3 months before this forecast period.",
+              "ไม่พบข้อมูลข่าวสำหรับ 3 เดือนก่อนช่วงพยากรณ์นี้"
+            )}
+          />
         ) : (
-          <div className="grid grid-cols-1 gap-4">
+          <div className="grid grid-cols-1 gap-2">
             {ranked.map((item) => (
               <button
                 key={item.aspect}
                 onClick={() => onSelectAspect?.(item.aspect)}
-                className="w-full px-4 py-3 rounded-xl border hover:bg-slate-50 transition text-left"
-                style={{ borderColor: THEME.border }}
+                className="xecon-aspect-btn w-full px-4 py-3 rounded-xl border text-left"
+                style={{ borderColor: THEME.border, background: "#fff", cursor: "pointer" }}
               >
                 <div className="flex items-center justify-between gap-3">
                   <span className="text-sm font-semibold text-gray-800">{item.aspect}</span>
-                  <Badge variant="secondary">{item.count}</Badge>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="secondary">{item.count}</Badge>
+                    <span
+                      className="xecon-arrow text-gray-400 text-sm"
+                      style={{ opacity: 0 }}
+                    >→</span>
+                  </div>
                 </div>
               </button>
             ))}
@@ -544,12 +613,7 @@ function TopAspectsOnlyCard({ t, news = [], onSelectAspect, selectedForecastMont
 function ForecastChart({ t, lang, series, selectedMonth }) {
   const filteredSeries = React.useMemo(() => {
     if (!series || series.length === 0) return []
-
-    const lastDate = new Date(series[series.length - 1].date)
-    const cutoff = new Date(lastDate)
-    cutoff.setFullYear(cutoff.getFullYear() - 2)
-
-    return series.filter((d) => new Date(d.date) >= cutoff)
+    return [...series].sort((a, b) => String(a.date).localeCompare(String(b.date)))
   }, [series])
 
   const chartData = React.useMemo(
@@ -564,112 +628,288 @@ function ForecastChart({ t, lang, series, selectedMonth }) {
 
   const selectedDate = selectedMonth ? `${selectedMonth}-01` : null
 
+  const yDomain = React.useMemo(() => {
+    const values = chartData
+      .flatMap((d) => [d.actual, d.pred])
+      .filter((v) => v != null && !Number.isNaN(Number(v)))
+      .map(Number)
+
+    if (!values.length) return [0, 100]
+
+    const min = Math.min(...values)
+    const max = Math.max(...values)
+    const pad = Math.max((max - min) * 0.1, 1)
+
+    return [Math.floor(min - pad), Math.ceil(max + pad)]
+  }, [chartData])
+
+  const defaultBrushRange = React.useMemo(() => {
+    const len = chartData.length
+    if (!len) return { startIndex: 0, endIndex: 0 }
+
+    const lastIndex = len - 1
+    const startIndex = Math.max(0, len - 24) // last 24 months = 2 years
+
+    return { startIndex, endIndex: lastIndex }
+  }, [chartData])
+
+  const [brushRange, setBrushRange] = React.useState(defaultBrushRange)
+
+  React.useEffect(() => {
+    setBrushRange(defaultBrushRange)
+  }, [defaultBrushRange.startIndex, defaultBrushRange.endIndex])
+
+  const visibleData = React.useMemo(() => {
+    if (!chartData.length) return []
+    const start = Math.max(0, brushRange.startIndex ?? 0)
+    const end = Math.min(chartData.length - 1, brushRange.endIndex ?? chartData.length - 1)
+    return chartData.slice(start, end + 1)
+  }, [chartData, brushRange])
+
+  const visibleYDomain = React.useMemo(() => {
+    const values = visibleData
+      .flatMap((d) => [d.actual, d.pred])
+      .filter((v) => v != null && !Number.isNaN(Number(v)))
+      .map(Number)
+
+    if (!values.length) return yDomain
+
+    const min = Math.min(...values)
+    const max = Math.max(...values)
+    const pad = Math.max((max - min) * 0.1, 1)
+
+    return [Math.floor(min - pad), Math.ceil(max + pad)]
+  }, [visibleData, yDomain])
+
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{t("CCI timeline", "กราฟ CCI")}</CardTitle>
-        <CardDescription>{t("Actual values and future forecast on one chart", "แสดงค่าจริงและค่าพยากรณ์ในกราฟเดียว")}</CardDescription>
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div>
+            <CardTitle>{t("CCI Timeline", "กราฟดัชนีความเชื่อมั่น (CCI)")}</CardTitle>
+            <CardDescription>
+              {t(
+                "Showing the last 2 years by default. Drag the range selector below to adjust.",
+                "แสดงข้อมูลย้อนหลัง 2 ปีล่าสุด ปรับช่วงเวลาได้จากแถบด้านล่าง"
+              )}
+            </CardDescription>
+          </div>
+
+          <button
+            onClick={() => setBrushRange(defaultBrushRange)}
+            className="px-3 py-2 rounded-lg text-sm font-medium border bg-white hover:bg-gray-50 transition"
+            style={{ borderColor: THEME.border }}
+          >
+            {t("Reset view", "รีเซ็ตมุมมอง")}
+          </button>
+        </div>
       </CardHeader>
+
       <CardContent>
-        <div className="w-full overflow-x-auto">
-          <div style={{ width: chartData.length * 50, height: 420 }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                <XAxis
-                  dataKey="date"
-                  tick={{ fontSize: 11 }}
-                  tickFormatter={(v) =>
-                    lang === "th" ? thaiMonthYear(v).replace(" ", "\n") : String(v).slice(0, 7)
-                  }
-                />
-                <YAxis tick={{ fontSize: 11 }} />
-                <ReTooltip
-                  content={({ active, payload, label }) => {
-                    if (!active || !payload?.length) return null
+        <div
+          className="w-full rounded-xl border bg-white overflow-hidden"
+          style={{ borderColor: THEME.border }}
+        >
+          <div className="flex w-full" style={{ height: 420 }}>
+            {/* Fixed Y axis */}
+            <div
+              className="flex-shrink-0 bg-white border-r"
+              style={{ width: 90, borderColor: THEME.border }}
+            >
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart
+                  data={visibleData}
+                  margin={{ top: 60, right: 0, left: 0, bottom: 45 }}
+                  syncId="forecast-chart"
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" horizontal vertical={false} />
+                  <YAxis
+                    tick={{ fontSize: 11 }}
+                    width={75}
+                    domain={visibleYDomain}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
 
-                    const actualItem = payload.find((p) => p.dataKey === "actual")
-                    const predItem = payload.find((p) => p.dataKey === "pred")
+            {/* Main chart */}
+            <div className="flex-1 overflow-hidden">
+              <ResponsiveContainer width="100%" height="100%">
+                <ComposedChart
+                  data={visibleData}
+                  margin={{ top: 20, right: 20, left: 0, bottom: 45 }}
+                  syncId="forecast-chart"
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                  <XAxis
+                    dataKey="date"
+                    tick={{ fontSize: 11 }}
+                    minTickGap={20}
+                    tickFormatter={(v) =>
+                      lang === "th"
+                        ? thaiMonthYear(v).replace(" ", "\n")
+                        : String(v).slice(0, 7)
+                    }
+                  />
+                  <YAxis hide domain={visibleYDomain} />
 
-                    return (
-                      <div
-                        className="rounded-xl border bg-white p-3 shadow-lg"
-                        style={{ borderColor: THEME.border }}
-                      >
-                        <div className="font-semibold text-gray-900 mb-1">
-                          {monthLabel(label, lang)}
+                  <ReTooltip
+                    content={({ active, payload, label }) => {
+                      if (!active || !payload?.length) return null
+
+                      const actualItem = payload.find((p) => p.dataKey === "actual")
+                      const predItem = payload.find((p) => p.dataKey === "pred")
+
+                      return (
+                        <div
+                          className="rounded-xl border bg-white p-3 shadow-lg"
+                          style={{ borderColor: THEME.border }}
+                        >
+                          <div className="font-semibold text-gray-900 mb-1">
+                            {monthLabel(label, lang)}
+                          </div>
+
+                          {actualItem?.value != null ? (
+                            <div className="text-sm" style={{ color: THEME.navy }}>
+                              {t("Actual", "ค่าจริง")}: {Number(actualItem.value).toFixed(2)}
+                            </div>
+                          ) : null}
+
+                          {predItem?.value != null ? (
+                            <div className="text-sm" style={{ color: THEME.blue }}>
+                              {t("Forecast", "ค่าพยากรณ์")}: {Number(predItem.value).toFixed(2)}
+                            </div>
+                          ) : null}
                         </div>
-                        {actualItem?.value != null ? (
-                          <div className="text-sm" style={{ color: THEME.navy }}>
-                            {t("Actual", "ค่าจริง")}: {Number(actualItem.value).toFixed(2)}
-                          </div>
-                        ) : null}
-                        {predItem?.value != null ? (
-                          <div className="text-sm" style={{ color: THEME.blue }}>
-                            {t("Forecast", "พยากรณ์")}: {Number(predItem.value).toFixed(2)}
-                          </div>
-                        ) : null}
-                      </div>
-                    )
-                  }}
-                />
-                <Legend verticalAlign="top" height={40} />
-
-                {forecastStartDate ? (
-                  <ReferenceArea x1={forecastStartDate} fill={THEME.blue} fillOpacity={0.05} />
-                ) : null}
-
-                {selectedDate ? (
-                  <ReferenceLine
-                    x={selectedDate}
-                    stroke={THEME.blue}
-                    strokeDasharray="4 4"
-                    label={{
-                      value: t("Selected", "เดือนที่เลือก"),
-                      position: "insideTopRight",
-                      fontSize: 11,
-                      fill: THEME.blue,
+                      )
                     }}
                   />
-                ) : null}
 
-                <Line
-                  type="monotone"
-                  dataKey="actual"
-                  stroke={THEME.navy}
-                  strokeWidth={2.5}
-                  dot={{ r: 3 }}
-                  name={t("Actual", "ค่าจริง")}
-                  connectNulls={false}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="pred"
-                  stroke={THEME.blue}
-                  strokeWidth={2.5}
-                  dot={{ r: 3 }}
-                  strokeDasharray="6 6"
-                  name={t("Forecast", "พยากรณ์")}
-                  connectNulls={false}
-                />
-                {/* <Line
-                  type="monotone"
-                  dataKey="selectedPred"
-                  stroke={THEME.blue}
-                  strokeWidth={4}
-                  dot={{ r: 5 }}
-                  activeDot={{ r: 6 }}
-                  name={t("Selected forecast", "ค่าพยากรณ์ที่เลือก")}
-                  connectNulls={false}
-                /> */}
-              </ComposedChart>
-            </ResponsiveContainer>
+                  <Legend verticalAlign="top" height={40} />
+
+                  {forecastStartDate ? (
+                    <ReferenceArea
+                      x1={forecastStartDate}
+                      fill={THEME.blue}
+                      fillOpacity={0.05}
+                    />
+                  ) : null}
+
+                  {selectedDate && visibleData.some((d) => d.date === selectedDate) ? (
+                    <ReferenceLine
+                      x={selectedDate}
+                      stroke={THEME.blue}
+                      strokeDasharray="4 4"
+                      label={{
+                        value: t("Selected", "เดือนที่เลือก"),
+                        position: "insideTopRight",
+                        fontSize: 11,
+                        fill: THEME.blue,
+                      }}
+                    />
+                  ) : null}
+
+                  <Line
+                    type="monotone"
+                    dataKey="actual"
+                    stroke={THEME.navy}
+                    strokeWidth={2.5}
+                    dot={{ r: 3 }}
+                    activeDot={{ r: 5 }}
+                    name={t("Actual", "ค่าจริง")}
+                    connectNulls={false}
+                  />
+
+                  <Line
+                    type="monotone"
+                    dataKey="pred"
+                    stroke={THEME.blue}
+                    strokeWidth={2.5}
+                    dot={{ r: 3 }}
+                    activeDot={{ r: 5 }}
+                    strokeDasharray="6 6"
+                    name={t("Forecast", "ค่าพยากรณ์")}
+                    connectNulls={false}
+                  />
+                </ComposedChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* Brush / zoom control */}
+          <div
+            className="border-t px-4 py-3 bg-white"
+            style={{ borderColor: THEME.border }}
+          >
+            <div style={{ width: "100%", height: 90 }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={chartData}>
+                  <XAxis dataKey="date" hide />
+                  <YAxis hide domain={yDomain} />
+
+                  {/* NO lines here — completely clean */}
+
+                  <Brush
+                    dataKey="date"
+                    height={28}
+                    travellerWidth={10}
+                    startIndex={brushRange.startIndex}
+                    endIndex={brushRange.endIndex}
+                    onChange={(range) => {
+                      if (
+                        range &&
+                        typeof range.startIndex === "number" &&
+                        typeof range.endIndex === "number"
+                      ) {
+                        setBrushRange({
+                          startIndex: range.startIndex,
+                          endIndex: range.endIndex,
+                        })
+                      }
+                    }}
+                    tickFormatter={(v) =>
+                      lang === "th" ? thaiMonthYear(v) : String(v).slice(0, 7)
+                    }
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
           </div>
         </div>
       </CardContent>
     </Card>
   )
 }
+
+function ForecastPageSkeleton() {
+  return (
+    <div className="space-y-6">
+      <div className="bg-white rounded-2xl border p-6" style={{ borderColor: "#E6ECF5" }}>
+        <Skeleton className="mb-2" style={{ height: 14, width: 120 }} />
+        <Skeleton className="mb-6" style={{ height: 22, width: 180 }} />
+        <div className="flex gap-4">
+          <Skeleton style={{ height: 88, width: 280, borderRadius: 16 }} />
+          <Skeleton style={{ height: 88, flex: 1, borderRadius: 16 }} />
+        </div>
+      </div>
+      <div className="bg-white rounded-2xl border p-6" style={{ borderColor: "#E6ECF5" }}>
+        <Skeleton className="mb-2" style={{ height: 18, width: 160 }} />
+        <Skeleton style={{ height: 400, borderRadius: 12 }} />
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 bg-white rounded-2xl border p-6" style={{ borderColor: "#E6ECF5" }}>
+          <Skeleton className="mb-4" style={{ height: 18, width: 200 }} />
+          <Skeleton style={{ height: 160, borderRadius: 12 }} />
+        </div>
+        <div className="bg-white rounded-2xl border p-6" style={{ borderColor: "#E6ECF5" }}>
+          <Skeleton className="mb-4" style={{ height: 18, width: 140 }} />
+          {[1, 2, 3, 4].map(i => <Skeleton key={i} className="mb-2" style={{ height: 44, borderRadius: 12 }} />)}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function ForecastPage({
   t,
   lang,
@@ -701,6 +941,10 @@ function ForecastPage({
     [series, selectedForecastMonth]
   )
 
+  const isLoading = !series?.length && !allExplain?.length
+
+  if (isLoading) return <ForecastPageSkeleton />
+
   return (
     <div className="space-y-6">
       <ForecastSummaryCard
@@ -709,7 +953,8 @@ function ForecastPage({
         month={selectedForecastMonth}
         predicted={selectedSeriesRow?.pred}
         direction={selectedSeriesRow?.direction}
-        previousMonthActual={previousMonthActual}
+        comparisonValue={selectedSeriesRow?.compare_value}
+        comparisonBasis={selectedSeriesRow?.compare_basis}
       />
 
       <ForecastChart
@@ -794,9 +1039,14 @@ function ReasoningPanel({ t, lang, activeRow, selectedMonth }) {
             </div>
           </div>
         ) : (
-          <div className="text-sm text-gray-500">
-            {t("No explanation found for this month.", "ไม่พบคำอธิบายสำหรับเดือนนี้")}
-          </div>
+          <EmptyState
+            icon="🔍"
+            title={t("No explanation available", "ไม่พบคำอธิบาย")}
+            description={t(
+              "No forecast reasoning was found for this month.",
+              "ไม่พบคำอธิบายเชิงเหตุผลสำหรับเดือนนี้"
+            )}
+          />
         )}
       </CardContent>
     </Card>
@@ -807,6 +1057,7 @@ const PER_PAGE = 15
 
 function AspectNewsPage({ t, lang, aspect, news = [], onBack }) {
   const [currentPage, setCurrentPage] = React.useState(1)
+  const [search, setSearch] = React.useState("")
 
   const newsForAspect = React.useMemo(() => {
     if (!aspect) return []
@@ -815,12 +1066,22 @@ function AspectNewsPage({ t, lang, aspect, news = [], onBack }) {
       .sort((a, b) => b.date.localeCompare(a.date))
   }, [aspect, news])
 
+  const filteredNews = React.useMemo(() => {
+    if (!search.trim()) return newsForAspect
+    const q = search.toLowerCase()
+    return newsForAspect.filter(
+      (n) =>
+        (n.title || "").toLowerCase().includes(q) ||
+        (n.source || "").toLowerCase().includes(q)
+    )
+  }, [newsForAspect, search])
+
   React.useEffect(() => {
     setCurrentPage(1)
-  }, [aspect])
+  }, [aspect, search])
 
-  const totalPages = Math.max(1, Math.ceil(newsForAspect.length / PER_PAGE))
-  const pagedNews = newsForAspect.slice((currentPage - 1) * PER_PAGE, currentPage * PER_PAGE)
+  const totalPages = Math.max(1, Math.ceil(filteredNews.length / PER_PAGE))
+  const pagedNews = filteredNews.slice((currentPage - 1) * PER_PAGE, currentPage * PER_PAGE)
 
   const pageNumbers = React.useMemo(() => {
     const pages = []
@@ -832,36 +1093,106 @@ function AspectNewsPage({ t, lang, aspect, news = [], onBack }) {
   }, [currentPage, totalPages])
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-6 xecon-fade-in">
+      {/* Breadcrumb */}
+      <nav className="flex items-center gap-2 text-sm">
         <button
           onClick={onBack}
-          className="px-4 py-2 rounded-xl bg-white hover:bg-gray-50 transition"
-          style={{ border: `1px solid ${THEME.border}` }}
+          className="text-gray-500 hover:text-gray-800 transition font-medium"
+          style={{ cursor: "pointer", background: "none", border: "none", padding: 0 }}
         >
-          ← {t("Back", "ย้อนกลับ")}
+          {t("Forecast", "การพยากรณ์")}
         </button>
-        <div className="text-xs text-gray-500">{t("Sorted by newest", "เรียงล่าสุดก่อน")}</div>
-      </div>
+        <span className="text-gray-300">›</span>
+        <span className="text-gray-800 font-semibold">{aspect ?? t("Aspect", "ประเด็น")}</span>
+        {filteredNews.length > 0 && (
+          <span className="ml-1 text-gray-400">({filteredNews.length})</span>
+        )}
+      </nav>
 
       <Card>
         <CardHeader>
-          <CardTitle>
-            {t("Aspect", "ประเด็น")}: {aspect ?? t("Not selected", "ยังไม่ได้เลือก")}
-          </CardTitle>
-          <CardDescription>
-            {t("News list for the selected aspect", "รายการข่าวสำหรับประเด็นที่เลือก")}
-            {newsForAspect.length > 0 ? (
-              <span className="ml-2 text-gray-400">({t(`${newsForAspect.length} total`, `ทั้งหมด ${newsForAspect.length} ข่าว`)})</span>
-            ) : null}
-          </CardDescription>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div>
+              <CardTitle>{aspect ?? t("Not selected", "ยังไม่ได้เลือก")}</CardTitle>
+              <CardDescription>
+                {t("News list for the selected aspect", "รายการข่าวสำหรับประเด็นที่เลือก")}
+                {newsForAspect.length > 0 && (
+                  <span className="ml-2 text-gray-400">
+                    ({t(`${newsForAspect.length} total`, `ทั้งหมด ${newsForAspect.length} ข่าว`)})
+                  </span>
+                )}
+              </CardDescription>
+            </div>
+            {newsForAspect.length > 0 && (
+              <div className="relative flex-shrink-0">
+                <input
+                  type="text"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder={t("Search headlines…", "ค้นหาข่าว…")}
+                  className="pl-8 pr-3 py-1.5 text-sm rounded-lg border bg-white outline-none"
+                  style={{
+                    borderColor: THEME.border,
+                    width: 220,
+                    boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
+                  }}
+                />
+                <span
+                  className="absolute left-2.5 top-1/2 text-gray-400"
+                  style={{ transform: "translateY(-50%)", fontSize: 14, pointerEvents: "none" }}
+                >
+                  🔍
+                </span>
+                {search && (
+                  <button
+                    onClick={() => setSearch("")}
+                    className="absolute right-2.5 top-1/2 text-gray-400 hover:text-gray-600"
+                    style={{ transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", fontSize: 14 }}
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
         </CardHeader>
 
         <CardContent className="p-0">
           {!aspect ? (
-            <div className="p-6 text-sm text-gray-600">{t("Please select an aspect first.", "กรุณาเลือกประเด็นก่อน")}</div>
-          ) : newsForAspect.length === 0 ? (
-            <div className="p-6 text-sm text-gray-600">{t("No news found for this aspect.", "ไม่พบข่าวสำหรับประเด็นนี้")}</div>
+            <EmptyState
+              icon="☝️"
+              title={t("Select an aspect", "เลือกประเด็น")}
+              description={t("Tap an aspect from the forecast page to see related news.", "แตะประเด็นจากหน้าพยากรณ์เพื่อดูข่าวที่เกี่ยวข้อง")}
+              action={
+                <button
+                  onClick={onBack}
+                  className="px-4 py-2 rounded-xl text-sm font-medium text-white"
+                  style={{ background: THEME.blue, border: "none", cursor: "pointer" }}
+                >
+                  ← {t("Go back", "ย้อนกลับ")}
+                </button>
+              }
+            />
+          ) : filteredNews.length === 0 ? (
+            <EmptyState
+              icon="📭"
+              title={search ? t("No results found", "ไม่พบผลลัพธ์") : t("No news found", "ไม่พบข่าว")}
+              description={
+                search
+                  ? t(`No headlines matching "${search}"`, `ไม่พบข่าวที่ตรงกับ "${search}"`)
+                  : t("No news articles available for this aspect.", "ไม่มีข่าวสำหรับประเด็นนี้")
+              }
+              action={search ? (
+                <button
+                  onClick={() => setSearch("")}
+                  className="px-4 py-2 rounded-xl text-sm font-medium"
+                  style={{ border: `1px solid ${THEME.border}`, background: "#fff", cursor: "pointer" }}
+                >
+                  {t("Clear search", "ล้างการค้นหา")}
+                </button>
+              ) : null}
+            />
           ) : (
             <>
               <div className="divide-y divide-gray-100">
@@ -872,21 +1203,32 @@ function AspectNewsPage({ t, lang, aspect, news = [], onBack }) {
                   const globalIdx = (currentPage - 1) * PER_PAGE + idx
 
                   return (
-                    <div key={`${n.date}-${globalIdx}`} className="p-6 hover:bg-gray-50 transition">
-                      <div className="text-xs text-gray-500">
-                        {displayDate} • {n.source}
-                      </div>
-                      <a href={n.url} target="_blank" rel="noreferrer" className="text-base font-semibold text-gray-900 mt-1 inline-block hover:underline">
-                        {n.title}
-                      </a>
-                      <div className="mt-2">
-                        <Badge
-                          variant="outline"
-                          className="text-[10px] px-2 py-0.5 border-0 font-semibold uppercase tracking-wider"
-                          style={{ backgroundColor: `${tagColor}15`, color: tagColor }}
-                        >
-                          {tagLabel}
-                        </Badge>
+                    <div key={`${n.date}-${globalIdx}`} className="xecon-news-row px-6 py-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="text-xs text-gray-400 mb-1">
+                            {displayDate}
+                            {n.source && <span className="ml-2 font-medium" style={{ color: THEME.blue }}>{n.source}</span>}
+                          </div>
+                          <a
+                            href={n.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-sm font-semibold text-gray-900 hover:text-blue-700 transition leading-snug block"
+                          >
+                            {n.title}
+                          </a>
+                          <div className="mt-1.5">
+                            <Badge
+                              variant="outline"
+                              className="text-[10px] px-2 py-0.5 border-0 font-semibold uppercase tracking-wider"
+                              style={{ backgroundColor: `${tagColor}18`, color: tagColor }}
+                            >
+                              {tagLabel}
+                            </Badge>
+                          </div>
+                        </div>
+                        <span className="text-gray-300 text-sm flex-shrink-0 mt-1">↗</span>
                       </div>
                     </div>
                   )
@@ -1077,8 +1419,10 @@ function AnalyticsPage({ t, lang, news = [], shapData = [] }) {
     return { shortTermData: shortTerm, longTermData: longTerm }
   }, [news])
 
+  const isLoading = !news?.length && !shapData?.length && !agencyStack.data.length
+
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 xecon-fade-in">
       <SectionHeader
         title={t("News analysis visualizations", "การวิเคราะห์ข่าวเชิงลึก")}
         subtitle={t("Volume, sentiment, impact, and feature importance", "ปริมาณข่าว อารมณ์ข่าว ผลกระทบ และความสำคัญของตัวแปร")}
@@ -1093,9 +1437,11 @@ function AnalyticsPage({ t, lang, news = [], shapData = [] }) {
           </CardHeader>
           <CardContent>
             {agencyErr ? (
-              <div className="rounded-xl border border-red-200 bg-red-50 text-red-700 text-sm p-3">{agencyErr}</div>
+              <div className="rounded-xl border border-red-200 bg-red-50 text-red-700 text-sm p-3 flex items-center gap-2">
+                <span>⚠️</span> {agencyErr}
+              </div>
             ) : agencyStack.data.length === 0 ? (
-              <div className="text-sm text-gray-500">{t("Loading from Supabase…", "กำลังโหลดข้อมูลจาก Supabase…")}</div>
+              <Skeleton style={{ height: 320, borderRadius: 8 }} />
             ) : (
               <ResponsiveContainer width="100%" height={320}>
                 <BarChart data={agencyStack.data}>
@@ -1268,51 +1614,47 @@ export default function App() {
   const [newsReal, setNewsReal] = React.useState([])
   const [shapData, setShapData] = React.useState([])
 
-  // ── Month state lifted up so the subbar can access it ──
   const [selectedForecastMonth, setSelectedForecastMonth] = React.useState("")
 
   const latestActualMonth = React.useMemo(() => {
-    const actualRows = (series || []).filter((r) => r.actual != null && r.date)
+    const actualRows = (series || [])
+      .filter((r) => r.actual != null && r.date)
+      .sort((a, b) => String(a.date).localeCompare(String(b.date)))
+
     if (!actualRows.length) return null
     return actualRows[actualRows.length - 1].date.slice(0, 7)
   }, [series])
 
-  const forecastMonths = React.useMemo(() => {
-    if (!latestActualMonth) return []
-    const [year, month] = latestActualMonth.split("-").map(Number)
-    const base = new Date(year, month - 1, 1)
-    const months = []
-    for (let i = 1; i <= 3; i++) {
-      const d = new Date(base)
-      d.setMonth(d.getMonth() + i)
-      months.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`)
-    }
-    return months
-  }, [latestActualMonth])
+  const availableFutureMonths = React.useMemo(() => {
+    if (!series?.length || !latestActualMonth) return []
+
+    return [...new Set(
+      series
+        .filter((r) => r.pred != null && r.date)
+        .map((r) => r.date.slice(0, 7))
+        .filter((m) => m > latestActualMonth)
+    )].sort((a, b) => a.localeCompare(b))
+  }, [series, latestActualMonth])
 
   const explainMonths = React.useMemo(
-    () => [...new Set((allExplain || []).map((r) => r.date).filter(Boolean))].sort((a, b) => a.localeCompare(b)),
+    () =>
+      [...new Set((allExplain || []).map((r) => r.date).filter(Boolean))].sort((a, b) =>
+        a.localeCompare(b)
+      ),
     [allExplain]
   )
 
-  const seriesMonths = React.useMemo(
-    () => [...new Set((series || []).map((r) => r.date?.slice(0, 7)).filter(Boolean))].sort((a, b) => a.localeCompare(b)),
-    [series]
-  )
-
-  const availableFutureMonths = React.useMemo(
-    () => forecastMonths.filter((m) => explainMonths.includes(m) || seriesMonths.includes(m)),
-    [forecastMonths, explainMonths, seriesMonths]
-  )
-
-  const historicalMonths = React.useMemo(
-    () => explainMonths.filter((m) => !forecastMonths.includes(m)),
-    [explainMonths, forecastMonths]
-  )
+  const historicalMonths = React.useMemo(() => {
+    return explainMonths.filter((m) => !availableFutureMonths.includes(m))
+  }, [explainMonths, availableFutureMonths])
 
   React.useEffect(() => {
-    const allPossibleMonths = [...new Set([...availableFutureMonths, ...historicalMonths])].sort((a, b) => a.localeCompare(b))
+    const allPossibleMonths = [...new Set([...availableFutureMonths, ...historicalMonths])].sort((a, b) =>
+      a.localeCompare(b)
+    )
+
     if (!allPossibleMonths.length) return
+
     if (!allPossibleMonths.includes(selectedForecastMonth)) {
       setSelectedForecastMonth(
         availableFutureMonths.length > 0
@@ -1322,16 +1664,22 @@ export default function App() {
     }
   }, [availableFutureMonths, historicalMonths, selectedForecastMonth])
 
-  // ── Data loading ──
   React.useEffect(() => {
     let alive = true
+
     async function load() {
       setErr("")
       try {
         const [s, e, ts, newsRows, shapRes] = await Promise.allSettled([
-          getSummary(), getAllExplain(), getTimeSeries(2000), getNews(), getShap(),
+          getSummary(),
+          getAllExplain(),
+          getTimeSeries(2000),
+          getNews(),
+          getShap(),
         ])
+
         if (!alive) return
+
         setSummary(s.status === "fulfilled" ? s.value : null)
         setAllExplain(e.status === "fulfilled" ? e.value?.data || [] : [])
         setSeries(ts.status === "fulfilled" ? ts.value?.data || [] : [])
@@ -1342,21 +1690,68 @@ export default function App() {
         setErr(String(ex?.message || ex))
       }
     }
+
     load()
-    return () => { alive = false }
+    return () => {
+      alive = false
+    }
   }, [])
 
   const isHistorical = historicalMonths.includes(selectedForecastMonth)
   const showSubbar = page === "forecast" || page === "aspectNews"
+  const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false)
+
+  // ── All selectable months for keyboard nav (forecast + historical) ──
+  const allSelectableMonths = React.useMemo(
+    () => [...new Set([...availableFutureMonths, ...historicalMonths])].sort((a, b) => a.localeCompare(b)),
+    [availableFutureMonths, historicalMonths]
+  )
+
+  // ── Keyboard navigation: ← → step through months, Escape closes mobile menu ──
+  React.useEffect(() => {
+    if (!showSubbar) return
+    const onKey = (e) => {
+      if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA") return
+      if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
+        e.preventDefault()
+        const idx = allSelectableMonths.indexOf(selectedForecastMonth)
+        if (idx === -1) return
+        const next =
+          e.key === "ArrowRight"
+            ? allSelectableMonths[Math.min(allSelectableMonths.length - 1, idx + 1)]
+            : allSelectableMonths[Math.max(0, idx - 1)]
+        if (next !== selectedForecastMonth) setSelectedForecastMonth(next)
+      }
+      if (e.key === "Escape") setMobileMenuOpen(false)
+    }
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
+  }, [showSubbar, allSelectableMonths, selectedForecastMonth, setSelectedForecastMonth])
+
+  // Close mobile menu on page change
+  React.useEffect(() => { setMobileMenuOpen(false) }, [page])
 
   const tabs = [
-    { id: "forecast",  en: "Forecast & Reasoning",  th: "การพยากรณ์และคำอธิบาย",    Icon: TrendingUp },
-    { id: "analytics", en: "News & Analytics",       th: "ข้อมูลข่าวและการวิเคราะห์", Icon: BarChart3  },
+    { id: "forecast", en: "Forecast & Reasoning", th: "การพยากรณ์และคำอธิบาย", Icon: TrendingUp },
+    { id: "analytics", en: "News & Analytics", th: "ข้อมูลข่าวและการวิเคราะห์", Icon: BarChart3 },
   ]
+
+  const pillStyle = (active) => ({
+    padding: "3px 11px",
+    borderRadius: 99,
+    fontSize: 12,
+    fontWeight: active ? 600 : 500,
+    color: active ? "#fff" : "rgba(255,255,255,0.6)",
+    background: active ? "rgba(255,255,255,0.18)" : "transparent",
+    border: `1px solid ${active ? "rgba(255,255,255,0.4)" : "rgba(255,255,255,0.15)"}`,
+    cursor: "pointer",
+    whiteSpace: "nowrap",
+    flexShrink: 0,
+    transition: "all 0.15s",
+  })
 
   return (
     <div className="min-h-screen" style={{ background: "#F0F4FA" }}>
-
       {/* ── Topbar ── */}
       <div
         className="sticky top-0 z-50 w-full"
@@ -1364,7 +1759,7 @@ export default function App() {
       >
         {/* Main bar */}
         <div
-          className="max-w-[1400px] mx-auto px-7 flex items-center justify-between gap-6"
+          className="max-w-[1400px] mx-auto px-4 md:px-7 flex items-center justify-between gap-4 md:gap-6"
           style={{ height: 60 }}
         >
           {/* Brand */}
@@ -1376,16 +1771,18 @@ export default function App() {
               <Activity className="text-white" style={{ width: 20, height: 20 }} />
             </div>
             <div className="leading-tight">
-              <div className="text-white font-semibold" style={{ fontSize: 20 }}>XEconomic</div>
-              <div style={{ fontSize: 13, color: "rgba(255,255,255,0.45)", marginTop: 1 }}>
+              <div className="text-white font-semibold" style={{ fontSize: 18 }}>
+                XEconomic
+              </div>
+              <div style={{ fontSize: 11, color: "rgba(255,255,255,0.45)", marginTop: 1 }}>
                 CCI Forecast &amp; XAI
               </div>
             </div>
           </div>
 
-          {/* Tabs */}
+          {/* Desktop Tabs — hidden on mobile */}
           <div
-            className="flex items-center gap-0.5 rounded-[10px] p-[3px]"
+            className="hidden md:flex items-center gap-0.5 rounded-[10px] p-[3px]"
             style={{ background: "rgba(255,255,255,0.08)" }}
           >
             {tabs.map(({ id, en, th, Icon }) => {
@@ -1413,44 +1810,102 @@ export default function App() {
             })}
           </div>
 
-          {/* Language toggle */}
-          <div
-            className="flex items-center gap-0.5 rounded-lg p-[3px] flex-shrink-0"
-            style={{ background: "rgba(255,255,255,0.08)" }}
-          >
-            {[["en", "EN"], ["th", "ไทย"]].map(([code, label]) => (
-              <button
-                key={code}
-                onClick={() => setLang(code)}
-                style={{
-                  padding: "4px 11px",
-                  borderRadius: 6,
-                  fontSize: 12,
-                  fontWeight: 600,
-                  background: lang === code ? "#fff" : "transparent",
-                  color: lang === code ? THEME.navy : "rgba(255,255,255,0.55)",
-                  border: "none",
-                  cursor: "pointer",
-                  transition: "all 0.15s",
-                }}
-              >
-                {label}
-              </button>
-            ))}
+          {/* Right side: lang toggle + hamburger */}
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {/* Language toggle */}
+            <div
+              className="flex items-center gap-0.5 rounded-lg p-[3px]"
+              style={{ background: "rgba(255,255,255,0.08)" }}
+            >
+              {[["en", "EN"], ["th", "ไทย"]].map(([code, label]) => (
+                <button
+                  key={code}
+                  onClick={() => setLang(code)}
+                  style={{
+                    padding: "4px 11px",
+                    borderRadius: 6,
+                    fontSize: 12,
+                    fontWeight: 600,
+                    background: lang === code ? "#fff" : "transparent",
+                    color: lang === code ? THEME.navy : "rgba(255,255,255,0.55)",
+                    border: "none",
+                    cursor: "pointer",
+                    transition: "all 0.15s",
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            {/* Hamburger — mobile only */}
+            <button
+              className="md:hidden flex flex-col justify-center items-center gap-1"
+              onClick={() => setMobileMenuOpen((v) => !v)}
+              aria-label="Menu"
+              style={{
+                width: 36, height: 36, background: "rgba(255,255,255,0.1)",
+                border: "none", borderRadius: 8, cursor: "pointer", flexShrink: 0,
+              }}
+            >
+              {mobileMenuOpen ? (
+                <span style={{ color: "#fff", fontSize: 18, lineHeight: 1 }}>✕</span>
+              ) : (
+                <>
+                  <span style={{ display: "block", width: 16, height: 2, background: "rgba(255,255,255,0.8)", borderRadius: 2 }} />
+                  <span style={{ display: "block", width: 16, height: 2, background: "rgba(255,255,255,0.8)", borderRadius: 2 }} />
+                  <span style={{ display: "block", width: 16, height: 2, background: "rgba(255,255,255,0.8)", borderRadius: 2 }} />
+                </>
+              )}
+            </button>
           </div>
         </div>
 
-        {/* Subbar — forecast context + month picker */}
+        {/* Mobile menu drawer */}
+        {mobileMenuOpen && (
+          <div
+            className="md:hidden"
+            style={{ background: "#1a4280", borderTop: "1px solid rgba(255,255,255,0.1)" }}
+          >
+            {tabs.map(({ id, en, th, Icon }) => {
+              const active = page === id || (page === "aspectNews" && id === "forecast")
+              return (
+                <button
+                  key={id}
+                  onClick={() => setPage(id)}
+                  className="flex items-center gap-3 w-full text-left"
+                  style={{
+                    padding: "14px 20px",
+                    fontSize: 15,
+                    fontWeight: active ? 600 : 400,
+                    color: active ? "#fff" : "rgba(255,255,255,0.65)",
+                    background: active ? "rgba(255,255,255,0.08)" : "transparent",
+                    border: "none",
+                    borderBottom: "1px solid rgba(255,255,255,0.06)",
+                    cursor: "pointer",
+                    width: "100%",
+                  }}
+                >
+                  <Icon style={{ width: 16, height: 16 }} />
+                  {t(en, th)}
+                  {active && <span style={{ marginLeft: "auto", fontSize: 12, color: "#4ade80" }}>●</span>}
+                </button>
+              )
+            })}
+          </div>
+        )}
+
+        {/* Subbar */}
         {showSubbar && (
           <div style={{ background: "#1a4280", borderTop: "1px solid rgba(255,255,255,0.07)" }}>
             <div
-              className="max-w-[1400px] mx-auto px-7 flex items-center"
+              className="max-w-[1400px] mx-auto px-4 md:px-7 flex items-center"
               style={{ height: 44, gap: 0 }}
             >
-              {/* Context pill */}
+              {/* Context pill — hidden on very small screens */}
               <div
-                className="flex items-center gap-2 flex-shrink-0"
-                style={{ paddingRight: 20, borderRight: "1px solid rgba(255,255,255,0.1)" }}
+                className="hidden sm:flex items-center gap-2 flex-shrink-0"
+                style={{ paddingRight: 16, borderRight: "1px solid rgba(255,255,255,0.1)" }}
               >
                 <div
                   className="rounded-full flex-shrink-0"
@@ -1459,17 +1914,15 @@ export default function App() {
                     background: isHistorical ? "rgba(255,255,255,0.35)" : "#4ade80",
                   }}
                 />
-                <span style={{ fontSize: 12, color: "rgba(255,255,255,0.5)" }}>
-                  {isHistorical
-                    ? t("Viewing history for", "กำลังดูประวัติ")
-                    : t("Viewing forecast for", "กำลังดูการพยากรณ์")}
+                <span style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", whiteSpace: "nowrap" }}>
+                  {isHistorical ? t("History", "ประวัติ") : t("Forecast", "พยากรณ์")}
                 </span>
-                <span style={{ fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,0.9)" }}>
+                <span style={{ fontSize: 11, fontWeight: 600, color: "rgba(255,255,255,0.9)", whiteSpace: "nowrap" }}>
                   {monthLabel(selectedForecastMonth, lang)}
                 </span>
               </div>
 
-              {/* Month pills + historical picker */}
+              {/* Month pills + historical dropdown */}
               <div
                 className="flex items-center gap-1.5 overflow-x-auto"
                 style={{ paddingLeft: 20, scrollbarWidth: "none" }}
@@ -1482,19 +1935,7 @@ export default function App() {
                   <button
                     key={m}
                     onClick={() => setSelectedForecastMonth(m)}
-                    style={{
-                      padding: "3px 11px",
-                      borderRadius: 99,
-                      fontSize: 12,
-                      fontWeight: m === selectedForecastMonth ? 600 : 500,
-                      color: m === selectedForecastMonth ? "#fff" : "rgba(255,255,255,0.6)",
-                      background: m === selectedForecastMonth ? "rgba(255,255,255,0.18)" : "transparent",
-                      border: `1px solid ${m === selectedForecastMonth ? "rgba(255,255,255,0.4)" : "rgba(255,255,255,0.15)"}`,
-                      cursor: "pointer",
-                      whiteSpace: "nowrap",
-                      flexShrink: 0,
-                      transition: "all 0.15s",
-                    }}
+                    style={pillStyle(m === selectedForecastMonth)}
                   >
                     {monthLabel(m, lang)}
                   </button>
@@ -1522,7 +1963,9 @@ export default function App() {
                         flexShrink: 0,
                       }}
                     >
-                      <option value="" style={{ background: THEME.navy }}>{t("Select month…", "เลือกเดือน…")}</option>
+                      <option value="" style={{ background: THEME.navy }}>
+                        {t("Select month…", "เลือกเดือน…")}
+                      </option>
                       {historicalMonths.map((m) => (
                         <option key={m} value={m} style={{ background: THEME.navy }}>
                           {monthLabel(m, lang)}
@@ -1538,13 +1981,13 @@ export default function App() {
       </div>
 
       {/* ── Page content ── */}
-      <div className="max-w-[1400px] mx-auto px-7 py-6 space-y-5">
+      <div className="max-w-[1400px] mx-auto px-4 md:px-7 py-5 md:py-6 space-y-5">
         {err && (
           <div
-            className="rounded-xl px-4 py-2.5 text-sm"
+            className="rounded-xl px-4 py-2.5 text-sm flex items-center gap-2"
             style={{ background: "#FEF2F2", border: "1px solid #FECACA", color: "#B91C1C" }}
           >
-            {err}
+            <span>⚠️</span> {err}
           </div>
         )}
 
@@ -1560,7 +2003,10 @@ export default function App() {
             setSelectedForecastMonth={setSelectedForecastMonth}
             availableFutureMonths={availableFutureMonths}
             historicalMonths={historicalMonths}
-            onSelectAspect={(asp) => { setSelectedAspect(asp); setPage("aspectNews") }}
+            onSelectAspect={(asp) => {
+              setSelectedAspect(asp)
+              setPage("aspectNews")
+            }}
           />
         )}
 
@@ -1578,7 +2024,6 @@ export default function App() {
           />
         )}
       </div>
-
     </div>
   )
 }

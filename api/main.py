@@ -161,10 +161,8 @@ def dashboard_explain_by_date(date: str = Query(...)):
     if row.empty:
         return {"data": None}
     return {"data": row.iloc[0].to_dict()}
-
 @app.get("/dashboard/timeseries")
 def dashboard_timeseries(limit: int = Query(500, ge=1, le=5000)):
-
     if not os.path.exists(CCI_CSV):
         return {"data": []}
 
@@ -179,27 +177,103 @@ def dashboard_timeseries(limit: int = Query(500, ge=1, le=5000)):
 
     df_actual = df_actual.dropna(subset=["date", "actual"])
     df_actual["date"] = df_actual["date"].dt.to_period("M").dt.to_timestamp()
-
     df_actual = df_actual[["date", "actual"]]
 
     # ---- Load prediction ----
     if os.path.exists(PRED_LATEST_CSV):
         df_pred = pd.read_csv(PRED_LATEST_CSV)
 
-        pred_col = "predicted" if "predicted" in df_pred.columns else "cci_pred"
-        if "date" in df_pred.columns and pred_col in df_pred.columns:
+        pred_col = "predicted" if "predicted" in df_pred.columns else "cci_pred" if "cci_pred" in df_pred.columns else None
+        if "date" in df_pred.columns and pred_col is not None:
             df_pred["date"] = pd.to_datetime(df_pred["date"], errors="coerce")
             df_pred["pred"] = pd.to_numeric(df_pred[pred_col], errors="coerce")
             df_pred["date"] = df_pred["date"].dt.to_period("M").dt.to_timestamp()
-            df_pred = df_pred[["date", "pred", "direction"]]
+
+            # normalize optional comparison columns from pred_direction.csv
+            compare_value_col = None
+            for c in ["compare_value", "comparison_value", "prev_value", "previous_value", "base_value"]:
+                if c in df_pred.columns:
+                    compare_value_col = c
+                    break
+
+            compare_basis_col = None
+            for c in ["compare_basis", "comparison_basis", "prev_type", "previous_type", "base_type"]:
+                if c in df_pred.columns:
+                    compare_basis_col = c
+                    break
+
+            if compare_value_col is not None:
+                df_pred["compare_value"] = pd.to_numeric(df_pred[compare_value_col], errors="coerce")
+            else:
+                df_pred["compare_value"] = np.nan
+
+            if compare_basis_col is not None:
+                df_pred["compare_basis"] = df_pred[compare_basis_col].astype(str).str.strip().str.lower()
+            else:
+                df_pred["compare_basis"] = None
+
+            # if compare info not provided in csv, infer it:
+            # compare against previous month actual if available, otherwise previous month predicted
+            pred_lookup = (
+                df_pred[["date", "pred"]]
+                .dropna(subset=["date"])
+                .sort_values("date")
+                .copy()
+            )
+
+            actual_lookup = (
+                df_actual[["date", "actual"]]
+                .dropna(subset=["date"])
+                .sort_values("date")
+                .copy()
+            )
+
+            actual_map = dict(zip(actual_lookup["date"], actual_lookup["actual"]))
+            pred_map = dict(zip(pred_lookup["date"], pred_lookup["pred"]))
+
+            def infer_compare(row):
+                if pd.notna(row.get("compare_value")) and pd.notna(row.get("compare_basis")):
+                    basis = str(row["compare_basis"]).strip().lower()
+                    if basis in ["pred", "predicted", "forecast"]:
+                        basis = "predicted"
+                    elif basis in ["actual", "real"]:
+                        basis = "actual"
+                    else:
+                        basis = None
+                    return pd.Series([row["compare_value"], basis])
+
+                d = row["date"]
+                if pd.isna(d):
+                    return pd.Series([np.nan, None])
+
+                prev_month = (pd.Timestamp(d) - pd.DateOffset(months=1)).to_period("M").to_timestamp()
+
+                if prev_month in actual_map and pd.notna(actual_map[prev_month]):
+                    return pd.Series([actual_map[prev_month], "actual"])
+
+                if prev_month in pred_map and pd.notna(pred_map[prev_month]):
+                    return pd.Series([pred_map[prev_month], "predicted"])
+
+                return pd.Series([np.nan, None])
+
+            df_pred[["compare_value", "compare_basis"]] = df_pred.apply(infer_compare, axis=1)
+
+            keep_cols = ["date", "pred"]
+            if "direction" in df_pred.columns:
+                keep_cols.append("direction")
+            else:
+                df_pred["direction"] = None
+                keep_cols.append("direction")
+
+            keep_cols += ["compare_value", "compare_basis"]
+            df_pred = df_pred[keep_cols]
         else:
-            df_pred = pd.DataFrame(columns=["date", "pred", "direction"])
+            df_pred = pd.DataFrame(columns=["date", "pred", "direction", "compare_value", "compare_basis"])
     else:
-        df_pred = pd.DataFrame(columns=["date", "pred", "direction"])
+        df_pred = pd.DataFrame(columns=["date", "pred", "direction", "compare_value", "compare_basis"])
 
     # ---- Merge ----
     df = pd.merge(df_actual, df_pred, on="date", how="outer")
-
     df = df.sort_values("date")
 
     # apply limit
@@ -210,7 +284,6 @@ def dashboard_timeseries(limit: int = Query(500, ge=1, le=5000)):
     df = df.replace({np.nan: None})
 
     rows = df.to_dict(orient="records")
-
     return {"data": rows}
 
 
