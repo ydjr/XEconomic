@@ -343,6 +343,65 @@ function useNavigation() {
   return { page, setPage }
 }
 
+function ForecastMonthSelector({ t, selectedMonth, onSelectMonth, futureMonths, historicalMonths, lang }) {
+  return (
+    <Card>
+      <CardContent className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div>
+          <div className="text-sm font-semibold text-gray-800">{t("Forecast horizon", "ช่วงเดือนพยากรณ์")}</div>
+          <div className="text-xs text-gray-500 mt-1">
+            {t("Choose a month to inspect prediction and reasoning", "เลือกเดือนเพื่อดูค่าพยากรณ์และเหตุผลประกอบ")}
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-end gap-3">
+          {futureMonths.map((m) => {
+            const active = m === selectedMonth
+
+            return (
+              <button
+                key={m}
+                onClick={() => onSelectMonth(m)}
+                className="px-4 py-2 rounded-xl text-sm font-semibold transition"
+                style={{
+                  backgroundColor: active ? THEME.blue : "#FFFFFF",
+                  color: active ? "#FFFFFF" : "#334155",
+                  border: `1px solid ${active ? THEME.blue : THEME.border}`,
+                  boxShadow: active ? "0 10px 20px rgba(47,111,237,0.20)" : "none",
+                }}
+              >
+                {lang === "th" ? thaiMonthYear(m) : m}
+              </button>
+            )
+          })}
+
+          {historicalMonths.length > 0 ? (
+            <div className="flex flex-col justify-end">
+              <span className="text-xs text-gray-500 mb-1 ml-1">
+                {t("Historical explanation", "คำอธิบายย้อนหลัง")}
+              </span>
+
+              <input
+                type="month"
+                value={historicalMonths.includes(selectedMonth) ? selectedMonth : ""}
+                min={historicalMonths[0]}
+                max={historicalMonths[historicalMonths.length - 1]}
+                onChange={(e) => {
+                  if (historicalMonths.includes(e.target.value)) {
+                    onSelectMonth(e.target.value)
+                  }
+                }}
+                className="px-3 py-2 rounded-xl text-sm bg-white"
+                style={{ border: `1px solid ${THEME.border}` }}
+              />
+            </div>
+          ) : null}
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
 function ForecastSummaryCard({
   t,
   lang,
@@ -670,16 +729,77 @@ function ForecastChart({ t, lang, series, selectedMonth }) {
     </Card>
   )
 }
-function ForecastPage({
-  t,
-  lang,
-  series,
-  summary,
-  allExplain,
-  news = [],
-  onSelectAspect,
-  selectedForecastMonth,
-}) {
+
+function ForecastPage({ t, lang, series, summary, allExplain, news = [], onSelectAspect }) {
+  const latestActualMonth = React.useMemo(() => {
+    const actualRows = (series || []).filter((r) => r.actual != null && r.date)
+    if (!actualRows.length) return null
+    return actualRows[actualRows.length - 1].date.slice(0, 7)
+  }, [series])
+
+  const forecastMonths = React.useMemo(() => {
+    if (!latestActualMonth) return []
+
+    const [year, month] = latestActualMonth.split("-").map(Number)
+    const base = new Date(year, month - 1, 1)
+
+    const months = []
+    for (let i = 1; i <= 3; i++) {
+      const d = new Date(base)
+      d.setMonth(d.getMonth() + i)
+
+      const y = d.getFullYear()
+      const m = String(d.getMonth() + 1).padStart(2, "0")
+      months.push(`${y}-${m}`)
+    }
+
+    return months
+  }, [latestActualMonth])
+
+  const explainMonths = React.useMemo(
+    () =>
+      [...new Set((allExplain || []).map((r) => r.date).filter(Boolean))].sort((a, b) =>
+        a.localeCompare(b)
+      ),
+    [allExplain]
+  )
+
+  const seriesMonths = React.useMemo(
+    () =>
+      [...new Set((series || []).map((r) => r.date?.slice(0, 7)).filter(Boolean))].sort((a, b) =>
+        a.localeCompare(b)
+      ),
+    [series]
+  )
+
+  const availableFutureMonths = React.useMemo(
+    () => forecastMonths.filter((m) => explainMonths.includes(m) || seriesMonths.includes(m)),
+    [forecastMonths, explainMonths, seriesMonths]
+  )
+
+  const historicalMonths = React.useMemo(
+    () => explainMonths.filter((m) => !forecastMonths.includes(m)),
+    [explainMonths, forecastMonths]
+  )
+
+  const [selectedForecastMonth, setSelectedForecastMonth] = React.useState("")
+
+  React.useEffect(() => {
+    const allPossibleMonths = [...new Set([...availableFutureMonths, ...historicalMonths])].sort((a, b) =>
+      a.localeCompare(b)
+    )
+
+    if (!allPossibleMonths.length) return
+
+    if (!allPossibleMonths.includes(selectedForecastMonth)) {
+      if (availableFutureMonths.length > 0) {
+        setSelectedForecastMonth(availableFutureMonths[0])
+      } else {
+        setSelectedForecastMonth(allPossibleMonths[allPossibleMonths.length - 1])
+      }
+    }
+  }, [availableFutureMonths, historicalMonths, selectedForecastMonth])
+
   const previousMonthActual = React.useMemo(() => {
     if (!selectedForecastMonth || !series?.length) return null
 
@@ -703,6 +823,16 @@ function ForecastPage({
 
   return (
     <div className="space-y-6">
+      <ForecastMonthSelector
+        t={t}
+        selectedMonth={selectedForecastMonth}
+        onSelectMonth={setSelectedForecastMonth}
+        futureMonths={availableFutureMonths}
+        historicalMonths={historicalMonths}
+        lang={lang}
+        latestActualMonth={latestActualMonth}
+      />
+
       <ForecastSummaryCard
         t={t}
         lang={lang}
@@ -1268,61 +1398,6 @@ export default function App() {
   const [newsReal, setNewsReal] = React.useState([])
   const [shapData, setShapData] = React.useState([])
 
-  // ── Month state lifted up so the subbar can access it ──
-  const [selectedForecastMonth, setSelectedForecastMonth] = React.useState("")
-
-  const latestActualMonth = React.useMemo(() => {
-    const actualRows = (series || []).filter((r) => r.actual != null && r.date)
-    if (!actualRows.length) return null
-    return actualRows[actualRows.length - 1].date.slice(0, 7)
-  }, [series])
-
-  const forecastMonths = React.useMemo(() => {
-    if (!latestActualMonth) return []
-    const [year, month] = latestActualMonth.split("-").map(Number)
-    const base = new Date(year, month - 1, 1)
-    const months = []
-    for (let i = 1; i <= 3; i++) {
-      const d = new Date(base)
-      d.setMonth(d.getMonth() + i)
-      months.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`)
-    }
-    return months
-  }, [latestActualMonth])
-
-  const explainMonths = React.useMemo(
-    () => [...new Set((allExplain || []).map((r) => r.date).filter(Boolean))].sort((a, b) => a.localeCompare(b)),
-    [allExplain]
-  )
-
-  const seriesMonths = React.useMemo(
-    () => [...new Set((series || []).map((r) => r.date?.slice(0, 7)).filter(Boolean))].sort((a, b) => a.localeCompare(b)),
-    [series]
-  )
-
-  const availableFutureMonths = React.useMemo(
-    () => forecastMonths.filter((m) => explainMonths.includes(m) || seriesMonths.includes(m)),
-    [forecastMonths, explainMonths, seriesMonths]
-  )
-
-  const historicalMonths = React.useMemo(
-    () => explainMonths.filter((m) => !forecastMonths.includes(m)),
-    [explainMonths, forecastMonths]
-  )
-
-  React.useEffect(() => {
-    const allPossibleMonths = [...new Set([...availableFutureMonths, ...historicalMonths])].sort((a, b) => a.localeCompare(b))
-    if (!allPossibleMonths.length) return
-    if (!allPossibleMonths.includes(selectedForecastMonth)) {
-      setSelectedForecastMonth(
-        availableFutureMonths.length > 0
-          ? availableFutureMonths[0]
-          : allPossibleMonths[allPossibleMonths.length - 1]
-      )
-    }
-  }, [availableFutureMonths, historicalMonths, selectedForecastMonth])
-
-  // ── Data loading ──
   React.useEffect(() => {
     let alive = true
     async function load() {
@@ -1346,12 +1421,9 @@ export default function App() {
     return () => { alive = false }
   }, [])
 
-  const isHistorical = historicalMonths.includes(selectedForecastMonth)
-  const showSubbar = page === "forecast" || page === "aspectNews"
-
   const tabs = [
-    { id: "forecast",  en: "Forecast & Reasoning",  th: "การพยากรณ์และคำอธิบาย",    Icon: TrendingUp },
-    { id: "analytics", en: "News & Analytics",       th: "ข้อมูลข่าวและการวิเคราะห์", Icon: BarChart3  },
+    { id: "forecast",  en: "Forecast & Reasoning", th: "การพยากรณ์และคำอธิบาย", Icon: TrendingUp  },
+    { id: "analytics", en: "News & Analytics",      th: "ข้อมูลข่าวและการวิเคราะห์", Icon: BarChart3 },
   ]
 
   return (
@@ -1362,32 +1434,26 @@ export default function App() {
         className="sticky top-0 z-50 w-full"
         style={{ backgroundColor: THEME.navy, borderBottom: "1px solid rgba(255,255,255,0.08)" }}
       >
-        {/* Main bar */}
-        <div
-          className="max-w-[1400px] mx-auto px-7 flex items-center justify-between gap-6"
-          style={{ height: 60 }}
-        >
+        <div className="max-w-[1400px] mx-auto px-7 flex items-center justify-between gap-6"
+             style={{ height: 56 }}>
+
           {/* Brand */}
           <div className="flex items-center gap-2.5 flex-shrink-0">
-            <div
-              className="flex items-center justify-center rounded-lg flex-shrink-0"
-              style={{ width: 35, height: 35, background: "rgba(255,255,255,0.15)" }}
-            >
+            <div className="flex items-center justify-center rounded-lg"
+                 style={{ width: 35, height: 35, background: "rgba(255,255,255,0.15)" }}>
               <Activity className="text-white" style={{ width: 20, height: 20 }} />
             </div>
             <div className="leading-tight">
-              <div className="text-white font-semibold" style={{ fontSize: 20 }}>XEconomic</div>
+              <div className="text-white font-semibold" style={{ fontSize:20 }}>XEconomic</div>
               <div style={{ fontSize: 13, color: "rgba(255,255,255,0.45)", marginTop: 1 }}>
                 CCI Forecast &amp; XAI
               </div>
             </div>
           </div>
 
-          {/* Tabs */}
-          <div
-            className="flex items-center gap-0.5 rounded-[10px] p-[3px]"
-            style={{ background: "rgba(255,255,255,0.08)" }}
-          >
+          {/* Tab group */}
+          <div className="flex items-center gap-0.5 rounded-[10px] p-[3px]"
+               style={{ background: "rgba(255,255,255,0.08)" }}>
             {tabs.map(({ id, en, th, Icon }) => {
               const active = page === id || (page === "aspectNews" && id === "forecast")
               return (
@@ -1396,7 +1462,7 @@ export default function App() {
                   onClick={() => setPage(id)}
                   className="flex items-center gap-1.5 rounded-lg transition-all"
                   style={{
-                    padding: "6px 16px",
+                    padding: "6px 14px",
                     fontSize: 13,
                     fontWeight: active ? 600 : 500,
                     background: active ? "#fff" : "transparent",
@@ -1414,16 +1480,14 @@ export default function App() {
           </div>
 
           {/* Language toggle */}
-          <div
-            className="flex items-center gap-0.5 rounded-lg p-[3px] flex-shrink-0"
-            style={{ background: "rgba(255,255,255,0.08)" }}
-          >
+          <div className="flex items-center gap-0.5 rounded-lg p-[3px] flex-shrink-0"
+               style={{ background: "rgba(255,255,255,0.08)" }}>
             {[["en", "EN"], ["th", "ไทย"]].map(([code, label]) => (
               <button
                 key={code}
                 onClick={() => setLang(code)}
                 style={{
-                  padding: "4px 11px",
+                  padding: "4px 10px",
                   borderRadius: 6,
                   fontSize: 12,
                   fontWeight: 600,
@@ -1438,144 +1502,50 @@ export default function App() {
               </button>
             ))}
           </div>
+
         </div>
+      </div>
 
-        {/* Subbar — forecast context + month picker */}
-        {showSubbar && (
-          <div style={{ background: "#1a4280", borderTop: "1px solid rgba(255,255,255,0.07)" }}>
-            <div
-              className="max-w-[1400px] mx-auto px-7 flex items-center"
-              style={{ height: 44, gap: 0 }}
-            >
-              {/* Context pill */}
-              <div
-                className="flex items-center gap-2 flex-shrink-0"
-                style={{ paddingRight: 20, borderRight: "1px solid rgba(255,255,255,0.1)" }}
-              >
-                <div
-                  className="rounded-full flex-shrink-0"
-                  style={{
-                    width: 6, height: 6,
-                    background: isHistorical ? "rgba(255,255,255,0.35)" : "#4ade80",
-                  }}
-                />
-                <span style={{ fontSize: 12, color: "rgba(255,255,255,0.5)" }}>
-                  {isHistorical
-                    ? t("Viewing history for", "กำลังดูประวัติ")
-                    : t("Viewing forecast for", "กำลังดูการพยากรณ์")}
-                </span>
-                <span style={{ fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,0.9)" }}>
-                  {monthLabel(selectedForecastMonth, lang)}
-                </span>
-              </div>
-
-              {/* Month pills + historical picker */}
-              <div
-                className="flex items-center gap-1.5 overflow-x-auto"
-                style={{ paddingLeft: 20, scrollbarWidth: "none" }}
-              >
-                <span style={{ fontSize: 11, fontWeight: 500, color: "rgba(255,255,255,0.4)", marginRight: 2, flexShrink: 0 }}>
-                  {t("Forecast", "พยากรณ์")}
-                </span>
-
-                {availableFutureMonths.map((m) => (
-                  <button
-                    key={m}
-                    onClick={() => setSelectedForecastMonth(m)}
-                    style={{
-                      padding: "3px 11px",
-                      borderRadius: 99,
-                      fontSize: 12,
-                      fontWeight: m === selectedForecastMonth ? 600 : 500,
-                      color: m === selectedForecastMonth ? "#fff" : "rgba(255,255,255,0.6)",
-                      background: m === selectedForecastMonth ? "rgba(255,255,255,0.18)" : "transparent",
-                      border: `1px solid ${m === selectedForecastMonth ? "rgba(255,255,255,0.4)" : "rgba(255,255,255,0.15)"}`,
-                      cursor: "pointer",
-                      whiteSpace: "nowrap",
-                      flexShrink: 0,
-                      transition: "all 0.15s",
-                    }}
-                  >
-                    {monthLabel(m, lang)}
-                  </button>
-                ))}
-
-                {historicalMonths.length > 0 && (
-                  <>
-                    <div style={{ width: 1, height: 20, background: "rgba(255,255,255,0.12)", flexShrink: 0, margin: "0 6px" }} />
-                    <span style={{ fontSize: 11, fontWeight: 500, color: "rgba(255,255,255,0.4)", flexShrink: 0 }}>
-                      {t("Historical", "ย้อนหลัง")}
-                    </span>
-                    <select
-                      value={isHistorical ? selectedForecastMonth : ""}
-                      onChange={(e) => { if (e.target.value) setSelectedForecastMonth(e.target.value) }}
-                      style={{
-                        background: "transparent",
-                        border: "1px solid rgba(255,255,255,0.15)",
-                        borderRadius: 99,
-                        color: "rgba(255,255,255,0.6)",
-                        fontSize: 12,
-                        fontWeight: 500,
-                        padding: "3px 11px",
-                        cursor: "pointer",
-                        outline: "none",
-                        flexShrink: 0,
-                      }}
-                    >
-                      <option value="" style={{ background: THEME.navy }}>{t("Select month…", "เลือกเดือน…")}</option>
-                      {historicalMonths.map((m) => (
-                        <option key={m} value={m} style={{ background: THEME.navy }}>
-                          {monthLabel(m, lang)}
-                        </option>
-                      ))}
-                    </select>
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
+      {/* ── Subbar (breadcrumb context) ── */}
+      <div className="w-full bg-white" style={{ borderBottom: `1px solid ${THEME.border}` }}>
+        <div className="max-w-[1400px] mx-auto px-7 flex items-center gap-1.5"
+             style={{ height: 38 }}>
+          <span style={{ fontSize: 12, color: "#94A3B8" }}>
+            {page === "analytics"
+              ? t("News & Analytics", "ข้อมูลข่าวและการวิเคราะห์")
+              : t("Forecast & Reasoning", "การพยากรณ์และคำอธิบาย")}
+          </span>
+          {page === "aspectNews" && selectedAspect && (
+            <>
+              <span style={{ fontSize: 12, color: "#CBD5E1" }}>›</span>
+              <span style={{ fontSize: 12, color: THEME.navy, fontWeight: 500 }}>{selectedAspect}</span>
+            </>
+          )}
+        </div>
       </div>
 
       {/* ── Page content ── */}
       <div className="max-w-[1400px] mx-auto px-7 py-6 space-y-5">
         {err && (
-          <div
-            className="rounded-xl px-4 py-2.5 text-sm"
-            style={{ background: "#FEF2F2", border: "1px solid #FECACA", color: "#B91C1C" }}
-          >
+          <div className="rounded-xl px-4 py-2.5 text-sm"
+               style={{ background: "#FEF2F2", border: "1px solid #FECACA", color: "#B91C1C" }}>
             {err}
           </div>
         )}
 
         {page === "forecast" && (
           <ForecastPage
-            t={t}
-            lang={lang}
-            series={series}
-            summary={summary}
-            allExplain={allExplain}
-            news={newsReal}
-            selectedForecastMonth={selectedForecastMonth}
-            setSelectedForecastMonth={setSelectedForecastMonth}
-            availableFutureMonths={availableFutureMonths}
-            historicalMonths={historicalMonths}
+            t={t} lang={lang} series={series} summary={summary}
+            allExplain={allExplain} news={newsReal}
             onSelectAspect={(asp) => { setSelectedAspect(asp); setPage("aspectNews") }}
           />
         )}
-
         {page === "analytics" && (
           <AnalyticsPage t={t} lang={lang} news={newsReal} shapData={shapData} />
         )}
-
         {page === "aspectNews" && (
-          <AspectNewsPage
-            t={t}
-            lang={lang}
-            aspect={selectedAspect}
-            news={newsReal}
-            onBack={() => setPage("forecast")}
-          />
+          <AspectNewsPage t={t} lang={lang} aspect={selectedAspect}
+            news={newsReal} onBack={() => setPage("forecast")} />
         )}
       </div>
 

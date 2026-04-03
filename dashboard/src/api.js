@@ -26,3 +26,7 @@ export function getNews(limit = 2000) {
 export async function getShap() {
   return getJSON(`/dashboard/shap`);
 }
+
+export function getAllExplain() {
+  return getJSON("/dashboard/explain/all");
+}
