@@ -1028,25 +1028,56 @@ function ReasoningPanel({ t, lang, activeRow, selectedMonth }) {
                 className="w-1.5 self-stretch rounded-full"
                 style={{ backgroundColor: directionTone.text }}
               />
-              <div className="flex-1">
-                <div className="text-sm font-semibold mb-2" style={{ color: directionTone.text }}>
+
+              <div className="flex-1 space-y-5">
+                <div
+                  className="text-sm font-semibold"
+                  style={{ color: directionTone.text }}
+                >
                   {t("Model interpretation", "บทวิเคราะห์ของโมเดล")}
                 </div>
-                <p className="text-[15px] leading-8 text-gray-700 whitespace-pre-line">
-                  {activeRow?.reasoning || t("No reasoning available.", "ยังไม่มีคำอธิบาย")}
-                </p>
+
+                {activeRow?.intro && (
+                  <div>
+                    <p className="text-xs text-gray-400 font-semibold mb-1">
+                      OVERVIEW
+                    </p>
+                    <p className="text-[15px] leading-7 text-gray-700">
+                      {activeRow.intro}
+                    </p>
+                  </div>
+                )}
+
+                {activeRow?.factors?.length > 0 && (
+                  <div>
+                    <p className="text-xs text-gray-400 font-semibold mb-2">
+                      KEY FACTORS
+                    </p>
+
+                    <ol className="space-y-3">
+                      {activeRow.factors.map((f, idx) => (
+                        <li key={idx} className="flex gap-3 items-start">
+                          <span className="font-semibold text-gray-500 min-w-[18px]"> {idx + 1}. </span>
+                          <p className="flex-1 text-[15px] leading-7 text-gray-700"> {f.text}</p>
+                        </li>
+                      ))}
+                    </ol>
+                  </div>
+                )}
+
+                {activeRow?.conclusion && (
+                  <div>
+                    <p className="text-xs text-gray-400 font-semibold mb-1">CONCLUSION </p>
+                    <p className="text-[15px] leading-7 text-gray-700 border-t pt-3"> {activeRow.conclusion} </p>
+                  </div>
+                )}
               </div>
             </div>
           </div>
         ) : (
-          <EmptyState
-            icon="🔍"
-            title={t("No explanation available", "ไม่พบคำอธิบาย")}
-            description={t(
-              "No forecast reasoning was found for this month.",
-              "ไม่พบคำอธิบายเชิงเหตุผลสำหรับเดือนนี้"
-            )}
-          />
+          <div className="text-center py-10 text-gray-400 text-sm">
+            {t("No explanation available", "ไม่พบคำอธิบาย")}
+          </div>
         )}
       </CardContent>
     </Card>
