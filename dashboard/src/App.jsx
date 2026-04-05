@@ -1705,7 +1705,7 @@ export default function App() {
           getSummary(),
           getAllExplain(),
           getTimeSeries(2000),
-          getNews(),
+          getNews(20000),
           getShap(),
         ])
 
