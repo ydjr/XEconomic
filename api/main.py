@@ -14,8 +14,8 @@ CCI_CSV = os.path.join(DATA_DIR, "indicators/cci.csv")
 
 # DASHBOARD_CSV = os.path.join(ART_DIR, "cci_dashboard_latest.csv")
 PRED_LATEST_CSV = os.path.join(ART_DIR, "pred_direction.csv")
-EXPLAIN_JSON = os.path.join(ART_DIR, "reasoning_2024-01_to_2025-08.json")
-NEWS_CSV = os.path.join(DATA_DIR, "gemma27b_2024-2025.csv")
+EXPLAIN_JSON = os.path.join(ART_DIR, "one_reasoning_2024-01_to_2025-08.json")
+NEWS_CSV = os.path.join(DATA_DIR, "2017-2026.csv")
 SHAP_CSV = os.path.join(ART_DIR, "shap_top3_unique.csv")
 
 app = FastAPI(title="CCI Forecast API", version="1.0.0")
@@ -165,6 +165,7 @@ def dashboard_explain_by_date(date: str = Query(...)):
     if row.empty:
         return {"data": None}
     return {"data": row.iloc[0].to_dict()}
+
 @app.get("/dashboard/timeseries")
 def dashboard_timeseries(limit: int = Query(500, ge=1, le=5000)):
     if not os.path.exists(CCI_CSV):

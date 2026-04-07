@@ -417,86 +417,130 @@ function ForecastSummaryCard({
       info.tone === "down" ? "↓" :
         "→"
 
+  const showDelta =
+    predicted != null &&
+    comparisonValue != null &&
+    Number(comparisonValue) !== 0
+
+  const delta = showDelta ? Number(predicted) - Number(comparisonValue) : 0
+  const pct = showDelta ? (delta / Math.abs(Number(comparisonValue))) * 100 : 0
+  const isPos = delta >= 0
+
+  const previousMonthLabel = React.useMemo(() => {
+    if (!month) return t("Previous month", "เดือนก่อนหน้า")
+
+    const [year, mon] = String(month).split("-").map(Number)
+    if (!year || !mon) return t("Previous month", "เดือนก่อนหน้า")
+
+    const prevDate = new Date(year, mon - 2, 1)
+    const prevKey = `${prevDate.getFullYear()}-${String(prevDate.getMonth() + 1).padStart(2, "0")}`
+
+    return monthLabel(prevKey, lang)
+  }, [month, lang, t])
+
   return (
     <Card>
       <CardContent className="p-6">
-        <div className="text-sm font-semibold text-gray-500 mb-1">
+        <div className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-1">
           {t("Forecast target", "เป้าหมายพยากรณ์")}
         </div>
-
-        <div className="text-xl font-bold text-gray-800 mb-5">
+        <div className="text-lg font-bold text-gray-800 mb-5">
           {monthLabel(month, lang)}
         </div>
 
-        <div className="flex flex-col md:flex-row gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {/* Actual / previous block */}
           <div
-            className="rounded-2xl border p-4 md:w-[280px] flex-shrink-0"
-            style={{ borderColor: THEME.border, backgroundColor: "#FFFFFF" }}
+            className="rounded-2xl border flex flex-col gap-3 p-5"
+            style={{ borderColor: THEME.border, backgroundColor: "#F8FAFC" }}
           >
-            <div className="text-xs text-gray-500 mb-1">
-              {comparisonBasis === "predicted"
-                ? t("Previous month predicted data", "ข้อมูลพยากรณ์ของเดือนก่อนหน้า")
-                : t("Previous month actual data", "ข้อมูลจริงของเดือนก่อนหน้า")}
+            <div className="flex items-center gap-2">
+              <div className="w-1.5 h-1.5 rounded-full bg-gray-300" />
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">
+                {comparisonBasis === "predicted"
+                  ? `${t("Predicted value of", "ค่าพยากรณ์ของ")} ${previousMonthLabel}`
+                  : `${t("Actual value of", "ค่าจริงของ")} ${previousMonthLabel}`
+                }
+              </span>
             </div>
-            <div className="text-3xl font-black text-gray-900 leading-none">
-              {comparisonValue != null ? Number(comparisonValue).toFixed(1) : "-"}
+
+            <div className="text-[44px] font-black text-gray-900 leading-none tracking-tight">
+              {comparisonValue != null ? Number(comparisonValue).toFixed(1) : "—"}
+            </div>
+
+            <div
+              className="pt-2.5 mt-auto"
+              style={{ borderTop: `1px solid ${THEME.border}` }}
+            >
+              <span className="text-xs text-gray-400">
+                {previousMonthLabel}
+              </span>
             </div>
           </div>
 
+          {/* Forecast block */}
           <div
-            className="rounded-2xl border p-4 flex-1 xecon-fade-in"
-            style={{ borderColor: THEME.border, backgroundColor: tone.soft }}
+            className="rounded-2xl border flex flex-col gap-3 p-5"
+            style={{
+              borderColor: tone.bg,
+              backgroundColor: tone.soft,
+            }}
           >
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-              <div className="min-w-0">
-                <div className="text-xs text-gray-500 mb-1">
-                  {t("Target month predicted data", "ข้อมูลพยากรณ์ของเดือนเป้าหมาย")}
-                </div>
-                <div className="text-4xl font-black text-gray-900 leading-none mb-2">
-                  {predicted != null ? Number(predicted).toFixed(1) : "-"}
-                </div>
-                {/* Delta — lives directly under the predicted number */}
-                {predicted != null && comparisonValue != null && Number(comparisonValue) !== 0 && (() => {
-                  const delta = Number(predicted) - Number(comparisonValue)
-                  const pct = (delta / Math.abs(Number(comparisonValue))) * 100
-                  const isPos = delta >= 0
-                  return (
-                    <div
-                      className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full"
-                      style={{ backgroundColor: isPos ? "#DCFCE7" : "#FEE2E2", color: isPos ? THEME.success : THEME.danger }}
-                    >
-                      {isPos ? "↑" : "↓"}
-                      {isPos ? "+" : ""}{delta.toFixed(1)} ({isPos ? "+" : ""}{pct.toFixed(1)}%)
-                      <span className="font-normal opacity-70 ml-0.5">{t("vs prev", "เทียบเดือนก่อน")}</span>
-                    </div>
-                  )
-                })()}
-              </div>
-
-              <div className="flex items-center gap-4 md:justify-end">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
                 <div
-                  className="text-6xl font-light leading-none xecon-pulse"
-                  style={{ color: tone.text }}
+                  className="w-1.5 h-1.5 rounded-full"
+                  style={{ backgroundColor: tone.text }}
+                />
+                <span
+                  className="text-[11px] font-semibold uppercase tracking-wider"
+                  style={{ color: tone.text, opacity: 0.75 }}
                 >
-                  {arrow}
-                </div>
-
-                <div className="flex flex-col">
-                  <div
-                    className="inline-flex w-fit px-3 py-1 rounded-full text-sm font-semibold mb-2"
-                    style={{ backgroundColor: tone.bg, color: tone.text }}
-                  >
-                    {info.tone === "up"
-                      ? t("Up", "เพิ่มขึ้น")
-                      : info.tone === "down"
-                        ? t("Down", "ลดลง")
-                        : t("Stable", "ทรงตัว")}
-                  </div>
-                  <div className="text-sm text-gray-700">
-                    {direction || t("No direction data", "ไม่มีข้อมูล")}
-                  </div>
-                </div>
+                  {t("Target month predicted", "ข้อมูลพยากรณ์เดือนเป้าหมาย")}
+                </span>
               </div>
+
+              <div
+                className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold flex-shrink-0"
+                style={{ backgroundColor: tone.bg, color: tone.text }}
+              >
+                <span>{arrow}</span>
+                <span>
+                  {info.tone === "up"
+                    ? t("Up", "เพิ่มขึ้น")
+                    : info.tone === "down"
+                      ? t("Down", "ลดลง")
+                      : t("Stable", "ทรงตัว")}
+                </span>
+              </div>
+            </div>
+
+            <div
+              className="text-[44px] font-black leading-none tracking-tight"
+              style={{ color: tone.text === THEME.gray ? "#111827" : "#064E3B" }}
+            >
+              {predicted != null ? Number(predicted).toFixed(1) : "—"}
+            </div>
+
+            <div
+              className="pt-2.5 mt-auto flex items-center gap-2"
+              style={{ borderTop: `1px solid ${tone.bg}` }}
+            >
+              {showDelta ? (
+                <>
+                  <span
+                    className="text-xs font-semibold"
+                    style={{ color: tone.text }}
+                  >
+                    {isPos ? "+" : ""}{delta.toFixed(1)} ({isPos ? "+" : ""}{pct.toFixed(1)}%)
+                  </span>
+                  <span className="text-xs" style={{ color: tone.text, opacity: 0.6 }}>
+                    {t("vs prev month", "เทียบเดือนก่อน")}
+                  </span>
+                </>
+              ) : (
+                <span className="text-xs text-gray-400">—</span>
+              )}
             </div>
           </div>
         </div>
@@ -553,7 +597,7 @@ function TopAspectsOnlyCard({ t, news = [], onSelectAspect, selectedForecastMont
       : "-"
 
   return (
-    <Card className="h-full">
+    <Card className="h-full w-full flex flex-col">
       <CardHeader>
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
           <div>
@@ -572,7 +616,7 @@ function TopAspectsOnlyCard({ t, news = [], onSelectAspect, selectedForecastMont
         </div>
       </CardHeader>
 
-      <CardContent className="min-h-[320px]">
+      <CardContent className="min-h-[320px] flex-1">
         {ranked.length === 0 ? (
           <EmptyState
             icon="📰"
@@ -610,6 +654,43 @@ function TopAspectsOnlyCard({ t, news = [], onSelectAspect, selectedForecastMont
   )
 }
 
+function ForecastXAxisTick({ x, y, payload, lang }) {
+  const raw = payload?.value
+  const d = new Date(raw)
+
+  if (Number.isNaN(d.getTime())) {
+    return (
+      <g transform={`translate(${x},${y})`}>
+        <text
+          x={0}
+          y={0}
+          dy={12}
+          textAnchor="middle"
+          fill="#6B7280"
+          fontSize={10}
+        >
+          {String(raw || "")}
+        </text>
+      </g>
+    )
+  }
+
+  const monthTH = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."]
+  const monthEN = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+
+  const month = lang === "th" ? monthTH[d.getMonth()] : monthEN[d.getMonth()]
+  const year = lang === "th" ? String(d.getFullYear() + 543) : String(d.getFullYear())
+
+  return (
+    <g transform={`translate(${x},${y})`}>
+      <text textAnchor="middle" fill="#6B7280" fontSize={10}>
+        <tspan x="0" dy="12">{month}</tspan>
+        <tspan x="0" dy="11">{year}</tspan>
+      </text>
+    </g>
+  )
+}
+
 function ForecastChart({ t, lang, series, selectedMonth }) {
   const filteredSeries = React.useMemo(() => {
     if (!series || series.length === 0) return []
@@ -620,6 +701,11 @@ function ForecastChart({ t, lang, series, selectedMonth }) {
     () => buildSelectedMonthChartData(filteredSeries, selectedMonth),
     [filteredSeries, selectedMonth]
   )
+
+  const lastActualDate = React.useMemo(() => {
+    const actualRows = filteredSeries.filter((s) => s.actual != null)
+    return actualRows.length ? actualRows[actualRows.length - 1].date : null
+  }, [filteredSeries])
 
   const forecastStartDate = React.useMemo(() => {
     const firstForecast = filteredSeries.find((s) => s.actual == null && s.pred != null)
@@ -648,7 +734,7 @@ function ForecastChart({ t, lang, series, selectedMonth }) {
     if (!len) return { startIndex: 0, endIndex: 0 }
 
     const lastIndex = len - 1
-    const startIndex = Math.max(0, len - 24) // last 24 months = 2 years
+    const startIndex = Math.max(0, len - 24)
 
     return { startIndex, endIndex: lastIndex }
   }, [chartData])
@@ -711,7 +797,6 @@ function ForecastChart({ t, lang, series, selectedMonth }) {
           style={{ borderColor: THEME.border }}
         >
           <div className="flex w-full" style={{ height: 420 }}>
-            {/* Fixed Y axis */}
             <div
               className="flex-shrink-0 bg-white border-r"
               style={{ width: 90, borderColor: THEME.border }}
@@ -719,37 +804,29 @@ function ForecastChart({ t, lang, series, selectedMonth }) {
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart
                   data={visibleData}
-                  margin={{ top: 60, right: 0, left: 0, bottom: 45 }}
+                  margin={{ top: 60, right: 0, left: 0, bottom: 55 }}
                   syncId="forecast-chart"
                 >
                   <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" horizontal vertical={false} />
-                  <YAxis
-                    tick={{ fontSize: 11 }}
-                    width={75}
-                    domain={visibleYDomain}
-                  />
+                  <YAxis tick={{ fontSize: 11 }} width={75} domain={visibleYDomain} />
                 </LineChart>
               </ResponsiveContainer>
             </div>
 
-            {/* Main chart */}
             <div className="flex-1 overflow-hidden">
               <ResponsiveContainer width="100%" height="100%">
                 <ComposedChart
                   data={visibleData}
-                  margin={{ top: 20, right: 20, left: 0, bottom: 45 }}
+                  margin={{ top: 20, right: 20, left: 0, bottom: 55 }}
                   syncId="forecast-chart"
                 >
                   <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
                   <XAxis
                     dataKey="date"
-                    tick={{ fontSize: 11 }}
-                    minTickGap={20}
-                    tickFormatter={(v) =>
-                      lang === "th"
-                        ? thaiMonthYear(v).replace(" ", "\n")
-                        : String(v).slice(0, 7)
-                    }
+                    height={52}
+                    interval={0}
+                    tickMargin={8}
+                    tick={<ForecastXAxisTick lang={lang} />}
                   />
                   <YAxis hide domain={visibleYDomain} />
 
@@ -787,9 +864,10 @@ function ForecastChart({ t, lang, series, selectedMonth }) {
 
                   <Legend verticalAlign="top" height={40} />
 
-                  {forecastStartDate ? (
+                  {lastActualDate && forecastStartDate ? (
                     <ReferenceArea
-                      x1={forecastStartDate}
+                      x1={lastActualDate}
+                      x2={visibleData[visibleData.length - 1]?.date}
                       fill={THEME.blue}
                       fillOpacity={0.05}
                     />
@@ -836,7 +914,6 @@ function ForecastChart({ t, lang, series, selectedMonth }) {
             </div>
           </div>
 
-          {/* Brush / zoom control */}
           <div
             className="border-t px-4 py-3 bg-white"
             style={{ borderColor: THEME.border }}
@@ -846,8 +923,6 @@ function ForecastChart({ t, lang, series, selectedMonth }) {
                 <LineChart data={chartData}>
                   <XAxis dataKey="date" hide />
                   <YAxis hide domain={yDomain} />
-
-                  {/* NO lines here — completely clean */}
 
                   <Brush
                     dataKey="date"
@@ -964,8 +1039,8 @@ function ForecastPage({
         selectedMonth={selectedForecastMonth}
       />
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-        <div className="lg:col-span-2">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
+        <div className="lg:col-span-2 h-full flex">
           <ReasoningPanel
             t={t}
             lang={lang}
@@ -974,7 +1049,7 @@ function ForecastPage({
           />
         </div>
 
-        <div className="lg:col-span-1">
+        <div className="lg:col-span-1 h-full flex">
           <TopAspectsOnlyCard
             t={t}
             news={news}
@@ -993,7 +1068,7 @@ function ReasoningPanel({ t, lang, activeRow, selectedMonth }) {
   const directionTone = toneClasses(directionInfo.tone)
 
   return (
-    <Card className="overflow-hidden">
+    <Card className="overflow-hidden h-full w-full flex flex-col">
       <CardHeader className="bg-gradient-to-r from-slate-50 to-white">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
@@ -1014,16 +1089,16 @@ function ReasoningPanel({ t, lang, activeRow, selectedMonth }) {
         </div>
       </CardHeader>
 
-      <CardContent>
+      <CardContent className="h-full flex-1">
         {activeRow ? (
           <div
-            className="rounded-2xl p-5 border"
+            className="rounded-2xl p-5 border h-full"
             style={{
               backgroundColor: directionTone.soft,
               borderColor: THEME.border,
             }}
           >
-            <div className="flex items-start gap-4">
+            <div className="flex items-start gap-4 h-full">
               <div
                 className="w-1.5 self-stretch rounded-full"
                 style={{ backgroundColor: directionTone.text }}
@@ -1037,13 +1112,13 @@ function ReasoningPanel({ t, lang, activeRow, selectedMonth }) {
                   {t("Model interpretation", "บทวิเคราะห์ของโมเดล")}
                 </div>
 
-                {activeRow?.intro && (
+                {activeRow?.conclusion && (
                   <div>
                     <p className="text-xs text-gray-400 font-semibold mb-1">
-                      OVERVIEW
+                      CONCLUSION
                     </p>
                     <p className="text-[15px] leading-7 text-gray-700">
-                      {activeRow.intro}
+                      {activeRow.conclusion}
                     </p>
                   </div>
                 )}
@@ -1057,18 +1132,15 @@ function ReasoningPanel({ t, lang, activeRow, selectedMonth }) {
                     <ol className="space-y-3">
                       {activeRow.factors.map((f, idx) => (
                         <li key={idx} className="flex gap-3 items-start">
-                          <span className="font-semibold text-gray-500 min-w-[18px]"> {idx + 1}. </span>
-                          <p className="flex-1 text-[15px] leading-7 text-gray-700"> {f.text}</p>
+                          <span className="font-semibold text-gray-500 min-w-[18px]">
+                            {idx + 1}.
+                          </span>
+                          <p className="flex-1 text-[15px] leading-7 text-gray-700">
+                            {f.text}
+                          </p>
                         </li>
                       ))}
                     </ol>
-                  </div>
-                )}
-
-                {activeRow?.conclusion && (
-                  <div>
-                    <p className="text-xs text-gray-400 font-semibold mb-1">CONCLUSION </p>
-                    <p className="text-[15px] leading-7 text-gray-700 border-t pt-3"> {activeRow.conclusion} </p>
                   </div>
                 )}
               </div>
