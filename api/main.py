@@ -14,9 +14,8 @@ CCI_CSV = os.path.join(DATA_DIR, "indicators/cci.csv")
 
 # DASHBOARD_CSV = os.path.join(ART_DIR, "cci_dashboard_latest.csv")
 PRED_LATEST_CSV = os.path.join(ART_DIR, "pred_direction.csv")
-EXPLAIN_CSV = os.path.join(ART_DIR, "reasoning_oneshot.csv") # explain path from cream
-NEWS_CSV = os.path.join(DATA_DIR, "gemma27b_2024-2025.csv")
-
+EXPLAIN_JSON = os.path.join(ART_DIR, "one_reasoning_2024-01_to_2025-08.json")
+NEWS_CSV = os.path.join(DATA_DIR, "2017-2026.csv")
 SHAP_CSV = os.path.join(ART_DIR, "shap_top3_unique.csv")
 
 app = FastAPI(title="CCI Forecast API", version="1.0.0")
@@ -130,30 +129,35 @@ def dashboard_summary():
 
 @app.get("/dashboard/explain/latest")
 def dashboard_explain_latest():
-    if not os.path.exists(EXPLAIN_CSV):
+    if not os.path.exists(EXPLAIN_JSON):
         return {}
-    df = pd.read_csv(EXPLAIN_CSV)
+    df = pd.read_csv(EXPLAIN_JSON)
     df = df.replace({np.nan: None})
     return {"data": df.to_dict(orient="records")}
 
+
 @app.get("/dashboard/explain/all")
 def dashboard_explain_all():
-    if not os.path.exists(EXPLAIN_CSV):
+    if not os.path.exists(EXPLAIN_JSON):
         return {"data": []}
-    df = pd.read_csv(EXPLAIN_CSV)
-    df = df.replace({np.nan: None})
-    # normalize date to YYYY-MM
-    if "date" in df.columns:
-        df["date"] = pd.to_datetime(df["date"], errors="coerce").dt.strftime("%Y-%m")
-    df = df.sort_values("date")
-    return {"data": df.to_dict(orient="records")}
+
+    data = read_json(EXPLAIN_JSON)
+    if not isinstance(data, list):
+        return {"data": []}
+
+    for row in data:
+        if "date" in row and row["date"]:
+            row["date"] = str(row["date"])[:7]
+
+    data = sorted(data, key=lambda x: x.get("date", ""))
+    return {"data": data}
 
 @app.get("/dashboard/explain/by-date")
 def dashboard_explain_by_date(date: str = Query(...)):
     """date format: YYYY-MM"""
-    if not os.path.exists(EXPLAIN_CSV):
+    if not os.path.exists(EXPLAIN_JSON):
         return {"data": None}
-    df = pd.read_csv(EXPLAIN_CSV)
+    df = pd.read_csv(EXPLAIN_JSON)
     df = df.replace({np.nan: None})
     if "date" in df.columns:
         df["date"] = pd.to_datetime(df["date"], errors="coerce").dt.strftime("%Y-%m")
@@ -161,6 +165,7 @@ def dashboard_explain_by_date(date: str = Query(...)):
     if row.empty:
         return {"data": None}
     return {"data": row.iloc[0].to_dict()}
+
 @app.get("/dashboard/timeseries")
 def dashboard_timeseries(limit: int = Query(500, ge=1, le=5000)):
     if not os.path.exists(CCI_CSV):
