@@ -223,9 +223,9 @@ function monthLabel(dateStr, lang) {
   const d = new Date(dateStr.length === 7 ? `${dateStr}-01` : dateStr)
   if (Number.isNaN(d.getTime())) return String(dateStr)
   if (lang === "th") return thaiMonthYear(dateStr)
-    
+
   const monthsEN = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
-                    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 
   return `${monthsEN[d.getMonth()]} ${d.getFullYear()}`
 }
@@ -1046,7 +1046,10 @@ function ForecastPage({
   }, [selectedForecastMonth, series])
 
   const activeRow = React.useMemo(
-    () => allExplain.find((r) => r.date === selectedForecastMonth) || null,
+    () =>
+      allExplain.find(
+        (r) => String(r.date || "").slice(0, 7) === selectedForecastMonth
+      ) || null,
     [allExplain, selectedForecastMonth]
   )
 
@@ -1069,7 +1072,7 @@ function ForecastPage({
         direction={selectedSeriesRow?.direction}
         comparisonValue={selectedSeriesRow?.compare_value}
         comparisonBasis={selectedSeriesRow?.compare_basis}
-        conclusion={activeRow?.conclusion}
+        conclusion={activeRow?.conclusion || summary?.conclusion || summary?.summary || ""}
       />
 
       <ForecastChart
@@ -1078,7 +1081,6 @@ function ForecastPage({
         series={series}
         selectedMonth={selectedForecastMonth}
       />
-
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
         <div className="lg:col-span-2 h-full flex">
           <ReasoningPanel
@@ -1108,7 +1110,7 @@ function ReasoningPanel({ t, lang, activeRow, selectedMonth }) {
   const directionTone = toneClasses(directionInfo.tone)
 
   return (
-    <Card className="overflow-hidden h-full w-full flex flex-col">
+    <Card className="overflow-hidden w-full">
       <CardHeader className="bg-gradient-to-r from-slate-50 to-white">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
@@ -1129,16 +1131,16 @@ function ReasoningPanel({ t, lang, activeRow, selectedMonth }) {
         </div>
       </CardHeader>
 
-      <CardContent className="h-full flex-1">
+      <CardContent>
         {activeRow ? (
           <div
-            className="rounded-2xl p-5 border h-full"
+            className="rounded-2xl p-5 border"
             style={{
               backgroundColor: directionTone.soft,
               borderColor: THEME.border,
             }}
           >
-            <div className="flex items-start gap-4 h-full">
+            <div className="flex items-start gap-4">
               <div
                 className="w-1.5 self-stretch rounded-full"
                 style={{ backgroundColor: directionTone.text }}
@@ -1151,7 +1153,7 @@ function ReasoningPanel({ t, lang, activeRow, selectedMonth }) {
                 >
                   {t("Model interpretation", "บทวิเคราะห์ของโมเดล")}
                 </div>
-{/* 
+                {/* 
                 {activeRow?.conclusion && (
                   <div>
                     <p className="text-xs text-gray-400 font-semibold mb-1"> {t("Conclusion", "บทสรุป")}</p>
@@ -1773,9 +1775,11 @@ export default function App() {
 
   const explainMonths = React.useMemo(
     () =>
-      [...new Set((allExplain || []).map((r) => r.date).filter(Boolean))].sort((a, b) =>
-        a.localeCompare(b)
-      ),
+      [...new Set(
+        (allExplain || [])
+          .map((r) => String(r.date || "").slice(0, 7))
+          .filter(Boolean)
+      )].sort((a, b) => a.localeCompare(b)),
     [allExplain]
   )
 
