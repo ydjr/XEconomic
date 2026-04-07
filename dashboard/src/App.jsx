@@ -219,8 +219,15 @@ function thaiDateShort(dateStr) {
 
 function monthLabel(dateStr, lang) {
   if (!dateStr) return "-"
+
+  const d = new Date(dateStr.length === 7 ? `${dateStr}-01` : dateStr)
+  if (Number.isNaN(d.getTime())) return String(dateStr)
   if (lang === "th") return thaiMonthYear(dateStr)
-  return dateStr.length >= 7 ? dateStr.slice(0, 7) : String(dateStr)
+    
+  const monthsEN = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+
+  return `${monthsEN[d.getMonth()]} ${d.getFullYear()}`
 }
 
 function parseTop3Shap(raw) {
@@ -407,6 +414,7 @@ function ForecastSummaryCard({
   direction,
   comparisonValue,
   comparisonBasis,
+  conclusion,
 }) {
   const info = normalizeDirection(direction, t)
   const tone = toneClasses(info.tone)
@@ -454,7 +462,6 @@ function ForecastSummaryCard({
             className="rounded-2xl border flex flex-col p-5 h-full"
             style={{ borderColor: THEME.border, backgroundColor: "#F8FAFC" }}
           >
-            {/* TOP CONTENT */}
             <div className="flex flex-col gap-3">
               <div className="flex items-center gap-2">
                 <div className="w-1.5 h-1.5 rounded-full bg-gray-300" />
@@ -471,10 +478,8 @@ function ForecastSummaryCard({
               </div>
             </div>
 
-            {/* DIVIDER + BOTTOM */}
             <div className="mt-auto pt-3">
               <div style={{ borderTop: `1px solid ${THEME.border}` }} />
-
               <div className="pt-2 text-xs text-gray-400">
                 {monthLabel(month, lang)}
               </div>
@@ -489,7 +494,6 @@ function ForecastSummaryCard({
               backgroundColor: tone.soft,
             }}
           >
-            {/* TOP CONTENT */}
             <div className="flex flex-col gap-3">
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
@@ -503,12 +507,10 @@ function ForecastSummaryCard({
                   >
                     {lang === "th"
                       ? `ข้อมูลพยากรณ์เดือน ${monthLabel(month, lang)}`
-                      : `Predicted value for ${monthLabel(month, lang)}`
-                    }
+                      : `Predicted value for ${monthLabel(month, lang)}`}
                   </span>
                 </div>
 
-                {/* direction badge */}
                 <div
                   className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold"
                   style={{ backgroundColor: tone.bg, color: tone.text }}
@@ -539,9 +541,8 @@ function ForecastSummaryCard({
               </div>
             </div>
 
-            {/* DIVIDER + BOTTOM */}
             <div className="mt-auto pt-3">
-              <div style={{ borderTop: `1px solid ${THEME.border}`}} />
+              <div style={{ borderTop: `1px solid ${THEME.border}` }} />
 
               <div className="pt-2 flex items-center gap-2 text-xs">
                 {showDelta ? (
@@ -563,6 +564,26 @@ function ForecastSummaryCard({
             </div>
           </div>
         </div>
+
+        {conclusion && (
+          <div
+            className="flex gap-3 items-start mt-4 pt-4"
+            style={{ borderTop: `1px solid ${THEME.border}` }}
+          >
+            <div
+              className="w-1 self-stretch rounded-full flex-shrink-0"
+              style={{ backgroundColor: tone.text }}
+            />
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 mb-1">
+                {t("Overview", "ภาพรวม")}
+              </p>
+              <p className="text-sm text-gray-700 leading-7">
+                {conclusion}
+              </p>
+            </div>
+          </div>
+        )}
       </CardContent>
     </Card>
   )
@@ -1048,6 +1069,7 @@ function ForecastPage({
         direction={selectedSeriesRow?.direction}
         comparisonValue={selectedSeriesRow?.compare_value}
         comparisonBasis={selectedSeriesRow?.compare_basis}
+        conclusion={activeRow?.conclusion}
       />
 
       <ForecastChart
@@ -1129,7 +1151,7 @@ function ReasoningPanel({ t, lang, activeRow, selectedMonth }) {
                 >
                   {t("Model interpretation", "บทวิเคราะห์ของโมเดล")}
                 </div>
-
+{/* 
                 {activeRow?.conclusion && (
                   <div>
                     <p className="text-xs text-gray-400 font-semibold mb-1"> {t("Conclusion", "บทสรุป")}</p>
@@ -1137,7 +1159,7 @@ function ReasoningPanel({ t, lang, activeRow, selectedMonth }) {
                       {activeRow.conclusion}
                     </p>
                   </div>
-                )}
+                )} */}
 
                 {activeRow?.factors?.length > 0 && (
                   <div>
