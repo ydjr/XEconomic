@@ -1,10 +1,9 @@
 import React from "react"
-import { TrendingUp, Activity, BarChart3 } from "lucide-react"
 import wordcloudImg from "./assets/cci_impact_wordcloud.png"
 import "./index.css"
 import { getSummary, getTimeSeries, getNews, getShap, getAllExplain } from "./api.js"
 import { getAgencyVolumeLastNMonths } from "./newsSupabaseApi"
-
+import { TrendingUp, Activity, BarChart3, Search, RotateCcw } from "lucide-react"
 import {
   LineChart,
   Line,
@@ -444,103 +443,123 @@ function ForecastSummaryCard({
         <div className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-1">
           {t("Forecast target", "เป้าหมายพยากรณ์")}
         </div>
+
         <div className="text-lg font-bold text-gray-800 mb-5">
           {monthLabel(month, lang)}
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {/* Actual / previous block */}
+          {/* ===== LEFT (ACTUAL) ===== */}
           <div
-            className="rounded-2xl border flex flex-col gap-3 p-5"
+            className="rounded-2xl border flex flex-col p-5 h-full"
             style={{ borderColor: THEME.border, backgroundColor: "#F8FAFC" }}
           >
-            <div className="flex items-center gap-2">
-              <div className="w-1.5 h-1.5 rounded-full bg-gray-300" />
-              <span className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">
-                {comparisonBasis === "predicted"
-                  ? `${t("Predicted value of", "ค่าพยากรณ์ของ")} ${previousMonthLabel}`
-                  : `${t("Actual value of", "ค่าจริงของ")} ${previousMonthLabel}`
-                }
-              </span>
+            {/* TOP CONTENT */}
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center gap-2">
+                <div className="w-1.5 h-1.5 rounded-full bg-gray-300" />
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">
+                  {comparisonBasis === "predicted"
+                    ? t("Predicted value of", "ค่าพยากรณ์ของ")
+                    : t("Actual value of", "ค่าจริงของ")}{" "}
+                  {monthLabel(month, lang)}
+                </span>
+              </div>
+
+              <div className="text-[44px] font-black text-gray-900 leading-none tracking-tight">
+                {comparisonValue != null ? Number(comparisonValue).toFixed(1) : "—"}
+              </div>
             </div>
 
-            <div className="text-[44px] font-black text-gray-900 leading-none tracking-tight">
-              {comparisonValue != null ? Number(comparisonValue).toFixed(1) : "—"}
-            </div>
+            {/* DIVIDER + BOTTOM */}
+            <div className="mt-auto pt-3">
+              <div style={{ borderTop: `1px solid ${THEME.border}` }} />
 
-            <div
-              className="pt-2.5 mt-auto"
-              style={{ borderTop: `1px solid ${THEME.border}` }}
-            >
-              <span className="text-xs text-gray-400">
-                {previousMonthLabel}
-              </span>
+              <div className="pt-2 text-xs text-gray-400">
+                {monthLabel(month, lang)}
+              </div>
             </div>
           </div>
 
-          {/* Forecast block */}
+          {/* ===== RIGHT (FORECAST) ===== */}
           <div
-            className="rounded-2xl border flex flex-col gap-3 p-5"
+            className="rounded-2xl border flex flex-col p-5 h-full"
             style={{
               borderColor: tone.bg,
               backgroundColor: tone.soft,
             }}
           >
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
+            {/* TOP CONTENT */}
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <div
+                    className="w-1.5 h-1.5 rounded-full"
+                    style={{ backgroundColor: tone.text }}
+                  />
+                  <span
+                    className="text-[11px] font-semibold uppercase tracking-wider"
+                    style={{ color: tone.text, opacity: 0.75 }}
+                  >
+                    {lang === "th"
+                      ? `ข้อมูลพยากรณ์เดือน ${monthLabel(month, lang)}`
+                      : `Predicted value for ${monthLabel(month, lang)}`
+                    }
+                  </span>
+                </div>
+
+                {/* direction badge */}
                 <div
-                  className="w-1.5 h-1.5 rounded-full"
-                  style={{ backgroundColor: tone.text }}
-                />
-                <span
-                  className="text-[11px] font-semibold uppercase tracking-wider"
-                  style={{ color: tone.text, opacity: 0.75 }}
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold"
+                  style={{ backgroundColor: tone.bg, color: tone.text }}
                 >
-                  {t("Target month predicted", "ข้อมูลพยากรณ์เดือนเป้าหมาย")}
-                </span>
+                  <span>{arrow}</span>
+                  <span>
+                    {info.tone === "up"
+                      ? t("Increase", "เพิ่มขึ้น")
+                      : info.tone === "down"
+                        ? t("Decrease", "ลดลง")
+                        : t("Stable", "ทรงตัว")}
+                  </span>
+                </div>
               </div>
 
               <div
-                className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold flex-shrink-0"
-                style={{ backgroundColor: tone.bg, color: tone.text }}
+                className="text-[44px] font-black leading-none tracking-tight"
+                style={{
+                  color:
+                    info.tone === "down"
+                      ? THEME.danger
+                      : info.tone === "up"
+                        ? "#064E3B"
+                        : "#111827",
+                }}
               >
-                <span>{arrow}</span>
-                <span>
-                  {info.tone === "up"
-                    ? t("Up", "เพิ่มขึ้น")
-                    : info.tone === "down"
-                      ? t("Down", "ลดลง")
-                      : t("Stable", "ทรงตัว")}
-                </span>
+                {predicted != null ? Number(predicted).toFixed(1) : "—"}
               </div>
             </div>
 
-            <div
-              className="text-[44px] font-black leading-none tracking-tight"
-              style={{ color: tone.text === THEME.gray ? "#111827" : "#064E3B" }}
-            >
-              {predicted != null ? Number(predicted).toFixed(1) : "—"}
-            </div>
+            {/* DIVIDER + BOTTOM */}
+            <div className="mt-auto pt-3">
+              <div style={{ borderTop: `1px solid ${THEME.border}`}} />
 
-            <div
-              className="pt-2.5 mt-auto flex items-center gap-2"
-              style={{ borderTop: `1px solid ${tone.bg}` }}
-            >
-              {showDelta ? (
-                <>
-                  <span
-                    className="text-xs font-semibold"
-                    style={{ color: tone.text }}
-                  >
-                    {isPos ? "+" : ""}{delta.toFixed(1)} ({isPos ? "+" : ""}{pct.toFixed(1)}%)
-                  </span>
-                  <span className="text-xs" style={{ color: tone.text, opacity: 0.6 }}>
-                    {t("vs prev month", "เทียบเดือนก่อน")}
-                  </span>
-                </>
-              ) : (
-                <span className="text-xs text-gray-400">—</span>
-              )}
+              <div className="pt-2 flex items-center gap-2 text-xs">
+                {showDelta ? (
+                  <>
+                    <span
+                      className="font-semibold"
+                      style={{ color: tone.text }}
+                    >
+                      {isPos ? "+" : ""}{delta.toFixed(1)} ({isPos ? "+" : ""}{pct.toFixed(1)}%)
+                    </span>
+                    <span style={{ color: tone.text, opacity: 0.6 }}>
+                      {t("compared to previous month", "เทียบเดือนก่อน")}
+                    </span>
+                  </>
+                ) : (
+                  <span className="text-gray-400">—</span>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -783,10 +802,9 @@ function ForecastChart({ t, lang, series, selectedMonth }) {
 
           <button
             onClick={() => setBrushRange(defaultBrushRange)}
-            className="px-3 py-2 rounded-lg text-sm font-medium border bg-white hover:bg-gray-50 transition"
-            style={{ borderColor: THEME.border }}
-          >
-            {t("Reset view", "รีเซ็ตมุมมอง")}
+            className="px-3 py-2 rounded-lg text-sm font-medium border bg-white hover:bg-gray-50 transition flex items-center gap-2 text-gray-500"
+            style={{ borderColor: THEME.border }} >
+            {t("Go to latest", "กลับไปล่าสุด")} <RotateCcw className="w-4 h-4" />
           </button>
         </div>
       </CardHeader>
@@ -1114,9 +1132,7 @@ function ReasoningPanel({ t, lang, activeRow, selectedMonth }) {
 
                 {activeRow?.conclusion && (
                   <div>
-                    <p className="text-xs text-gray-400 font-semibold mb-1">
-                      CONCLUSION
-                    </p>
+                    <p className="text-xs text-gray-400 font-semibold mb-1"> {t("Conclusion", "บทสรุป")}</p>
                     <p className="text-[15px] leading-7 text-gray-700">
                       {activeRow.conclusion}
                     </p>
@@ -1125,10 +1141,7 @@ function ReasoningPanel({ t, lang, activeRow, selectedMonth }) {
 
                 {activeRow?.factors?.length > 0 && (
                   <div>
-                    <p className="text-xs text-gray-400 font-semibold mb-2">
-                      KEY FACTORS
-                    </p>
-
+                    <p className="text-xs text-gray-400 font-semibold mb-2">{t("Key factors", "ปัจจัยหลัก")}</p>
                     <ol className="space-y-3">
                       {activeRow.factors.map((f, idx) => (
                         <li key={idx} className="flex gap-3 items-start">
@@ -1241,11 +1254,8 @@ function AspectNewsPage({ t, lang, aspect, news = [], onBack }) {
                     boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
                   }}
                 />
-                <span
-                  className="absolute left-2.5 top-1/2 text-gray-400"
-                  style={{ transform: "translateY(-50%)", fontSize: 14, pointerEvents: "none" }}
-                >
-                  🔍
+                <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
+                  <Search className="w-3.5 h-3.5" />
                 </span>
                 {search && (
                   <button
