@@ -5,10 +5,9 @@
 
 :root {
   --thairath: #01B400;
-  --thairath-2: #E5C552; /* เผื่อ hover/เส้นพยากรณ์ */
-  --thairath-text: #1f2937; /* ตัวอักษรบนพื้นเหลือง */
+  --thairath-2: #E5C552;
+  --thairath-text: #1f2937;
 }
-
 
 * {
   margin: 0;
@@ -16,10 +15,12 @@
   box-sizing: border-box;
 }
 
-body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
+html,
+body,
+#root {
+  font-family: "IBM Plex Sans Thai", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    "Roboto", "Oxygen", "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans",
+    "Helvetica Neue", sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
