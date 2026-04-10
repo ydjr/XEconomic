@@ -25,14 +25,16 @@ import {
 } from "recharts"
 
 const THEME = {
-  navy: "#163A70",
+  navy: "#122040",
   blue: "#2F6FED",
   blueSoft: "#F4F7FC",
-  success: "#0F9F6E",
+  success: "#059669",
   danger: "#D64545",
   gray: "#6B7280",
-  border: "#E6ECF5",
+  border: "#DDE4EF",
   cardBg: "#FFFFFF",
+  pageBg: "#EEF2F8",
+  subbar: "#1a3260",
 }
 
 const ASPECTS_TO_RUN = [
@@ -78,7 +80,16 @@ const tagColors = {
   personal_finance: "#ec4899",
   business_marketing: "#14b8a6",
 }
-
+const ASPECT_EN = {
+  "เศรษฐกิจไทย": "Thai Economy",
+  "มาตรการของรัฐ": "Government Policy",
+  "การเมือง": "Politics",
+  "ราคาสินค้าเกษตร": "Agricultural Prices",
+  "สังคม/ความมั่นคง": "Social / Security",
+  "เศรษฐกิจโลก": "Global Economy",
+  "ราคาน้ำมันเชื้อเพลิง": "Fuel Prices",
+  "ภัยพิบัติ/โรคระบาด": "Disaster / Epidemic",
+}
 // ── Skeleton shimmer component ──
 const Skeleton = ({ className = "", style = {} }) => (
   <div
@@ -116,6 +127,11 @@ if (typeof document !== "undefined" && !document.getElementById("xecon-styles"))
       background: linear-gradient(to right, transparent, #1a4280);
       pointer-events: none;
     }
+    * { font-size: inherit; }
+    body, #root { font-size: 14px; }
+    h1 { font-size: 22px; }
+    h2 { font-size: 18px; }
+    h3 { font-size: 16px; }
   `
   document.head.appendChild(style)
 }
@@ -174,7 +190,9 @@ const CardHeader = ({ children, className = "" }) => (
 )
 
 const CardTitle = ({ children, className = "" }) => (
-  <h3 className={`text-lg font-bold text-gray-800 ${className}`}>{children}</h3>
+  <h3 className={`text-base font-semibold text-gray-900 ${className}`}>
+    {children}
+  </h3>
 )
 
 const CardDescription = ({ children, className = "" }) => (
@@ -188,7 +206,7 @@ function SectionHeader({ title, subtitle, icon: Icon }) {
     <div className="flex items-center gap-3">
       {Icon && <Icon className="w-6 h-6" style={{ color: THEME.blue }} />}
       <div>
-        <h2 className="text-xl font-bold text-gray-800">{title}</h2>
+        <h2 className="text-base font-semibold text-gray-900">{title}</h2>
         {subtitle ? <p className="text-sm text-gray-500">{subtitle}</p> : null}
       </div>
     </div>
@@ -219,25 +237,17 @@ function thaiDateShort(dateStr) {
 
 function monthLabel(dateStr, lang) {
   if (!dateStr) return "-"
+
+  const d = new Date(dateStr.length === 7 ? `${dateStr}-01` : dateStr)
+  if (Number.isNaN(d.getTime())) return String(dateStr)
   if (lang === "th") return thaiMonthYear(dateStr)
-  return dateStr.length >= 7 ? dateStr.slice(0, 7) : String(dateStr)
+
+  const monthsEN = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+
+  return `${monthsEN[d.getMonth()]} ${d.getFullYear()}`
 }
 
-function parseTop3Shap(raw) {
-  if (!raw) return []
-  if (Array.isArray(raw)) return raw
-
-  try {
-    const normalized = String(raw).replace(/'/g, '"')
-    const parsed = JSON.parse(normalized)
-    return Array.isArray(parsed) ? parsed : [String(raw)]
-  } catch {
-    return String(raw)
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean)
-  }
-}
 
 function normalizeDirection(direction, t) {
   const text = String(direction || "").toLowerCase()
@@ -399,280 +409,6 @@ function useNavigation() {
   return { page, setPage }
 }
 
-function ForecastSummaryCard({
-  t,
-  lang,
-  month,
-  predicted,
-  direction,
-  comparisonValue,
-  comparisonBasis,
-}) {
-  const info = normalizeDirection(direction, t)
-  const tone = toneClasses(info.tone)
-
-  const arrow =
-    info.tone === "up" ? "↑" :
-      info.tone === "down" ? "↓" :
-        "→"
-
-  const showDelta =
-    predicted != null &&
-    comparisonValue != null &&
-    Number(comparisonValue) !== 0
-
-  const delta = showDelta ? Number(predicted) - Number(comparisonValue) : 0
-  const pct = showDelta ? (delta / Math.abs(Number(comparisonValue))) * 100 : 0
-  const isPos = delta >= 0
-
-  const previousMonthLabel = React.useMemo(() => {
-    if (!month) return t("Previous month", "เดือนก่อนหน้า")
-
-    const [year, mon] = String(month).split("-").map(Number)
-    if (!year || !mon) return t("Previous month", "เดือนก่อนหน้า")
-
-    const prevDate = new Date(year, mon - 2, 1)
-    const prevKey = `${prevDate.getFullYear()}-${String(prevDate.getMonth() + 1).padStart(2, "0")}`
-
-    return monthLabel(prevKey, lang)
-  }, [month, lang, t])
-
-  return (
-    <Card>
-      <CardContent className="p-6">
-        <div className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-1">
-          {t("Forecast target", "เป้าหมายพยากรณ์")}
-        </div>
-
-        <div className="text-lg font-bold text-gray-800 mb-5">
-          {monthLabel(month, lang)}
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {/* ===== LEFT (ACTUAL) ===== */}
-          <div
-            className="rounded-2xl border flex flex-col p-5 h-full"
-            style={{ borderColor: THEME.border, backgroundColor: "#F8FAFC" }}
-          >
-            {/* TOP CONTENT */}
-            <div className="flex flex-col gap-3">
-              <div className="flex items-center gap-2">
-                <div className="w-1.5 h-1.5 rounded-full bg-gray-300" />
-                <span className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">
-                  {comparisonBasis === "predicted"
-                    ? t("Predicted value of", "ค่าพยากรณ์ของ")
-                    : t("Actual value of", "ค่าจริงของ")}{" "}
-                  {monthLabel(month, lang)}
-                </span>
-              </div>
-
-              <div className="text-[44px] font-black text-gray-900 leading-none tracking-tight">
-                {comparisonValue != null ? Number(comparisonValue).toFixed(1) : "—"}
-              </div>
-            </div>
-
-            {/* DIVIDER + BOTTOM */}
-            <div className="mt-auto pt-3">
-              <div style={{ borderTop: `1px solid ${THEME.border}` }} />
-
-              <div className="pt-2 text-xs text-gray-400">
-                {monthLabel(month, lang)}
-              </div>
-            </div>
-          </div>
-
-          {/* ===== RIGHT (FORECAST) ===== */}
-          <div
-            className="rounded-2xl border flex flex-col p-5 h-full"
-            style={{
-              borderColor: tone.bg,
-              backgroundColor: tone.soft,
-            }}
-          >
-            {/* TOP CONTENT */}
-            <div className="flex flex-col gap-3">
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <div
-                    className="w-1.5 h-1.5 rounded-full"
-                    style={{ backgroundColor: tone.text }}
-                  />
-                  <span
-                    className="text-[11px] font-semibold uppercase tracking-wider"
-                    style={{ color: tone.text, opacity: 0.75 }}
-                  >
-                    {lang === "th"
-                      ? `ข้อมูลพยากรณ์เดือน ${monthLabel(month, lang)}`
-                      : `Predicted value for ${monthLabel(month, lang)}`
-                    }
-                  </span>
-                </div>
-
-                {/* direction badge */}
-                <div
-                  className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold"
-                  style={{ backgroundColor: tone.bg, color: tone.text }}
-                >
-                  <span>{arrow}</span>
-                  <span>
-                    {info.tone === "up"
-                      ? t("Increase", "เพิ่มขึ้น")
-                      : info.tone === "down"
-                        ? t("Decrease", "ลดลง")
-                        : t("Stable", "ทรงตัว")}
-                  </span>
-                </div>
-              </div>
-
-              <div
-                className="text-[44px] font-black leading-none tracking-tight"
-                style={{
-                  color:
-                    info.tone === "down"
-                      ? THEME.danger
-                      : info.tone === "up"
-                        ? "#064E3B"
-                        : "#111827",
-                }}
-              >
-                {predicted != null ? Number(predicted).toFixed(1) : "—"}
-              </div>
-            </div>
-
-            {/* DIVIDER + BOTTOM */}
-            <div className="mt-auto pt-3">
-              <div style={{ borderTop: `1px solid ${THEME.border}`}} />
-
-              <div className="pt-2 flex items-center gap-2 text-xs">
-                {showDelta ? (
-                  <>
-                    <span
-                      className="font-semibold"
-                      style={{ color: tone.text }}
-                    >
-                      {isPos ? "+" : ""}{delta.toFixed(1)} ({isPos ? "+" : ""}{pct.toFixed(1)}%)
-                    </span>
-                    <span style={{ color: tone.text, opacity: 0.6 }}>
-                      {t("compared to previous month", "เทียบเดือนก่อน")}
-                    </span>
-                  </>
-                ) : (
-                  <span className="text-gray-400">—</span>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  )
-}
-
-function TopAspectsOnlyCard({ t, news = [], onSelectAspect, selectedForecastMonth, lang }) {
-  const getPrevious3Months = React.useCallback((targetMonth) => {
-    if (!targetMonth) return []
-
-    const [year, month] = targetMonth.split("-").map(Number)
-    const base = new Date(year, month - 1, 1)
-
-    const months = []
-    for (let i = 3; i >= 1; i--) {
-      const d = new Date(base)
-      d.setMonth(d.getMonth() - i)
-      const y = d.getFullYear()
-      const m = String(d.getMonth() + 1).padStart(2, "0")
-      months.push(`${y}-${m}`)
-    }
-    return months
-  }, [])
-
-  const backwardMonths = React.useMemo(
-    () => getPrevious3Months(selectedForecastMonth),
-    [getPrevious3Months, selectedForecastMonth]
-  )
-
-  const filteredNews = React.useMemo(() => {
-    if (!backwardMonths.length) return []
-    return news.filter((n) => backwardMonths.includes(String(n.date || "").slice(0, 7)))
-  }, [news, backwardMonths])
-
-  const ranked = React.useMemo(() => {
-    const counts = {}
-    filteredNews.forEach((n) => {
-      const aspect = n.aspect || "Other"
-      counts[aspect] = (counts[aspect] || 0) + 1
-    })
-
-    return Object.entries(counts)
-      .map(([aspect, count]) => ({ aspect, count }))
-      .sort((a, b) => b.count - a.count)
-  }, [filteredNews])
-
-  const periodText =
-    backwardMonths.length === 3
-      ? lang === "th"
-        ? `${thaiMonthYear(backwardMonths[0])} - ${thaiMonthYear(backwardMonths[2])}`
-        : `${backwardMonths[0]} to ${backwardMonths[2]}`
-      : "-"
-
-  return (
-    <Card className="h-full w-full flex flex-col">
-      <CardHeader>
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-          <div>
-            <CardTitle>{t("Related aspects", "ประเด็นที่เกี่ยวข้อง")}</CardTitle>
-            <CardDescription>
-              {t(
-                "News counts from the 3 months before the selected forecast month",
-                "จำนวนข่าวจาก 3 เดือนย้อนหลังของเดือนพยากรณ์ที่เลือก"
-              )}
-            </CardDescription>
-          </div>
-
-          <Badge variant="outline">
-            {t("Period", "ช่วงเวลา")} : {periodText}
-          </Badge>
-        </div>
-      </CardHeader>
-
-      <CardContent className="min-h-[320px] flex-1">
-        {ranked.length === 0 ? (
-          <EmptyState
-            icon="📰"
-            title={t("No aspects found", "ไม่พบประเด็น")}
-            description={t(
-              "No news data available for the 3 months before this forecast period.",
-              "ไม่พบข้อมูลข่าวสำหรับ 3 เดือนก่อนช่วงพยากรณ์นี้"
-            )}
-          />
-        ) : (
-          <div className="grid grid-cols-1 gap-2">
-            {ranked.map((item) => (
-              <button
-                key={item.aspect}
-                onClick={() => onSelectAspect?.(item.aspect)}
-                className="xecon-aspect-btn w-full px-4 py-3 rounded-xl border text-left"
-                style={{ borderColor: THEME.border, background: "#fff", cursor: "pointer" }}
-              >
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-sm font-semibold text-gray-800">{item.aspect}</span>
-                  <div className="flex items-center gap-2">
-                    <Badge variant="secondary">{item.count}</Badge>
-                    <span
-                      className="xecon-arrow text-gray-400 text-sm"
-                      style={{ opacity: 0 }}
-                    >→</span>
-                  </div>
-                </div>
-              </button>
-            ))}
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  )
-}
-
 function ForecastXAxisTick({ x, y, payload, lang }) {
   const raw = payload?.value
   const d = new Date(raw)
@@ -683,7 +419,7 @@ function ForecastXAxisTick({ x, y, payload, lang }) {
         <text
           x={0}
           y={0}
-          dy={12}
+          dy={14}
           textAnchor="middle"
           fill="#6B7280"
           fontSize={10}
@@ -704,273 +440,9 @@ function ForecastXAxisTick({ x, y, payload, lang }) {
     <g transform={`translate(${x},${y})`}>
       <text textAnchor="middle" fill="#6B7280" fontSize={10}>
         <tspan x="0" dy="12">{month}</tspan>
-        <tspan x="0" dy="11">{year}</tspan>
+        <tspan x="0" dy="14">{year}</tspan>
       </text>
     </g>
-  )
-}
-
-function ForecastChart({ t, lang, series, selectedMonth }) {
-  const filteredSeries = React.useMemo(() => {
-    if (!series || series.length === 0) return []
-    return [...series].sort((a, b) => String(a.date).localeCompare(String(b.date)))
-  }, [series])
-
-  const chartData = React.useMemo(
-    () => buildSelectedMonthChartData(filteredSeries, selectedMonth),
-    [filteredSeries, selectedMonth]
-  )
-
-  const lastActualDate = React.useMemo(() => {
-    const actualRows = filteredSeries.filter((s) => s.actual != null)
-    return actualRows.length ? actualRows[actualRows.length - 1].date : null
-  }, [filteredSeries])
-
-  const forecastStartDate = React.useMemo(() => {
-    const firstForecast = filteredSeries.find((s) => s.actual == null && s.pred != null)
-    return firstForecast?.date || null
-  }, [filteredSeries])
-
-  const selectedDate = selectedMonth ? `${selectedMonth}-01` : null
-
-  const yDomain = React.useMemo(() => {
-    const values = chartData
-      .flatMap((d) => [d.actual, d.pred])
-      .filter((v) => v != null && !Number.isNaN(Number(v)))
-      .map(Number)
-
-    if (!values.length) return [0, 100]
-
-    const min = Math.min(...values)
-    const max = Math.max(...values)
-    const pad = Math.max((max - min) * 0.1, 1)
-
-    return [Math.floor(min - pad), Math.ceil(max + pad)]
-  }, [chartData])
-
-  const defaultBrushRange = React.useMemo(() => {
-    const len = chartData.length
-    if (!len) return { startIndex: 0, endIndex: 0 }
-
-    const lastIndex = len - 1
-    const startIndex = Math.max(0, len - 24)
-
-    return { startIndex, endIndex: lastIndex }
-  }, [chartData])
-
-  const [brushRange, setBrushRange] = React.useState(defaultBrushRange)
-
-  React.useEffect(() => {
-    setBrushRange(defaultBrushRange)
-  }, [defaultBrushRange.startIndex, defaultBrushRange.endIndex])
-
-  const visibleData = React.useMemo(() => {
-    if (!chartData.length) return []
-    const start = Math.max(0, brushRange.startIndex ?? 0)
-    const end = Math.min(chartData.length - 1, brushRange.endIndex ?? chartData.length - 1)
-    return chartData.slice(start, end + 1)
-  }, [chartData, brushRange])
-
-  const visibleYDomain = React.useMemo(() => {
-    const values = visibleData
-      .flatMap((d) => [d.actual, d.pred])
-      .filter((v) => v != null && !Number.isNaN(Number(v)))
-      .map(Number)
-
-    if (!values.length) return yDomain
-
-    const min = Math.min(...values)
-    const max = Math.max(...values)
-    const pad = Math.max((max - min) * 0.1, 1)
-
-    return [Math.floor(min - pad), Math.ceil(max + pad)]
-  }, [visibleData, yDomain])
-
-  return (
-    <Card>
-      <CardHeader>
-        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <div>
-            <CardTitle>{t("CCI Timeline", "กราฟดัชนีความเชื่อมั่น (CCI)")}</CardTitle>
-            <CardDescription>
-              {t(
-                "Showing the last 2 years by default. Drag the range selector below to adjust.",
-                "แสดงข้อมูลย้อนหลัง 2 ปีล่าสุด ปรับช่วงเวลาได้จากแถบด้านล่าง"
-              )}
-            </CardDescription>
-          </div>
-
-          <button
-            onClick={() => setBrushRange(defaultBrushRange)}
-            className="px-3 py-2 rounded-lg text-sm font-medium border bg-white hover:bg-gray-50 transition flex items-center gap-2 text-gray-500"
-            style={{ borderColor: THEME.border }} >
-            {t("Go to latest", "กลับไปล่าสุด")} <RotateCcw className="w-4 h-4" />
-          </button>
-        </div>
-      </CardHeader>
-
-      <CardContent>
-        <div
-          className="w-full rounded-xl border bg-white overflow-hidden"
-          style={{ borderColor: THEME.border }}
-        >
-          <div className="flex w-full" style={{ height: 420 }}>
-            <div
-              className="flex-shrink-0 bg-white border-r"
-              style={{ width: 90, borderColor: THEME.border }}
-            >
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart
-                  data={visibleData}
-                  margin={{ top: 60, right: 0, left: 0, bottom: 55 }}
-                  syncId="forecast-chart"
-                >
-                  <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" horizontal vertical={false} />
-                  <YAxis tick={{ fontSize: 11 }} width={75} domain={visibleYDomain} />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-
-            <div className="flex-1 overflow-hidden">
-              <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart
-                  data={visibleData}
-                  margin={{ top: 20, right: 20, left: 0, bottom: 55 }}
-                  syncId="forecast-chart"
-                >
-                  <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                  <XAxis
-                    dataKey="date"
-                    height={52}
-                    interval={0}
-                    tickMargin={8}
-                    tick={<ForecastXAxisTick lang={lang} />}
-                  />
-                  <YAxis hide domain={visibleYDomain} />
-
-                  <ReTooltip
-                    content={({ active, payload, label }) => {
-                      if (!active || !payload?.length) return null
-
-                      const actualItem = payload.find((p) => p.dataKey === "actual")
-                      const predItem = payload.find((p) => p.dataKey === "pred")
-
-                      return (
-                        <div
-                          className="rounded-xl border bg-white p-3 shadow-lg"
-                          style={{ borderColor: THEME.border }}
-                        >
-                          <div className="font-semibold text-gray-900 mb-1">
-                            {monthLabel(label, lang)}
-                          </div>
-
-                          {actualItem?.value != null ? (
-                            <div className="text-sm" style={{ color: THEME.navy }}>
-                              {t("Actual", "ค่าจริง")}: {Number(actualItem.value).toFixed(2)}
-                            </div>
-                          ) : null}
-
-                          {predItem?.value != null ? (
-                            <div className="text-sm" style={{ color: THEME.blue }}>
-                              {t("Forecast", "ค่าพยากรณ์")}: {Number(predItem.value).toFixed(2)}
-                            </div>
-                          ) : null}
-                        </div>
-                      )
-                    }}
-                  />
-
-                  <Legend verticalAlign="top" height={40} />
-
-                  {lastActualDate && forecastStartDate ? (
-                    <ReferenceArea
-                      x1={lastActualDate}
-                      x2={visibleData[visibleData.length - 1]?.date}
-                      fill={THEME.blue}
-                      fillOpacity={0.05}
-                    />
-                  ) : null}
-
-                  {selectedDate && visibleData.some((d) => d.date === selectedDate) ? (
-                    <ReferenceLine
-                      x={selectedDate}
-                      stroke={THEME.blue}
-                      strokeDasharray="4 4"
-                      label={{
-                        value: t("Selected", "เดือนที่เลือก"),
-                        position: "insideTopRight",
-                        fontSize: 11,
-                        fill: THEME.blue,
-                      }}
-                    />
-                  ) : null}
-
-                  <Line
-                    type="monotone"
-                    dataKey="actual"
-                    stroke={THEME.navy}
-                    strokeWidth={2.5}
-                    dot={{ r: 3 }}
-                    activeDot={{ r: 5 }}
-                    name={t("Actual", "ค่าจริง")}
-                    connectNulls={false}
-                  />
-
-                  <Line
-                    type="monotone"
-                    dataKey="pred"
-                    stroke={THEME.blue}
-                    strokeWidth={2.5}
-                    dot={{ r: 3 }}
-                    activeDot={{ r: 5 }}
-                    strokeDasharray="6 6"
-                    name={t("Forecast", "ค่าพยากรณ์")}
-                    connectNulls={false}
-                  />
-                </ComposedChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-
-          <div
-            className="border-t px-4 py-3 bg-white"
-            style={{ borderColor: THEME.border }}
-          >
-            <div style={{ width: "100%", height: 90 }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={chartData}>
-                  <XAxis dataKey="date" hide />
-                  <YAxis hide domain={yDomain} />
-
-                  <Brush
-                    dataKey="date"
-                    height={28}
-                    travellerWidth={10}
-                    startIndex={brushRange.startIndex}
-                    endIndex={brushRange.endIndex}
-                    onChange={(range) => {
-                      if (
-                        range &&
-                        typeof range.startIndex === "number" &&
-                        typeof range.endIndex === "number"
-                      ) {
-                        setBrushRange({
-                          startIndex: range.startIndex,
-                          endIndex: range.endIndex,
-                        })
-                      }
-                    }}
-                    tickFormatter={(v) =>
-                      lang === "th" ? thaiMonthYear(v) : String(v).slice(0, 7)
-                    }
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
   )
 }
 
@@ -1025,7 +497,10 @@ function ForecastPage({
   }, [selectedForecastMonth, series])
 
   const activeRow = React.useMemo(
-    () => allExplain.find((r) => r.date === selectedForecastMonth) || null,
+    () =>
+      allExplain.find(
+        (r) => String(r.date || "").slice(0, 7) === selectedForecastMonth
+      ) || null,
     [allExplain, selectedForecastMonth]
   )
 
@@ -1039,7 +514,7 @@ function ForecastPage({
   if (isLoading) return <ForecastPageSkeleton />
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <ForecastSummaryCard
         t={t}
         lang={lang}
@@ -1048,6 +523,7 @@ function ForecastPage({
         direction={selectedSeriesRow?.direction}
         comparisonValue={selectedSeriesRow?.compare_value}
         comparisonBasis={selectedSeriesRow?.compare_basis}
+        conclusion={activeRow?.conclusion || summary?.conclusion || summary?.summary || ""}
       />
 
       <ForecastChart
@@ -1057,111 +533,636 @@ function ForecastPage({
         selectedMonth={selectedForecastMonth}
       />
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
-        <div className="lg:col-span-2 h-full flex">
-          <ReasoningPanel
-            t={t}
-            lang={lang}
-            activeRow={activeRow}
-            selectedMonth={selectedForecastMonth}
-          />
+      <ReasoningPanel
+        t={t}
+        lang={lang}
+        activeRow={activeRow}
+        selectedMonth={selectedForecastMonth}
+        news={news}
+        onSelectAspect={onSelectAspect}
+      />
+
+      {/* <TopAspectsOnlyCard
+        t={t}
+        news={news}
+        onSelectAspect={onSelectAspect}
+        selectedForecastMonth={selectedForecastMonth}
+        lang={lang}
+      /> */}
+    </div>
+  )
+}
+
+function ForecastSummaryCard({
+  t,
+  lang,
+  month,
+  predicted,
+  direction,
+  comparisonValue,
+  comparisonBasis,
+  conclusion,
+}) {
+  const info = normalizeDirection(direction, t)
+  const arrow = info.tone === "up" ? "↑" : info.tone === "down" ? "↓" : "→"
+
+  const showDelta =
+    predicted != null &&
+    comparisonValue != null &&
+    Number(comparisonValue) !== 0
+
+  const delta = showDelta ? Number(predicted) - Number(comparisonValue) : 0
+  const pct = showDelta ? (delta / Math.abs(Number(comparisonValue))) * 100 : 0
+  const isPos = delta >= 0
+
+  const prevMonthLabel = React.useMemo(() => {
+    if (!month) return ""
+    const [year, mon] = String(month).split("-").map(Number)
+    if (!year || !mon) return ""
+    const prevDate = new Date(year, mon - 2, 1)
+    const prevKey = `${prevDate.getFullYear()}-${String(prevDate.getMonth() + 1).padStart(2, "0")}`
+    return monthLabel(prevKey, lang)
+  }, [month, lang])
+
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+      {/* ── CCI card (3 cols) ── */}
+      <div
+        className="lg:col-span-3 bg-white rounded-2xl border p-6"
+        style={{ borderColor: THEME.border }}
+      >
+        {/* Header with rising-bar icon */}
+        <div className="flex items-center gap-2.5 mb-1 mt-2">
+          <div
+            className="flex items-center justify-center rounded-lg flex-shrink-0"
+            style={{ width: 28, height: 28, background: "#EEF4FF" }}
+          >
+            <svg width="30" height="30" viewBox="0 0 30 30" fill="none">
+              <text x="15" y="15" textAnchor="middle" dominantBaseline="central" fontSize="10" fontWeight="800" fontStyle="italic" fill={THEME.blue} fontFamily="Roboto, Arial, sans-serif" letterSpacing="0.6">CCI</text></svg>
+          </div>
+          <span className="text-lg font-medium" style={{ color: "#1E2F47" }}>
+            {t("Consumer Confidence Forecast", "ค่าพยากรณ์ดัชนีความเชื่อมั่นผู้บริโภค (CCI)")}
+          </span>
+        </div>
+        <div className="text-xs mb-5" style={{ color: "#8A9BB8", paddingLeft: 38 }}>
+          {t("Forecast Month", "เดือนพยากรณ์")} · {monthLabel(month, lang)}
         </div>
 
-        <div className="lg:col-span-1 h-full flex">
-          <TopAspectsOnlyCard
-            t={t}
-            news={news}
-            onSelectAspect={onSelectAspect}
-            selectedForecastMonth={selectedForecastMonth}
-            lang={lang}
-          />
+        <div className="grid grid-cols-2 gap-3">
+          {/* Actual box */}
+          <div
+            className="rounded-xl p-4 border flex flex-col gap-2"
+            style={{ background: THEME.blueSoft, borderColor: THEME.border }}
+          >
+            <div className="text-xs" style={{ color: "#8A9BB8" }}>
+              {comparisonBasis === "predicted"
+                ? t("Forecast value —", "ค่าพยากรณ์ของ")
+                : t("Actual data —", "ค่าจริง")}{" "}
+              <span style={{ color: "#4A5D7A", fontWeight: 500 }}>{prevMonthLabel}</span>
+            </div>
+            <div className="text-[38px] font-semibold leading-none" style={{ color: "#1E2F47" }}>
+              {comparisonValue != null ? Number(comparisonValue).toFixed(1) : "—"}
+            </div>
+            <div className="text-xs" style={{ color: "#A0B0C8" }}>
+              {prevMonthLabel}
+            </div>
+          </div>
+
+          {/* Forecast box */}
+          <div
+            className="rounded-xl p-4 border flex flex-col gap-2"
+            style={{
+              background: info.tone === "down" ? "#FEF2F2" : info.tone === "up" ? "#F0FDF7" : "#F4F7FC",
+              borderColor: info.tone === "down" ? "#FECACA" : info.tone === "up" ? "#A7F3D0" : THEME.border,
+            }}
+          >
+            <div className="text-xs font-medium" style={{ color: info.tone === "down" ? THEME.danger : info.tone === "up" ? THEME.success : THEME.gray }}>
+              {t("Forecast —", "พยากรณ์")} <span style={{ fontWeight: 600 }}>{monthLabel(month, lang)}</span>
+            </div>
+            <div className="text-[38px] font-semibold leading-none" style={{ color: info.tone === "down" ? THEME.danger : info.tone === "up" ? THEME.success : "#1E2F47" }}>
+              {predicted != null ? Number(predicted).toFixed(1) : "—"}
+            </div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span
+                className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium"
+                style={{
+                  background: info.tone === "down" ? "#FEE2E2" : info.tone === "up" ? "#DCFCE7" : "#F3F4F6",
+                  color: info.tone === "down" ? THEME.danger : info.tone === "up" ? THEME.success : THEME.gray,
+                  border: `1px solid ${info.tone === "down" ? "#FECACA" : info.tone === "up" ? "#A7F3D0" : "#E5E7EB"}`,
+                }}
+              >
+                {arrow} {info.tone === "up"
+                  ? t("Increase", "เพิ่มขึ้น")
+                  : info.tone === "down"
+                    ? t("Decrease", "ลดลง")
+                    : t("Stable", "ทรงตัว")}
+              </span>
+              {showDelta && (
+                <span className="text-xs" style={{ color: "#8A9BB8" }}>
+                  {isPos ? "+" : ""}{delta.toFixed(1)} ({isPos ? "+" : ""}{pct.toFixed(1)}%)
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Summary card (2 cols) ── */}
+      <div
+        className="lg:col-span-2 rounded-2xl border p-6 flex flex-col gap-3"
+        style={{ background: "#F4F7FC", borderColor: THEME.border }}
+      >
+        <div className="flex items-center gap-2.5">
+          <div
+            className="flex items-center justify-center rounded-lg flex-shrink-0"
+            style={{ width: 28, height: 28, background: "#E0ECFF" }}
+          >
+            <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+              <circle cx="6.5" cy="6.5" r="5" stroke={THEME.blue} strokeWidth="1.3" />
+              <line x1="6.5" y1="4.5" x2="6.5" y2="7" stroke={THEME.blue} strokeWidth="1.3" strokeLinecap="round" />
+              <circle cx="6.5" cy="9" r=".65" fill={THEME.blue} />
+            </svg>
+          </div>
+          <span
+            className="text-sm font-medium tracking-wider"
+            style={{ color: THEME.blue }}
+          >
+            {t("Overview", "ภาพรวมรายงาน")}
+          </span>
+        </div>
+
+        <div className="flex flex-col justify-start flex-1 pt-7">
+          {conclusion ? (
+            <p className="text-sm leading-7" style={{ color: "#2D3F5C" }}>
+              {conclusion}
+            </p>
+          ) : (
+            <p className="text-sm" style={{ color: "#A0B0C8" }}>—</p>
+          )}
+
         </div>
       </div>
     </div>
   )
 }
 
-function ReasoningPanel({ t, lang, activeRow, selectedMonth }) {
-  const directionInfo = normalizeDirection(activeRow?.direction, t)
-  const directionTone = toneClasses(directionInfo.tone)
+function ForecastChart({ t, lang, series, selectedMonth }) {
+  const [activeRange, setActiveRange] = React.useState("2y")
+
+  const filteredSeries = React.useMemo(() => {
+    if (!series || series.length === 0) return []
+    return [...series].sort((a, b) => String(a.date).localeCompare(String(b.date)))
+  }, [series])
+
+  const chartData = React.useMemo(
+    () => buildSelectedMonthChartData(filteredSeries, selectedMonth),
+    [filteredSeries, selectedMonth]
+  )
+
+  const lastActualDate = React.useMemo(() => {
+    const actualRows = filteredSeries.filter((s) => s.actual != null)
+    return actualRows.length ? actualRows[actualRows.length - 1].date : null
+  }, [filteredSeries])
+
+  const forecastStartDate = React.useMemo(() => {
+    const firstForecast = filteredSeries.find((s) => s.actual == null && s.pred != null)
+    return firstForecast?.date || null
+  }, [filteredSeries])
+
+  const selectedDate = selectedMonth ? `${selectedMonth}-01` : null
+
+  const yDomain = React.useMemo(() => {
+    const values = chartData
+      .flatMap((d) => [d.actual, d.pred])
+      .filter((v) => v != null && !Number.isNaN(Number(v)))
+      .map(Number)
+    if (!values.length) return [0, 100]
+    const min = Math.min(...values)
+    const max = Math.max(...values)
+    const pad = Math.max((max - min) * 0.1, 1)
+    return [Math.floor(min - pad), Math.ceil(max + pad)]
+  }, [chartData])
+
+  const rangeIndexes = React.useMemo(() => {
+    const len = chartData.length
+    if (!len) return { startIndex: 0, endIndex: 0 }
+    const lastIndex = len - 1
+    if (activeRange === "1y") return { startIndex: Math.max(0, len - 12), endIndex: lastIndex }
+    if (activeRange === "2y") return { startIndex: Math.max(0, len - 24), endIndex: lastIndex }
+    return { startIndex: 0, endIndex: lastIndex }
+  }, [chartData, activeRange])
+
+  const [brushRange, setBrushRange] = React.useState(rangeIndexes)
+
+  React.useEffect(() => {
+    setBrushRange(rangeIndexes)
+  }, [rangeIndexes.startIndex, rangeIndexes.endIndex])
+
+  const visibleData = React.useMemo(() => {
+    if (!chartData.length) return []
+    const start = Math.max(0, brushRange.startIndex ?? 0)
+    const end = Math.min(chartData.length - 1, brushRange.endIndex ?? chartData.length - 1)
+    return chartData.slice(start, end + 1)
+  }, [chartData, brushRange])
+
+  const visibleYDomain = React.useMemo(() => {
+    const values = visibleData
+      .flatMap((d) => [d.actual, d.pred])
+      .filter((v) => v != null && !Number.isNaN(Number(v)))
+      .map(Number)
+    if (!values.length) return yDomain
+    const min = Math.min(...values)
+    const max = Math.max(...values)
+    const pad = Math.max((max - min) * 0.1, 1)
+    return [Math.floor(min - pad), Math.ceil(max + pad)]
+  }, [visibleData, yDomain])
+
+  const rangeButtons = [
+    { key: "1y", en: "1 Year", th: "1 ปี" },
+    { key: "2y", en: "2 Years", th: "2 ปี" },
+    { key: "all", en: "All", th: "ทั้งหมด" },
+  ]
 
   return (
-    <Card className="overflow-hidden h-full w-full flex flex-col">
-      <CardHeader className="bg-gradient-to-r from-slate-50 to-white">
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div>
-            <CardTitle className="flex items-center gap-2">
-              <Activity className="w-5 h-5" style={{ color: THEME.blue }} />
-              {t("Forecast reasoning", "เหตุผลประกอบการพยากรณ์")}
-            </CardTitle>
-            <CardDescription>
-              {t("Narrative explanation for the selected month", "คำอธิบายเชิงเหตุผลสำหรับเดือนที่เลือก")}
-            </CardDescription>
+    <Card>
+      <CardHeader>
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div className="flex items-center gap-2.5">
+            <div
+              className="flex items-center justify-center rounded-lg flex-shrink-0"
+              style={{ width: 28, height: 28, background: "#EEF4FF", alignSelf: "flex-start", marginTop: 2 }}
+            >
+              <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
+                <polyline points="1,11 4,7 7,9 10,4 14,6" stroke={THEME.blue} strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+                <line x1="1" y1="13" x2="14" y2="13" stroke={THEME.blue} strokeWidth="1.2" strokeLinecap="round" />
+              </svg>
+            </div>
+            <div>
+              <div className="text-lg font-medium" style={{ color: "#1E2F47" }}>
+                {t("Consumer Confidence Index Forecast Trend", "แผนภูมิพยากรณ์ค่าดัชนีความเชื่อมั่นผู้บริโภค (CCI)")}
+              </div>
+              <div className="text-xs mt-1" style={{ color: "#8A9BB8" }}>
+                {t("Comparing actual recorded data to forecast values", "เปรียบเทียบค่าจริงและค่าพยากรณ์")}
+              </div>
+            </div>
           </div>
 
-          <div className="flex flex-wrap gap-2">
-            <Badge variant="outline">
-              {t("Month", "เดือน")}: {monthLabel(selectedMonth, lang)}
-            </Badge>
+          <div className="flex items-center gap-2">
+            <div className="flex gap-1" style={{ background: THEME.blueSoft, borderRadius: 8, padding: 3 }}>
+              {rangeButtons.map(({ key, en, th }) => (
+                <button
+                  key={key}
+                  onClick={() => setActiveRange(key)}
+                  style={{
+                    padding: "4px 12px",
+                    borderRadius: 6,
+                    fontSize: 12,
+                    fontWeight: activeRange === key ? 500 : 400,
+                    border: "none",
+                    cursor: "pointer",
+                    background: activeRange === key ? THEME.navy : "transparent",
+                    color: activeRange === key ? "#fff" : "#7A8CAA",
+                    transition: "all 0.15s",
+                  }}
+                >
+                  {t(en, th)}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       </CardHeader>
 
-      <CardContent className="h-full flex-1">
-        {activeRow ? (
-          <div
-            className="rounded-2xl p-5 border h-full"
-            style={{
-              backgroundColor: directionTone.soft,
-              borderColor: THEME.border,
-            }}
-          >
-            <div className="flex items-start gap-4 h-full">
-              <div
-                className="w-1.5 self-stretch rounded-full"
-                style={{ backgroundColor: directionTone.text }}
-              />
-
-              <div className="flex-1 space-y-5">
-                <div
-                  className="text-sm font-semibold"
-                  style={{ color: directionTone.text }}
+      <CardContent>
+        <div
+          className="w-full rounded-xl border bg-white overflow-hidden"
+          style={{ borderColor: THEME.border }}
+        >
+          <div className="flex w-full" style={{ height: 420 }}>
+            <div
+              className="flex-shrink-0 bg-white border-r"
+              style={{ width: 90, borderColor: THEME.border }}
+            >
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart
+                  data={visibleData}
+                  margin={{ top: 60, right: 0, left: 0, bottom: 55 }}
+                  syncId="forecast-chart"
                 >
-                  {t("Model interpretation", "บทวิเคราะห์ของโมเดล")}
-                </div>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" horizontal vertical={false} />
+                  <YAxis tick={{ fontSize: 11 }} width={75} domain={visibleYDomain} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
 
-                {activeRow?.conclusion && (
-                  <div>
-                    <p className="text-xs text-gray-400 font-semibold mb-1"> {t("Conclusion", "บทสรุป")}</p>
-                    <p className="text-[15px] leading-7 text-gray-700">
-                      {activeRow.conclusion}
+            <div className="flex-1 overflow-hidden">
+              <ResponsiveContainer width="100%" height="100%">
+                <ComposedChart
+                  data={visibleData}
+                  margin={{ top: 20, right: 20, left: 0, bottom: 55 }}
+                  syncId="forecast-chart"
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                  <XAxis
+                    dataKey="date"
+                    height={52}
+                    interval={activeRange === "all" ? Math.max(1, Math.floor(visibleData.length / 14)) : 0}
+                    tickMargin={8}
+                    tick={<ForecastXAxisTick lang={lang} />}
+                  />
+                  <YAxis hide domain={visibleYDomain} />
+
+                  <ReTooltip
+                    content={({ active, payload, label }) => {
+                      if (!active || !payload?.length) return null
+
+                      const actualItem = payload.find((p) => p.dataKey === "actual")
+                      const predItem = payload.find((p) => p.dataKey === "pred")
+
+                      return (
+                        <div
+                          className="rounded-xl border bg-white p-3 shadow-lg"
+                          style={{ borderColor: THEME.border }}
+                        >
+                          <div className="text-sm font-semibold text-gray-900 mb-1">
+                            {monthLabel(label, lang)}
+                          </div>
+
+                          {actualItem?.value != null ? (
+                            <div className="text-sm" style={{ color: THEME.navy }}>
+                              {t("Actual", "ค่าจริง")}: {Number(actualItem.value).toFixed(2)}
+                            </div>
+                          ) : null}
+
+                          {predItem?.value != null ? (
+                            <div className="text-sm" style={{ color: THEME.blue }}>
+                              {t("Forecast", "ค่าพยากรณ์")}: {Number(predItem.value).toFixed(2)}
+                            </div>
+                          ) : null}
+                        </div>
+                      )
+                    }}
+                  />
+
+                  <Legend verticalAlign="top" height={40} />
+
+                  {lastActualDate && forecastStartDate ? (
+                    <ReferenceArea
+                      x1={lastActualDate}
+                      x2={visibleData[visibleData.length - 1]?.date}
+                      fill={THEME.blue}
+                      fillOpacity={0.05}
+                    />
+                  ) : null}
+
+                  {selectedDate && visibleData.some((d) => d.date === selectedDate) ? (
+                    <ReferenceLine
+                      x={selectedDate}
+                      stroke={THEME.blue}
+                      strokeDasharray="4 4"
+                      label={{
+                        value: t("Selected period", "เดือนที่เลือก"),
+                        position: "insideTopRight",
+                        fontSize: 11,
+                        fill: THEME.blue,
+                      }}
+                    />
+                  ) : null}
+
+                  <Line
+                    type="monotone"
+                    dataKey="actual"
+                    stroke={THEME.blue}
+                    strokeWidth={2.5}
+                    dot={{ r: 3 }}
+                    activeDot={{ r: 5 }}
+                    name={t("Actual", "ค่าจริง")}
+                    connectNulls={false}
+                  />
+
+                  <Line
+                    type="monotone"
+                    dataKey="pred"
+                    stroke={THEME.success}
+                    strokeWidth={2}
+                    dot={{ r: 3 }}
+                    activeDot={{ r: 5 }}
+                    strokeDasharray="6 4"
+                    name={t("Forecast", "ค่าพยากรณ์")}
+                    connectNulls={false}
+                  />
+                </ComposedChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          <div
+            className="border-t px-4 py-1 bg-white"
+            style={{ borderColor: THEME.border }}
+          >
+            <div style={{ width: "100%", height: 60 }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={chartData}>
+                  <XAxis dataKey="date" hide />
+                  <YAxis hide domain={yDomain} />
+
+                  <Brush
+                    dataKey="date"
+                    height={28}
+                    travellerWidth={10}
+                    startIndex={brushRange.startIndex}
+                    endIndex={brushRange.endIndex}
+                    onChange={(range) => {
+                      if (
+                        range &&
+                        typeof range.startIndex === "number" &&
+                        typeof range.endIndex === "number"
+                      ) {
+                        setBrushRange({
+                          startIndex: range.startIndex,
+                          endIndex: range.endIndex,
+                        })
+                      }
+                    }}
+                    tickFormatter={(v) =>
+                      lang === "th" ? thaiMonthYear(v) : String(v).slice(0, 7)
+                    }
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+function ReasoningPanel({ t, lang, activeRow, selectedMonth, news, onSelectAspect }) {
+  const getPrevious3Months = React.useCallback((targetMonth) => {
+    if (!targetMonth) return []
+    const [year, month] = targetMonth.split("-").map(Number)
+    const base = new Date(year, month - 1, 1)
+    const months = []
+    for (let i = 3; i >= 1; i--) {
+      const d = new Date(base)
+      d.setMonth(d.getMonth() - i)
+      months.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`)
+    }
+    return months
+  }, [])
+
+  const ranked = React.useMemo(() => {
+    const backwardMonths = getPrevious3Months(selectedMonth)
+    const filteredNews = (news || []).filter((n) => backwardMonths.includes(String(n.date || "").slice(0, 7)))
+    const counts = {}
+    filteredNews.forEach((n) => {
+      const aspect = n.aspect || "Other"
+      counts[aspect] = (counts[aspect] || 0) + 1
+    })
+    return Object.entries(counts)
+      .map(([aspect, count]) => ({ aspect, count }))
+      .sort((a, b) => b.count - a.count)
+  }, [news, selectedMonth, getPrevious3Months])
+
+  return (
+    <Card className="overflow-hidden w-full">
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div
+              className="flex items-center justify-center rounded-lg flex-shrink-0"
+              style={{ width: 28, height: 28, background: "#EEF4FF" }}
+            >
+              {/* 4-point sparkle / ✦ icon */}
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                <path d="M7 1 L7.8 6.2 L13 7 L7.8 7.8 L7 13 L6.2 7.8 L1 7 L6.2 6.2 Z" fill="none" stroke={THEME.blue} strokeWidth="1.6" strokeLinejoin="round" />
+              </svg>
+            </div>
+            <span className="text-lg font-medium" style={{ color: "#1E2F47" }}>
+              {t("Key Factors", "ปัจจัยหลักของการพยากรณ์")}
+            </span>
+
+          </div>
+          <Badge variant="outline">
+            {monthLabel(selectedMonth, lang)}
+          </Badge>
+        </div>
+      </CardHeader>
+
+      <CardContent>
+        {activeRow ? (
+          <div className="flex gap-0">
+            {/* LEFT — factors */}
+            <div
+              className="flex flex-col gap-3 pr-6"
+              style={{ flex: "0 0 75%", paddingTop: 27, paddingRight: 20 }}
+            >
+              {activeRow?.factors?.length > 0
+                ? activeRow.factors.map((f, idx) => (
+                  <div
+                    key={idx}
+                    className="flex gap-3 rounded-xl p-4 border"
+                    style={{ background: "#F0F4FF", borderColor: "#C8D9F5" }}
+                  >
+                    <div
+                      className="flex items-center justify-center rounded-lg flex-shrink-0 mt-0.5"
+                      style={{
+                        width: 24,
+                        height: 24,
+                        background: THEME.navy,
+                        color: "#fff",
+                        fontSize: 12,
+                        fontWeight: 500
+                      }}
+                    >
+                      {idx + 1}
+                    </div>
+
+                    <p className="text-sm leading-7" style={{ color: "#2D3F5C" }}>
+                      {f.text}
                     </p>
                   </div>
-                )}
+                ))
+                : <div className="text-sm text-gray-400 py-4">—</div>}
+            </div>
 
-                {activeRow?.factors?.length > 0 && (
-                  <div>
-                    <p className="text-xs text-gray-400 font-semibold mb-2">{t("Key factors", "ปัจจัยหลัก")}</p>
-                    <ol className="space-y-3">
-                      {activeRow.factors.map((f, idx) => (
-                        <li key={idx} className="flex gap-3 items-start">
-                          <span className="font-semibold text-gray-500 min-w-[18px]">
-                            {idx + 1}.
-                          </span>
-                          <p className="flex-1 text-[15px] leading-7 text-gray-700">
-                            {f.text}
-                          </p>
-                        </li>
-                      ))}
-                    </ol>
-                  </div>
-                )}
-              </div>
+            {/* RIGHT — aspect */}
+            <div
+              style={{
+                flex: "0 0 21%",
+                marginLeft: 20,
+                borderLeft: `1px solid ${THEME.border}`,
+                paddingLeft: 37,
+                display: "flex",
+                flexDirection: "column",
+                gap: 8,
+              }}
+            >
+              <p
+                className="text-xs font-medium tracking-wider"
+                style={{
+                  color: "#8A9BB8",
+                  height: 20,
+                  display: "flex",
+                  alignItems: "center"
+                }}
+              >
+                {t("Explore news by topic", "ดูข่าวตามประเด็น")}
+              </p>
+
+              {ranked.length === 0 ? (
+                <p className="text-xs" style={{ color: "#A0B0C8" }}>—</p>
+              ) : (
+                ranked.map(({ aspect, count }) => (
+                  <button
+                    key={aspect}
+                    onClick={() => onSelectAspect?.(aspect)}
+                    className="w-full text-left rounded-xl border"
+                    style={{
+                      padding: "9px 14px",
+                      background: THEME.blueSoft,
+                      borderColor: THEME.border,
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      gap: 8,
+                      transition: "background 0.12s",
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.background = "#E5EBF5"}
+                    onMouseLeave={e => e.currentTarget.style.background = THEME.blueSoft}
+                  >
+                    <span style={{ fontSize: 12, color: "#2D3F5C", fontWeight: 400 }}>
+                      {lang === "en" ? (ASPECT_EN[aspect] ?? aspect) : aspect}
+                    </span>
+
+
+                    <span
+                      style={{
+                        fontSize: 12,
+                        fontWeight: 600,
+                        color: THEME.blue,
+                        background: "rgba(47,111,237,0.12)",
+                        minWidth: 38,
+                        height: 22,
+                        display: "inline-flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        borderRadius: 99,
+                        padding: "0 8px",
+                      }}
+                    >
+                      {count}
+                    </span>
+                  </button>
+                ))
+              )}
             </div>
           </div>
         ) : (
-          <div className="text-center py-10 text-gray-400 text-sm">
-            {t("No explanation available", "ไม่พบคำอธิบาย")}
+          <div className="text-center py-10 text-sm" style={{ color: "#A0B0C8" }}>
+            {t("No analysis available for this period", "ไม่พบคำอธิบาย")}
           </div>
         )}
       </CardContent>
@@ -1186,9 +1187,7 @@ function AspectNewsPage({ t, lang, aspect, news = [], onBack }) {
     if (!search.trim()) return newsForAspect
     const q = search.toLowerCase()
     return newsForAspect.filter(
-      (n) =>
-        (n.title || "").toLowerCase().includes(q) ||
-        (n.source || "").toLowerCase().includes(q)
+      (n) => (<n className="headline"></n> || "").toLowerCase().includes(q) || (n.source || "").toLowerCase().includes(q)
     )
   }, [newsForAspect, search])
 
@@ -1220,7 +1219,7 @@ function AspectNewsPage({ t, lang, aspect, news = [], onBack }) {
           {t("Forecast", "การพยากรณ์")}
         </button>
         <span className="text-gray-300">›</span>
-        <span className="text-gray-800 font-semibold">{aspect ?? t("Aspect", "ประเด็น")}</span>
+        <span className="text-gray-800 font-semibold"> {aspect ? (lang === "en" ? (ASPECT_EN[aspect] ?? aspect) : aspect) : t("Aspect", "ประเด็น")} </span>
         {filteredNews.length > 0 && (
           <span className="ml-1 text-gray-400">({filteredNews.length})</span>
         )}
@@ -1230,9 +1229,9 @@ function AspectNewsPage({ t, lang, aspect, news = [], onBack }) {
         <CardHeader>
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
-              <CardTitle>{aspect ?? t("Not selected", "ยังไม่ได้เลือก")}</CardTitle>
+              <CardTitle>  {aspect ? (lang === "en" ? (ASPECT_EN[aspect] ?? aspect) : aspect) : t("Not selected", "ยังไม่ได้เลือก")} </CardTitle>
               <CardDescription>
-                {t("News list for the selected aspect", "รายการข่าวสำหรับประเด็นที่เลือก")}
+                {t("Articles for the selected topic", "รายการข่าวสำหรับประเด็นที่เลือก")}
                 {newsForAspect.length > 0 && (
                   <span className="ml-2 text-gray-400">
                     ({t(`${newsForAspect.length} total`, `ทั้งหมด ${newsForAspect.length} ข่าว`)})
@@ -1246,7 +1245,7 @@ function AspectNewsPage({ t, lang, aspect, news = [], onBack }) {
                   type="text"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  placeholder={t("Search headlines…", "ค้นหาข่าว…")}
+                  placeholder={t("Search articles…", "ค้นหาข่าว…")}
                   className="pl-8 pr-3 py-1.5 text-sm rounded-lg border bg-white outline-none"
                   style={{
                     borderColor: THEME.border,
@@ -1274,27 +1273,27 @@ function AspectNewsPage({ t, lang, aspect, news = [], onBack }) {
         <CardContent className="p-0">
           {!aspect ? (
             <EmptyState
-              icon="☝️"
-              title={t("Select an aspect", "เลือกประเด็น")}
-              description={t("Tap an aspect from the forecast page to see related news.", "แตะประเด็นจากหน้าพยากรณ์เพื่อดูข่าวที่เกี่ยวข้อง")}
+              // icon="☝️"
+              title={t("Select a topic", "เลือกประเด็น")}
+              description={t("Select a topic from the forecast page to view related articles.", "แตะประเด็นจากหน้าพยากรณ์เพื่อดูข่าวที่เกี่ยวข้อง")}
               action={
                 <button
                   onClick={onBack}
                   className="px-4 py-2 rounded-xl text-sm font-medium text-white"
                   style={{ background: THEME.blue, border: "none", cursor: "pointer" }}
                 >
-                  ← {t("Go back", "ย้อนกลับ")}
+                  ← {t("Back to Forecast", "ย้อนกลับ")}
                 </button>
               }
             />
           ) : filteredNews.length === 0 ? (
             <EmptyState
               icon="📭"
-              title={search ? t("No results found", "ไม่พบผลลัพธ์") : t("No news found", "ไม่พบข่าว")}
+              title={search ? t("No articles found", "ไม่พบผลลัพธ์") : t("No articles available", "ไม่พบข่าว")}
               description={
                 search
                   ? t(`No headlines matching "${search}"`, `ไม่พบข่าวที่ตรงกับ "${search}"`)
-                  : t("No news articles available for this aspect.", "ไม่มีข่าวสำหรับประเด็นนี้")
+                  : t("There are no articles associated with this topic.", "ไม่มีข่าวสำหรับประเด็นนี้")
               }
               action={search ? (
                 <button
@@ -1302,7 +1301,7 @@ function AspectNewsPage({ t, lang, aspect, news = [], onBack }) {
                   className="px-4 py-2 rounded-xl text-sm font-medium"
                   style={{ border: `1px solid ${THEME.border}`, background: "#fff", cursor: "pointer" }}
                 >
-                  {t("Clear search", "ล้างการค้นหา")}
+                  {t("Clear filter", "ล้างการค้นหา")}
                 </button>
               ) : null}
             />
@@ -1332,13 +1331,15 @@ function AspectNewsPage({ t, lang, aspect, news = [], onBack }) {
                             {n.title}
                           </a>
                           <div className="mt-1.5">
-                            <Badge
-                              variant="outline"
-                              className="text-[10px] px-2 py-0.5 border-0 font-semibold uppercase tracking-wider"
-                              style={{ backgroundColor: `${tagColor}18`, color: tagColor }}
-                            >
-                              {tagLabel}
-                            </Badge>
+                            {/* <div className="mt-1.5">
+                              <Badge
+                                variant="outline"
+                                className="text-[10px] px-2 py-0.5 border-0 font-semibold uppercase tracking-wider"
+                                style={{ backgroundColor: `${tagColor}18`, color: tagColor }}
+                              >
+                                {tagLabel}
+                              </Badge>
+                            </div> */}
                           </div>
                         </div>
                         <span className="text-gray-300 text-sm flex-shrink-0 mt-1">↗</span>
@@ -1359,7 +1360,7 @@ function AspectNewsPage({ t, lang, aspect, news = [], onBack }) {
                     className="px-3 py-1.5 rounded-lg text-sm font-medium transition disabled:opacity-40 disabled:cursor-not-allowed"
                     style={{ border: `1px solid ${THEME.border}` }}
                   >
-                    ← {t("Prev", "ก่อนหน้า")}
+                    ← {t("Previous", "ก่อนหน้า")}
                   </button>
 
                   {pageNumbers[0] > 1 ? (
@@ -1537,16 +1538,16 @@ function AnalyticsPage({ t, lang, news = [], shapData = [] }) {
   return (
     <div className="space-y-8 xecon-fade-in">
       <SectionHeader
-        title={t("News analysis visualizations", "การวิเคราะห์ข่าวเชิงลึก")}
-        subtitle={t("Volume, sentiment, impact, and feature importance", "ปริมาณข่าว อารมณ์ข่าว ผลกระทบ และความสำคัญของตัวแปร")}
+        title={t("News Intelligence", "การวิเคราะห์ข่าวเชิงลึก")}
+        subtitle={t("Volume, sentiment, impact analysis and model feature importance", "ปริมาณข่าว อารมณ์ข่าว ผลกระทบ และความสำคัญของตัวแปร")}
         icon={BarChart3}
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
-            <CardTitle>{t("News volume by agency", "ปริมาณข่าวตามสำนักข่าว")}</CardTitle>
-            <CardDescription>{t("Stacked by agency per month", "กราฟแท่งซ้อนตามสำนักข่าวรายเดือน")}</CardDescription>
+            <CardTitle>{t("News volume by source", "ปริมาณข่าวตามสำนักข่าว")}</CardTitle>
+            <CardDescription>{t("Monthly distribution by news source", "กราฟแท่งซ้อนตามสำนักข่าวรายเดือน")}</CardDescription>
           </CardHeader>
           <CardContent>
             {agencyErr ? (
@@ -1580,8 +1581,8 @@ function AnalyticsPage({ t, lang, news = [], shapData = [] }) {
 
         <Card>
           <CardHeader>
-            <CardTitle>{t("News volume by aspect", "ปริมาณข่าวตามประเด็น")}</CardTitle>
-            <CardDescription>{t("Stacked by aspect per month", "กราฟแท่งซ้อนตามประเด็นรายเดือน")}</CardDescription>
+            <CardTitle>{t("News volume by topic", "ปริมาณข่าวตามประเด็น")}</CardTitle>
+            <CardDescription>{t("Monthly distribution by topic", "กราฟแท่งซ้อนตามประเด็นรายเดือน")}</CardDescription>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={320}>
@@ -1618,7 +1619,7 @@ function AnalyticsPage({ t, lang, news = [], shapData = [] }) {
 
         <Card>
           <CardHeader>
-            <CardTitle>{t("Sentiment flow over time", "กระแสความรู้สึกตามเวลา")}</CardTitle>
+            <CardTitle>{t("Sentiment trend over time", "กระแสความรู้สึกตามเวลา")}</CardTitle>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
@@ -1638,8 +1639,8 @@ function AnalyticsPage({ t, lang, news = [], shapData = [] }) {
 
         <Card>
           <CardHeader>
-            <CardTitle>{t("Impact vs sentiment matrix", "เมทริกซ์ผลกระทบกับความรู้สึก")}</CardTitle>
-            <CardDescription>{t("Each dot is one news article", "แต่ละจุดคือข่าว 1 ชิ้น")}</CardDescription>
+            <CardTitle>{t("Impact vs. sentiment matrix", "เมทริกซ์ผลกระทบกับความรู้สึก")}</CardTitle>
+            <CardDescription>{t("Each data point represents one article", "แต่ละจุดคือข่าว 1 ชิ้น")}</CardDescription>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={320}>
@@ -1684,7 +1685,7 @@ function AnalyticsPage({ t, lang, news = [], shapData = [] }) {
 
         <Card>
           <CardHeader>
-            <CardTitle>{t("Feature importance", "ปัจจัยที่สำคัญ")}</CardTitle>
+            <CardTitle>{t("Model feature importance", "ปัจจัยที่สำคัญ")}</CardTitle>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={350}>
@@ -1702,7 +1703,7 @@ function AnalyticsPage({ t, lang, news = [], shapData = [] }) {
         <div className="lg:col-span-2">
           <Card>
             <CardHeader>
-              <CardTitle>{t("Word cloud", "คำที่ปรากฏบ่อย")}</CardTitle>
+              <CardTitle>{t("Frequently mentioned terms", "คำที่ปรากฏบ่อย")}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="w-full bg-white rounded-lg overflow-hidden">
@@ -1715,6 +1716,143 @@ function AnalyticsPage({ t, lang, news = [], shapData = [] }) {
     </div>
   )
 }
+function MonthCalendarPicker({ months, selectedMonth, onSelect, lang, t }) {
+  const [open, setOpen] = React.useState(false)
+  const [viewYear, setViewYear] = React.useState(() => {
+    if (selectedMonth) return parseInt(selectedMonth.slice(0, 4))
+    return new Date().getFullYear()
+  })
+  const ref = React.useRef(null)
+
+  React.useEffect(() => {
+    if (!open) return
+    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
+    document.addEventListener("mousedown", handler)
+    return () => document.removeEventListener("mousedown", handler)
+  }, [open])
+
+  React.useEffect(() => {
+    if (selectedMonth) setViewYear(parseInt(selectedMonth.slice(0, 4)))
+  }, [selectedMonth])
+
+  const availableYears = [...new Set(months.map(m => parseInt(m.slice(0, 4))))].sort((a, b) => b - a)
+  const monthsInYear = months.filter(m => parseInt(m.slice(0, 4)) === viewYear)
+  const monthNamesTH = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."]
+  const monthNamesEN = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+  const monthNames = lang === "th" ? monthNamesTH : monthNamesEN
+  const isSelected = (m) => m === selectedMonth
+
+  const thaiYear = lang === "th" ? viewYear + 543 : viewYear
+
+  return (
+    <div style={{ position: "relative" }} ref={ref}>
+      <button
+        onClick={() => setOpen(v => !v)}
+        style={{
+          display: "flex", alignItems: "center", gap: 5,
+          padding: "3px 12px", borderRadius: 99,
+          fontSize: 12, fontWeight: 500,
+          border: "1px dashed rgba(255,255,255,0.22)",
+          color: "rgba(255,255,255,0.55)",
+          background: open ? "rgba(255,255,255,0.08)" : "transparent",
+          cursor: "pointer", flexShrink: 0, transition: "background 0.15s",
+        }}
+      >
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+          <rect x="1" y="1.5" width="10" height="9" rx="1.5" stroke="currentColor" strokeWidth="1.1" />
+          <line x1="1" y1="4" x2="11" y2="4" stroke="currentColor" strokeWidth="1.1" />
+          <line x1="3.5" y1="0.5" x2="3.5" y2="2.5" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" />
+          <line x1="8.5" y1="0.5" x2="8.5" y2="2.5" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" />
+        </svg>
+        {t("Historical", "ย้อนหลัง")}
+      </button>
+
+      {open && (
+        <div
+          style={{
+            position: "absolute", top: "calc(100% + 8px)", left: "50%",
+            transform: "translateX(-50%)",
+            background: "#fff", borderRadius: 14,
+            border: "1px solid #DDE4EF",
+            boxShadow: "0 8px 32px rgba(18,32,64,0.14)",
+            padding: 16, zIndex: 100, width: 240,
+          }}
+        >
+          {/* Year navigation */}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+            <button
+              onClick={() => {
+                const idx = availableYears.indexOf(viewYear)
+                if (idx < availableYears.length - 1) setViewYear(availableYears[idx + 1])
+              }}
+              disabled={availableYears.indexOf(viewYear) >= availableYears.length - 1}
+              style={{
+                width: 28, height: 28, border: "1px solid #DDE4EF", borderRadius: 7,
+                background: "transparent", cursor: "pointer", display: "flex",
+                alignItems: "center", justifyContent: "center", color: "#4A5D7A",
+                opacity: availableYears.indexOf(viewYear) >= availableYears.length - 1 ? 0.3 : 1,
+              }}
+            >
+              <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><polyline points="7,2 3,5 7,8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" /></svg>
+            </button>
+            <span style={{ fontSize: 13, fontWeight: 500, color: "#1E2F47" }}>{thaiYear}</span>
+            <button
+              onClick={() => {
+                const idx = availableYears.indexOf(viewYear)
+                if (idx > 0) setViewYear(availableYears[idx - 1])
+              }}
+              disabled={availableYears.indexOf(viewYear) <= 0}
+              style={{
+                width: 28, height: 28, border: "1px solid #DDE4EF", borderRadius: 7,
+                background: "transparent", cursor: "pointer", display: "flex",
+                alignItems: "center", justifyContent: "center", color: "#4A5D7A",
+                opacity: availableYears.indexOf(viewYear) <= 0 ? 0.3 : 1,
+              }}
+            >
+              <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><polyline points="3,2 7,5 3,8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" /></svg>
+            </button>
+          </div>
+
+          {/* Month grid — 4×3 */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 4 }}>
+            {monthNames.map((name, idx) => {
+              const mKey = `${viewYear}-${String(idx + 1).padStart(2, "0")}`
+              const available = monthsInYear.includes(mKey)
+              const selected = isSelected(mKey)
+              return (
+                <button
+                  key={mKey}
+                  disabled={!available}
+                  onClick={() => { onSelect(mKey); setOpen(false) }}
+                  style={{
+                    padding: "6px 4px", borderRadius: 8, fontSize: 12,
+                    fontWeight: selected ? 600 : 400, border: "none",
+                    cursor: available ? "pointer" : "default",
+                    background: selected ? THEME.navy : available ? "#F4F7FC" : "transparent",
+                    color: selected ? "#fff" : available ? "#1E2F47" : "#C8D4E8",
+                    transition: "background 0.12s",
+                  }}
+                  onMouseEnter={e => { if (available && !selected) e.currentTarget.style.background = "#E5EBF5" }}
+                  onMouseLeave={e => { if (available && !selected) e.currentTarget.style.background = "#F4F7FC" }}
+                >
+                  {name}
+                </button>
+              )
+            })}
+          </div>
+
+          {/* Available count hint */}
+          <div style={{ marginTop: 10, fontSize: 11, color: "#A0B0C8", textAlign: "center" }}>
+            {monthsInYear.length > 0
+              ? `${monthsInYear.length} ${t("months with data", "เดือนที่มีข้อมูล")}`
+              : t("No data available for this year", "ไม่มีข้อมูลปีนี้")}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function App() {
   const { lang, setLang, t } = useLang()
   const { page, setPage } = useNavigation()
@@ -1751,9 +1889,11 @@ export default function App() {
 
   const explainMonths = React.useMemo(
     () =>
-      [...new Set((allExplain || []).map((r) => r.date).filter(Boolean))].sort((a, b) =>
-        a.localeCompare(b)
-      ),
+      [...new Set(
+        (allExplain || [])
+          .map((r) => String(r.date || "").slice(0, 7))
+          .filter(Boolean)
+      )].sort((a, b) => a.localeCompare(b)),
     [allExplain]
   )
 
@@ -1864,57 +2004,59 @@ export default function App() {
   })
 
   return (
-    <div className="min-h-screen" style={{ background: "#F0F4FA" }}>
+    <div className="min-h-screen" style={{ background: THEME.pageBg }}>
       {/* ── Topbar ── */}
       <div
         className="sticky top-0 z-50 w-full"
         style={{ backgroundColor: THEME.navy, borderBottom: "1px solid rgba(255,255,255,0.08)" }}
       >
-        {/* Main bar */}
+        {/* Main bar — 3 columns: brand | tabs | lang */}
         <div
-          className="max-w-[1400px] mx-auto px-4 md:px-7 flex items-center justify-between gap-4 md:gap-6"
-          style={{ height: 60 }}
+          className="max-w-[1600px] mx-auto px-4 md:px-7 grid items-center"
+          style={{ height: 60, gridTemplateColumns: "1fr auto 1fr" }}
         >
-          {/* Brand */}
+          {/* Brand — left */}
           <div className="flex items-center gap-2.5 flex-shrink-0">
             <div
               className="flex items-center justify-center rounded-lg flex-shrink-0"
-              style={{ width: 35, height: 35, background: "rgba(255,255,255,0.15)" }}
+              style={{ width: 32, height: 32, background: "rgba(255,255,255,0.12)" }}
             >
-              <Activity className="text-white" style={{ width: 20, height: 20 }} />
+              <Activity className="text-white" style={{ width: 18, height: 18 }} />
             </div>
             <div className="leading-tight">
-              <div className="text-white font-semibold" style={{ fontSize: 18 }}>
+              <div className="text-white font-medium" style={{ fontSize: 15 }}>
                 XEconomic
               </div>
-              <div style={{ fontSize: 11, color: "rgba(255,255,255,0.45)", marginTop: 1 }}>
+              <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", marginTop: 1 }}>
                 CCI Forecast &amp; XAI
               </div>
             </div>
           </div>
 
-          {/* Desktop Tabs — hidden on mobile */}
-          <div
-            className="hidden md:flex items-center gap-0.5 rounded-[10px] p-[3px]"
-            style={{ background: "rgba(255,255,255,0.08)" }}
-          >
+          {/* Tabs — center */}
+          <div className="hidden md:flex items-center" style={{ height: 60 }}>
             {tabs.map(({ id, en, th, Icon }) => {
               const active = page === id || (page === "aspectNews" && id === "forecast")
               return (
                 <button
                   key={id}
                   onClick={() => setPage(id)}
-                  className="flex items-center gap-1.5 rounded-lg transition-all"
+                  className="flex items-center gap-1.5 transition-all"
                   style={{
-                    padding: "6px 16px",
+                    padding: "0 20px",
+                    height: 60,
                     fontSize: 13,
-                    fontWeight: active ? 600 : 500,
-                    background: active ? "#fff" : "transparent",
-                    color: active ? THEME.navy : "rgba(255,255,255,0.6)",
+                    fontWeight: active ? 500 : 400,
+                    color: active ? "#fff" : "rgba(255,255,255,0.45)",
+                    background: "transparent",
                     border: "none",
+                    borderBottom: active ? "2px solid #fff" : "2px solid transparent",
                     cursor: "pointer",
                     whiteSpace: "nowrap",
+                    transition: "color 0.15s, border-color 0.15s",
                   }}
+                  onMouseEnter={e => { if (!active) { e.currentTarget.style.color = "rgba(255,255,255,0.8)"; e.currentTarget.style.borderBottomColor = "rgba(255,255,255,0.3)" } }}
+                  onMouseLeave={e => { if (!active) { e.currentTarget.style.color = "rgba(255,255,255,0.45)"; e.currentTarget.style.borderBottomColor = "transparent" } }}
                 >
                   <Icon style={{ width: 13, height: 13 }} />
                   {t(en, th)}
@@ -1923,8 +2065,8 @@ export default function App() {
             })}
           </div>
 
-          {/* Right side: lang toggle + hamburger */}
-          <div className="flex items-center gap-2 flex-shrink-0">
+          {/* Right side: lang toggle + hamburger — right-aligned */}
+          <div className="flex items-center gap-2 justify-end">
             {/* Language toggle */}
             <div
               className="flex items-center gap-0.5 rounded-lg p-[3px]"
@@ -1978,7 +2120,7 @@ export default function App() {
         {mobileMenuOpen && (
           <div
             className="md:hidden"
-            style={{ background: "#1a4280", borderTop: "1px solid rgba(255,255,255,0.1)" }}
+            style={{ background: THEME.subbar, borderTop: "1px solid rgba(255,255,255,0.1)" }}
           >
             {tabs.map(({ id, en, th, Icon }) => {
               const active = page === id || (page === "aspectNews" && id === "forecast")
@@ -2010,36 +2152,30 @@ export default function App() {
 
         {/* Subbar */}
         {showSubbar && (
-          <div style={{ background: "#1a4280", borderTop: "1px solid rgba(255,255,255,0.07)" }}>
+          <div style={{ background: THEME.subbar, borderTop: "1px solid rgba(255,255,255,0.07)" }}>
             <div
-              className="max-w-[1400px] mx-auto px-4 md:px-7 flex items-center"
+              className="max-w-[1600px] mx-auto px-4 md:px-7 flex items-center"
               style={{ height: 44, gap: 0 }}
             >
-              {/* Context pill — hidden on very small screens */}
+              {/* Context pill */}
               <div
                 className="hidden sm:flex items-center gap-2 flex-shrink-0"
                 style={{ paddingRight: 16, borderRight: "1px solid rgba(255,255,255,0.1)" }}
               >
                 <div
                   className="rounded-full flex-shrink-0"
-                  style={{
-                    width: 6, height: 6,
-                    background: isHistorical ? "rgba(255,255,255,0.35)" : "#4ade80",
-                  }}
+                  style={{ width: 6, height: 6, background: isHistorical ? "rgba(255,255,255,0.35)" : "#4ade80" }}
                 />
                 <span style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", whiteSpace: "nowrap" }}>
-                  {isHistorical ? t("History", "ประวัติ") : t("Forecast", "พยากรณ์")}
+                  {isHistorical ? t("Historical", "ประวัติ") : t("Forecast", "พยากรณ์")}
                 </span>
                 <span style={{ fontSize: 11, fontWeight: 600, color: "rgba(255,255,255,0.9)", whiteSpace: "nowrap" }}>
                   {monthLabel(selectedForecastMonth, lang)}
                 </span>
               </div>
 
-              {/* Month pills + historical dropdown */}
-              <div
-                className="flex items-center gap-1.5 overflow-x-auto"
-                style={{ paddingLeft: 20, scrollbarWidth: "none" }}
-              >
+              {/* Forecast pills + calendar picker */}
+              <div className="flex items-center gap-1.5" style={{ paddingLeft: 20 }}>
                 <span style={{ fontSize: 11, fontWeight: 500, color: "rgba(255,255,255,0.4)", marginRight: 2, flexShrink: 0 }}>
                   {t("Forecast", "พยากรณ์")}
                 </span>
@@ -2057,34 +2193,13 @@ export default function App() {
                 {historicalMonths.length > 0 && (
                   <>
                     <div style={{ width: 1, height: 20, background: "rgba(255,255,255,0.12)", flexShrink: 0, margin: "0 6px" }} />
-                    <span style={{ fontSize: 11, fontWeight: 500, color: "rgba(255,255,255,0.4)", flexShrink: 0 }}>
-                      {t("Historical", "ย้อนหลัง")}
-                    </span>
-                    <select
-                      value={isHistorical ? selectedForecastMonth : ""}
-                      onChange={(e) => { if (e.target.value) setSelectedForecastMonth(e.target.value) }}
-                      style={{
-                        background: "transparent",
-                        border: "1px solid rgba(255,255,255,0.15)",
-                        borderRadius: 99,
-                        color: "rgba(255,255,255,0.6)",
-                        fontSize: 12,
-                        fontWeight: 500,
-                        padding: "3px 11px",
-                        cursor: "pointer",
-                        outline: "none",
-                        flexShrink: 0,
-                      }}
-                    >
-                      <option value="" style={{ background: THEME.navy }}>
-                        {t("Select month…", "เลือกเดือน…")}
-                      </option>
-                      {historicalMonths.map((m) => (
-                        <option key={m} value={m} style={{ background: THEME.navy }}>
-                          {monthLabel(m, lang)}
-                        </option>
-                      ))}
-                    </select>
+                    <MonthCalendarPicker
+                      months={historicalMonths}
+                      selectedMonth={isHistorical ? selectedForecastMonth : ""}
+                      onSelect={setSelectedForecastMonth}
+                      lang={lang}
+                      t={t}
+                    />
                   </>
                 )}
               </div>
@@ -2094,7 +2209,7 @@ export default function App() {
       </div>
 
       {/* ── Page content ── */}
-      <div className="max-w-[1400px] mx-auto px-4 md:px-7 py-5 md:py-6 space-y-5">
+      <div className="max-w-[1600px] mx-auto px-6 md:px-10 py-6 space-y-5">
         {err && (
           <div
             className="rounded-xl px-4 py-2.5 text-sm flex items-center gap-2"
@@ -2137,6 +2252,34 @@ export default function App() {
           />
         )}
       </div>
+
+      {/* ── Footer ── */}
+      <footer style={{ background: THEME.navy, marginTop: 32 }}>
+        <div
+          className="max-w-[1600px] mx-auto px-6 md:px-10"
+          style={{ padding: "20px 40px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}
+        >
+          <div style={{ fontSize: 13, color: "rgba(255,255,255,0.4)" }}>
+            <span style={{ color: "rgba(255,255,255,0.75)", fontWeight: 500 }}>XEconomic</span>
+            {" · "}{t("Consumer Confidence Index Forecast & Explainability Platform", "ระบบพยากรณ์ดัชนีความเชื่อมั่นผู้บริโภค")}
+          </div>
+          <div style={{ display: "flex", gap: 24 }}>
+            {[
+              // [t("About the System", "เกี่ยวกับระบบ")],
+              // [t("Forecast Methodology", "วิธีการพยากรณ์")],
+              // [t("Contact Us", "ติดต่อเรา")],
+              // [t("SP2025-40", "SP2025-40")],
+            ].map(([label]) => (
+              <span key={label} style={{ fontSize: 12, color: "rgba(255,255,255,0.3)", cursor: "pointer" }}>
+                {label}
+              </span>
+            ))}
+          </div>
+          <div style={{ fontSize: 11, color: "rgba(255,255,255,0.2)" }}>
+            {t("Data as of", "อัปเดตล่าสุด")}: {monthLabel(latestActualMonth, lang) || "—"}
+          </div>
+        </div>
+      </footer>
     </div>
   )
 }
