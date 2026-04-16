@@ -1,8 +1,8 @@
 import React from "react"
 import wordcloudImg from "./assets/cci_impact_wordcloud.png"
 import "./index.css"
-import { getSummary, getTimeSeries, getNews, getShap, getAllExplain } from "./api.js"
-import { getAgencyVolumeLastNMonths } from "./newsSupabaseApi"
+import { getSummary, getTimeSeries, getShap, getAllExplain } from "./api.js"
+import { getNewsSentimentFromCSV, getAgencyVolumeFromCSV } from "./newsFileApi"
 import { TrendingUp, Activity, BarChart3, Search, RotateCcw } from "lucide-react"
 import {
   LineChart,
@@ -85,10 +85,39 @@ const ASPECT_EN = {
   "มาตรการของรัฐ": "Government Policy",
   "การเมือง": "Politics",
   "ราคาสินค้าเกษตร": "Agricultural Prices",
-  "สังคม/ความมั่นคง": "Social / Security",
+  "สังคม/ความมั่นคง": "Social/Security",
   "เศรษฐกิจโลก": "Global Economy",
   "ราคาน้ำมันเชื้อเพลิง": "Fuel Prices",
-  "ภัยพิบัติ/โรคระบาด": "Disaster / Epidemic",
+  "ภัยพิบัติ/โรคระบาด": "Disaster/Epidemic",
+}
+
+// ── Wong colorblind-friendly palette for aspect topics ──
+const WONG = {
+  "Thai Economy":       "#009E73",
+  "Government Policy":  "#0072B2",
+  "Politics":           "#D55E00",
+  "Agricultural Prices":"#E69F00",
+  "Social/Security":    "#CC79A7",
+  "Global Economy":     "#56B4E9",
+  "Fuel Prices":        "#F0E442",
+  "Disaster/Epidemic":  "#000000",
+}
+
+const EFFECT_COLORS = {
+  "Short-term": "#E69F00",
+  "Long-term":  "#0072B2",
+}
+
+const IMPACT_COLORS = {
+  "Negative": "#D55E00",
+  "Neutral":  "#56B4E9",
+  "Positive": "#009E73",
+}
+
+/** Get the Wong color for a Thai aspect name */
+function getAspectColor(thaiName) {
+  const en = ASPECT_EN[thaiName]
+  return en ? (WONG[en] || CHART_COLORS[0]) : CHART_COLORS[0]
 }
 // ── Skeleton shimmer component ──
 const Skeleton = ({ className = "", style = {} }) => (
@@ -1434,27 +1463,14 @@ function AspectNewsPage({ t, lang, aspect, news = [], onBack }) {
   )
 }
 
-function AnalyticsPage({ t, lang, news = [], shapData = [] }) {
+function AnalyticsPage({ t, lang, news = [] }) {
   const [agencyStack, setAgencyStack] = React.useState({ data: [], groups: [] })
   const [agencyErr, setAgencyErr] = React.useState("")
 
-  const news1y = React.useMemo(() => filterNewsLast12Months(news), [news])
-
-  const aspectStack = React.useMemo(() => {
-    return stackCountByMonth(news1y, (n) => n.aspect || "Unknown", ASPECTS_TO_RUN)
-  }, [news1y])
-
-  const shapArr = React.useMemo(() => (Array.isArray(shapData) ? shapData : shapData?.data ?? []), [shapData])
-
-  const shapRows = React.useMemo(() => {
-    return shapArr
-      .map((d) => ({
-        name: String(d.name),
-        value: Number(d.value) || 0,
-        absValue: Math.abs(Number(d.value) || 0),
-      }))
-      .sort((a, b) => b.absValue - a.absValue)
-  }, [shapArr])
+  // ── ใช้ข่าวทั้งหมด (ไม่จำกัดแค่ 12 เดือน) เพื่อ Brush เลื่อนดูย้อนหลัง ──
+  const aspectStackAll = React.useMemo(() => {
+    return stackCountByMonth(news, (n) => n.aspect || "Unknown", ASPECTS_TO_RUN)
+  }, [news])
 
   React.useEffect(() => {
     let alive = true
@@ -1462,7 +1478,7 @@ function AnalyticsPage({ t, lang, news = [], shapData = [] }) {
     async function loadAgency() {
       setAgencyErr("")
       try {
-        const rows = await getAgencyVolumeLastNMonths(12)
+        const rows = await getAgencyVolumeFromCSV(news)
         if (!alive) return
         setAgencyStack(toAgencyStack(rows))
       } catch (e) {
@@ -1475,7 +1491,7 @@ function AnalyticsPage({ t, lang, news = [], shapData = [] }) {
     return () => {
       alive = false
     }
-  }, [])
+  }, [news])
 
   const sentimentHistogram = React.useMemo(() => {
     const bins = Array.from({ length: 10 }, (_, i) => {
@@ -1495,19 +1511,28 @@ function AnalyticsPage({ t, lang, news = [], shapData = [] }) {
     return bins
   }, [news])
 
-  const sentimentFlow = React.useMemo(() => {
-    const sorted = [...news].sort((a, b) => a.date.localeCompare(b.date))
-    let cumulative = 0
+  // ── Aggregate impact volume เป็นรายเดือน ──
+  const impactMonthlyVolume = React.useMemo(() => {
+    const monthMap = {}
+    news.forEach((n) => {
+      const m = n.date?.slice(0, 7)
+      if (!m) return
+      if (!monthMap[m]) monthMap[m] = { Positive: 0, Neutral: 0, Negative: 0, count: 0 }
+      
+      const type = n.impactType === "Positive" ? "Positive" : n.impactType === "Negative" ? "Negative" : "Neutral"
+      monthMap[m][type] += 1
+      monthMap[m].count += 1
+    })
 
-    return sorted.map((n) => {
-      const val = Number(n.rawSentiment) || 0
-      cumulative += val
-
+    const months = Object.keys(monthMap).sort()
+    return months.map((m) => {
+      const d = monthMap[m]
       return {
-        date: n.date,
-        sentiment: cumulative,
-        positive: val > 0 ? val : 0,
-        negative: val < 0 ? Math.abs(val) : 0,
+        month: m,
+        Positive: d.Positive,
+        Neutral: d.Neutral,
+        Negative: d.Negative,
+        total: d.count,
       }
     })
   }, [news])
@@ -1533,7 +1558,18 @@ function AnalyticsPage({ t, lang, news = [], shapData = [] }) {
     return { shortTermData: shortTerm, longTermData: longTerm }
   }, [news])
 
-  const isLoading = !news?.length && !shapData?.length && !agencyStack.data.length
+  // ── คำนวณ startIndex สำหรับ Brush (แสดง 12 เดือนล่าสุด) ──
+  const agencyBrushStart = Math.max(0, agencyStack.data.length - 12)
+  const aspectBrushStart = Math.max(0, aspectStackAll.data.length - 12)
+  const sentimentBrushStart = Math.max(0, impactMonthlyVolume.length - 12)
+
+  const brushStyle = {
+    fill: THEME.blueSoft,
+    stroke: THEME.blue,
+    height: 28,
+  }
+
+  const isLoading = !news?.length && !agencyStack.data.length
 
   return (
     <div className="space-y-8 xecon-fade-in">
@@ -1543,11 +1579,15 @@ function AnalyticsPage({ t, lang, news = [], shapData = [] }) {
         icon={BarChart3}
       />
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* ── News volume by source — full time range + Brush ── */}
+      <div className="grid grid-cols-1 gap-6">
         <Card>
           <CardHeader>
             <CardTitle>{t("News volume by source", "ปริมาณข่าวตามสำนักข่าว")}</CardTitle>
-            <CardDescription>{t("Monthly distribution by news source", "กราฟแท่งซ้อนตามสำนักข่าวรายเดือน")}</CardDescription>
+            <CardDescription>
+              {t("Drag the slider below the chart to explore different time periods",
+                 "ลากแถบด้านล่างกราฟเพื่อเลื่อนดูช่วงเวลาต่างๆ ย้อนหลังได้")}
+            </CardDescription>
           </CardHeader>
           <CardContent>
             {agencyErr ? (
@@ -1555,14 +1595,16 @@ function AnalyticsPage({ t, lang, news = [], shapData = [] }) {
                 <span>⚠️</span> {agencyErr}
               </div>
             ) : agencyStack.data.length === 0 ? (
-              <Skeleton style={{ height: 320, borderRadius: 8 }} />
+              <Skeleton style={{ height: 380, borderRadius: 8 }} />
             ) : (
-              <ResponsiveContainer width="100%" height={320}>
-                <BarChart data={agencyStack.data}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="month" tick={{ fontSize: 11 }} />
-                  <YAxis tick={{ fontSize: 11 }} />
-                  <ReTooltip />
+              <ResponsiveContainer width="100%" height={380}>
+                <BarChart data={agencyStack.data} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#E8EDF5" />
+                  <XAxis dataKey="month" tick={{ fontSize: 11, fill: "#6B7A99" }} />
+                  <YAxis tick={{ fontSize: 11, fill: "#6B7A99" }} />
+                  <ReTooltip
+                    contentStyle={{ borderRadius: 10, border: "1px solid #DDE4EF", boxShadow: "0 4px 20px rgba(18,32,64,0.08)" }}
+                  />
                   <Legend />
                   {agencyStack.groups.map((agency, i) => (
                     <Bar
@@ -1571,35 +1613,72 @@ function AnalyticsPage({ t, lang, news = [], shapData = [] }) {
                       stackId="1"
                       fill={isThairathAgency(agency) ? THAIRATH_COLOR : CHART_COLORS[i % CHART_COLORS.length]}
                       name={agency}
+                      radius={i === agencyStack.groups.length - 1 ? [3, 3, 0, 0] : [0, 0, 0, 0]}
                     />
                   ))}
+                  <Brush
+                    dataKey="month"
+                    height={28}
+                    stroke={THEME.blue}
+                    fill={THEME.blueSoft}
+                    travellerWidth={10}
+                    startIndex={agencyBrushStart}
+                    endIndex={agencyStack.data.length - 1}
+                    tickFormatter={(v) => v}
+                  />
                 </BarChart>
               </ResponsiveContainer>
             )}
           </CardContent>
         </Card>
+      </div>
 
+      {/* ── News volume by topic — full time range + Brush ── */}
+      <div className="grid grid-cols-1 gap-6">
         <Card>
           <CardHeader>
             <CardTitle>{t("News volume by topic", "ปริมาณข่าวตามประเด็น")}</CardTitle>
-            <CardDescription>{t("Monthly distribution by topic", "กราฟแท่งซ้อนตามประเด็นรายเดือน")}</CardDescription>
+            <CardDescription>
+              {t("Drag the slider below to explore topics over time",
+                 "ลากแถบด้านล่างเพื่อสำรวจประเด็นข่าวตามช่วงเวลา")}
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={320}>
-              <BarChart data={aspectStack.data}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="month" tick={{ fontSize: 11 }} />
-                <YAxis tick={{ fontSize: 11 }} />
-                <ReTooltip />
+            <ResponsiveContainer width="100%" height={380}>
+              <BarChart data={aspectStackAll.data} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#E8EDF5" />
+                <XAxis dataKey="month" tick={{ fontSize: 11, fill: "#6B7A99" }} />
+                <YAxis tick={{ fontSize: 11, fill: "#6B7A99" }} />
+                <ReTooltip
+                  contentStyle={{ borderRadius: 10, border: "1px solid #DDE4EF", boxShadow: "0 4px 20px rgba(18,32,64,0.08)" }}
+                />
                 <Legend />
-                {aspectStack.groups.map((asp, i) => (
-                  <Bar key={asp} dataKey={asp} stackId="1" fill={CHART_COLORS[i % CHART_COLORS.length]} name={asp} />
-                ))}
+                {aspectStackAll.groups.map((asp, i) => {
+                  const enName = ASPECT_EN[asp] || asp
+                  const label = lang === "en" ? enName : asp
+                  return (
+                    <Bar key={asp} dataKey={asp} stackId="1" fill={getAspectColor(asp)} name={label}
+                      radius={i === aspectStackAll.groups.length - 1 ? [3, 3, 0, 0] : [0, 0, 0, 0]}
+                    />
+                  )
+                })}
+                <Brush
+                  dataKey="month"
+                  height={28}
+                  stroke={THEME.blue}
+                  fill={THEME.blueSoft}
+                  travellerWidth={10}
+                  startIndex={aspectBrushStart}
+                  endIndex={aspectStackAll.data.length - 1}
+                  tickFormatter={(v) => v}
+                />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
+      </div>
 
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
             <CardTitle>{t("Sentiment distribution", "การกระจาย Sentiment")}</CardTitle>
@@ -1607,32 +1686,14 @@ function AnalyticsPage({ t, lang, news = [], shapData = [] }) {
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
               <BarChart data={sentimentHistogram}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="range" tick={{ fontSize: 10 }} />
-                <YAxis tick={{ fontSize: 11 }} />
-                <ReTooltip />
-                <Bar dataKey="count" fill={THEME.blue} name={t("News count", "จำนวนข่าว")} />
+                <CartesianGrid strokeDasharray="3 3" stroke="#E8EDF5" />
+                <XAxis dataKey="range" tick={{ fontSize: 10, fill: "#6B7A99" }} />
+                <YAxis tick={{ fontSize: 11, fill: "#6B7A99" }} />
+                <ReTooltip
+                  contentStyle={{ borderRadius: 10, border: "1px solid #DDE4EF", boxShadow: "0 4px 20px rgba(18,32,64,0.08)" }}
+                />
+                <Bar dataKey="count" fill={THEME.blue} name={t("News count", "จำนวนข่าว")} radius={[4, 4, 0, 0]} />
               </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>{t("Sentiment trend over time", "กระแสความรู้สึกตามเวลา")}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <ComposedChart data={sentimentFlow}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="date" tick={{ fontSize: 11 }} />
-                <YAxis tick={{ fontSize: 11 }} />
-                <ReTooltip />
-                <Legend />
-                <Area type="monotone" dataKey="positive" stackId="1" stroke={THEME.success} fill={THEME.success} name={t("Positive", "บวก")} />
-                <Area type="monotone" dataKey="negative" stackId="1" stroke={THEME.danger} fill={THEME.danger} name={t("Negative", "ลบ")} />
-                <Line type="monotone" dataKey="sentiment" stroke={THEME.navy} strokeWidth={2} name={t("Cumulative", "สะสม")} />
-              </ComposedChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
@@ -1645,16 +1706,16 @@ function AnalyticsPage({ t, lang, news = [], shapData = [] }) {
           <CardContent>
             <ResponsiveContainer width="100%" height={320}>
               <ScatterChart margin={{ bottom: 25, left: 20, right: 10, top: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" />
+                <CartesianGrid strokeDasharray="3 3" stroke="#E8EDF5" />
                 <XAxis
                   dataKey="sentiment"
-                  tick={{ fontSize: 11 }}
+                  tick={{ fontSize: 11, fill: "#6B7A99" }}
                   type="number"
                   label={{ value: t("Sentiment score", "คะแนน Sentiment"), position: "insideBottom", offset: -15 }}
                 />
                 <YAxis
                   dataKey="impact"
-                  tick={{ fontSize: 11 }}
+                  tick={{ fontSize: 11, fill: "#6B7A99" }}
                   type="number"
                   ticks={[-1, 0, 1]}
                   tickFormatter={(v) => (v === -1 ? "Negative" : v === 0 ? "Neutral" : "Positive")}
@@ -1675,43 +1736,66 @@ function AnalyticsPage({ t, lang, news = [], shapData = [] }) {
                     )
                   }}
                 />
-                <Scatter name={t("Short-term", "ระยะสั้น")} data={shortTermData} fill={THEME.blue} opacity={0.6} />
-                <Scatter name={t("Long-term", "ระยะยาว")} data={longTermData} fill="#F59E0B" opacity={0.6} />
+                <Scatter name={t("Short-term", "ระยะสั้น")} data={shortTermData} fill={EFFECT_COLORS["Short-term"]} opacity={0.6} />
+                <Scatter name={t("Long-term", "ระยะยาว")} data={longTermData} fill={EFFECT_COLORS["Long-term"]} opacity={0.6} />
                 <Legend verticalAlign="top" height={30} />
               </ScatterChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
+      </div>
 
+      {/* ── Sentiment trend over time — monthly aggregated + Brush ── */}
+      <div className="grid grid-cols-1 gap-6">
         <Card>
           <CardHeader>
-            <CardTitle>{t("Model feature importance", "ปัจจัยที่สำคัญ")}</CardTitle>
+            <CardTitle>{t("Impact volume over time", "สัดส่วนปริมาณข่าวตามผลกระทบ")}</CardTitle>
+            <CardDescription>
+              {t("News volume breakdown by positive, neutral, and negative impact",
+                 "สัดส่วนของข่าวบวก กลาง และลบ ในแต่ละเดือน")}
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={350}>
-              <BarChart data={shapRows} layout="vertical" margin={{ top: 10, right: 40, left: 20, bottom: 10 }}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis type="number" />
-                <YAxis type="category" dataKey="name" width={200} />
-                <ReTooltip />
-                <Bar dataKey="absValue" name={t("Importance", "ความสำคัญ")} fill={THEME.navy} />
+            <ResponsiveContainer width="100%" height={380}>
+              <BarChart data={impactMonthlyVolume} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#E8EDF5" />
+                <XAxis dataKey="month" tick={{ fontSize: 11, fill: "#6B7A99" }} />
+                <YAxis tick={{ fontSize: 11, fill: "#6B7A99" }} />
+                <ReTooltip
+                  contentStyle={{ borderRadius: 10, border: "1px solid #DDE4EF", boxShadow: "0 4px 20px rgba(18,32,64,0.08)" }}
+                />
+                <Legend />
+                <Bar dataKey="Positive" stackId="a" fill={IMPACT_COLORS.Positive} name={t("Positive", "บวก")} />
+                <Bar dataKey="Neutral" stackId="a" fill={IMPACT_COLORS.Neutral} name={t("Neutral", "กลาง")} />
+                <Bar dataKey="Negative" stackId="a" fill={IMPACT_COLORS.Negative} name={t("Negative", "ลบ")} radius={[3, 3, 0, 0]} />
+                <Brush
+                  dataKey="month"
+                  height={28}
+                  stroke={THEME.blue}
+                  fill={THEME.blueSoft}
+                  travellerWidth={10}
+                  startIndex={sentimentBrushStart}
+                  endIndex={impactMonthlyVolume.length - 1}
+                  tickFormatter={(v) => v}
+                />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
+      </div>
 
-        <div className="lg:col-span-2">
-          <Card>
-            <CardHeader>
-              <CardTitle>{t("Frequently mentioned terms", "คำที่ปรากฏบ่อย")}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="w-full bg-white rounded-lg overflow-hidden">
-                <img src={wordcloudImg} alt="CCI Impact Word Cloud" className="w-full h-auto rounded-xl" />
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+      {/* ── Wordcloud — full width ── */}
+      <div className="grid grid-cols-1 gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>{t("Frequently mentioned terms", "คำที่ปรากฏบ่อย")}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="w-full bg-white rounded-lg overflow-hidden">
+              <img src={wordcloudImg} alt="CCI Impact Word Cloud" className="w-full h-auto rounded-xl" />
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   )
@@ -1927,7 +2011,7 @@ export default function App() {
           getSummary(),
           getAllExplain(),
           getTimeSeries(2000),
-          getNews(20000),
+          getNewsSentimentFromCSV(),
           getShap(),
         ])
 
@@ -1936,7 +2020,7 @@ export default function App() {
         setSummary(s.status === "fulfilled" ? s.value : null)
         setAllExplain(e.status === "fulfilled" ? e.value?.data || [] : [])
         setSeries(ts.status === "fulfilled" ? ts.value?.data || [] : [])
-        setNewsReal(newsRows.status === "fulfilled" ? newsRows.value?.data || [] : [])
+        setNewsReal(newsRows.status === "fulfilled" ? newsRows.value || [] : [])
         setShapData(shapRes.status === "fulfilled" ? shapRes.value?.data || [] : [])
       } catch (ex) {
         if (!alive) return
@@ -2239,7 +2323,7 @@ export default function App() {
         )}
 
         {page === "analytics" && (
-          <AnalyticsPage t={t} lang={lang} news={newsReal} shapData={shapData} />
+          <AnalyticsPage t={t} lang={lang} news={newsReal} />
         )}
 
         {page === "aspectNews" && (
