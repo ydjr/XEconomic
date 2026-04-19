@@ -15,8 +15,10 @@ CCI_CSV = os.path.join(DATA_DIR, "indicators/cci.csv")
 # DASHBOARD_CSV = os.path.join(ART_DIR, "cci_dashboard_latest.csv")
 PRED_LATEST_CSV = os.path.join(ART_DIR, "pred_direction.csv")
 EXPLAIN_JSON = os.path.join(ART_DIR, "one_reasoning_2024-01_to_2025-08.json")
+EN_EXPLAIN_JSON = os.path.join(ART_DIR, "reasoning_merged_EN.json")
 NEWS_CSV = os.path.join(DATA_DIR, "2017-2026.csv")
 SHAP_CSV = os.path.join(ART_DIR, "shap_top3_unique.csv")
+
 
 app = FastAPI(title="CCI Forecast API", version="1.0.0")
 
@@ -151,6 +153,24 @@ def dashboard_explain_all():
 
     data = sorted(data, key=lambda x: x.get("date", ""))
     return {"data": data}
+
+
+@app.get("/dashboard/explain/all/en")
+def dashboard_explain_all_en():
+    if not os.path.exists(EN_EXPLAIN_JSON):
+        return {"data": []}
+
+    data = read_json(EN_EXPLAIN_JSON)
+    if not isinstance(data, list):
+        return {"data": []}
+
+    for row in data:
+        if "date" in row and row["date"]:
+            row["date"] = str(row["date"])[:7]
+
+    data = sorted(data, key=lambda x: x.get("date", ""))
+    return {"data": data}
+
 
 @app.get("/dashboard/explain/by-date")
 def dashboard_explain_by_date(date: str = Query(...)):
