@@ -30,3 +30,8 @@ export async function getShap() {
 export function getAllExplain() {
   return getJSON("/dashboard/explain/all");
 }
+
+export async function getAllExplainEN() {
+  const res = await fetch("/dashboard/explain/all/en")
+  return res.json()
+}

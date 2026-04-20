@@ -1,9 +1,15 @@
 import React from "react"
-import wordcloudImg from "./assets/cci_impact_wordcloud.png"
 import "./index.css"
-import { getSummary, getTimeSeries, getShap, getAllExplain } from "./api.js"
+import { getSummary, getTimeSeries, getNews, getShap, getAllExplain, getAllExplainEN } from "./api.js"
 import { getNewsSentimentFromCSV, getAgencyVolumeFromCSV } from "./newsFileApi"
+import { getAgencyVolumeLastNMonths } from "./newsSupabaseApi"
 import { TrendingUp, Activity, BarChart3, Search, RotateCcw } from "lucide-react"
+import wordcloudImg from "./assets/cci_impact_wordcloud.png"
+import forecastsummary from "./assets/forecastsummary.svg"
+import summaryicon from "./assets/summary.svg"
+import forecastchart from "./assets/forecastchart.svg"
+import reasoningpanel from "./assets/reasoning_panel.svg"
+import summary2 from "./assets/summary2.svg"
 import {
   LineChart,
   Line,
@@ -25,16 +31,20 @@ import {
 } from "recharts"
 
 const THEME = {
-  navy: "#122040",
-  blue: "#2F6FED",
-  blueSoft: "#F4F7FC",
-  success: "#059669",
-  danger: "#D64545",
-  gray: "#6B7280",
-  border: "#DDE4EF",
-  cardBg: "#FFFFFF",
-  pageBg: "#EEF2F8",
-  subbar: "#1a3260",
+  navy: "#122040",       // topbar, subbar bg, badges
+  blue: "#056596",       // primary accent — icons, links, actual line, borders
+  blueSoft: "#EEF4FF",   // light blue bg for icon boxes, soft fills
+  blueCard: "#F4F7FC",   // card inner backgrounds
+  success: "#059669",    // up direction, forecast line
+  danger: "#D64545",     // down direction
+  gray: "#6B7280",       // stable/neutral
+  border: "#DDE4EF",     // all borders
+  pageBg: "#EEF2F8",     // page background
+  subbar: "#1a3260",     // subbar background
+  textPrimary: "#1E2F47",// card titles, main text
+  textMuted: "#8A9BB8",  // subtitles, labels
+  textHint: "#A0B0C8",   // hints, placeholder
+  white: "#FFFFFF",        // white
 }
 
 const ASPECTS_TO_RUN = [
@@ -124,7 +134,7 @@ const Skeleton = ({ className = "", style = {} }) => (
   <div
     className={`rounded-lg ${className}`}
     style={{
-      background: "linear-gradient(90deg, #E6ECF5 25%, #F4F7FC 50%, #E6ECF5 75%)",
+      background: `linear-gradient(90deg, ${THEME.border} 25%, #F8FAFC 50%, ${THEME.border} 75%)`,
       backgroundSize: "200% 100%",
       animation: "shimmer 1.4s ease-in-out infinite",
       ...style,
@@ -138,24 +148,14 @@ if (typeof document !== "undefined" && !document.getElementById("xecon-styles"))
   style.id = "xecon-styles"
   style.textContent = `
     @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
-    @keyframes soft-pulse { 0%,100%{opacity:1} 50%{opacity:0.6} }
     @keyframes fade-in { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
     .xecon-fade-in { animation: fade-in 0.35s ease both; }
-    .xecon-pulse { animation: soft-pulse 2.4s ease-in-out infinite; }
     .xecon-aspect-btn:hover { background: #EEF3FB !important; transform: translateX(2px); }
     .xecon-aspect-btn { transition: background 0.15s, transform 0.15s, box-shadow 0.15s; cursor: pointer; }
     .xecon-aspect-btn:hover .xecon-arrow { opacity: 1 !important; transform: translateX(2px); }
     .xecon-arrow { transition: opacity 0.15s, transform 0.15s; }
-    .xecon-news-row:hover { background: #F4F7FC; }
+    .xecon-news-row:hover { background: THEME.blueCard; }
     .xecon-news-row { transition: background 0.12s; }
-    .xecon-pill-fade::after {
-      content: '';
-      position: absolute;
-      right: 0; top: 0; bottom: 0;
-      width: 40px;
-      background: linear-gradient(to right, transparent, #1a4280);
-      pointer-events: none;
-    }
     * { font-size: inherit; }
     body, #root { font-size: 14px; }
     h1 { font-size: 22px; }
@@ -170,7 +170,7 @@ const EmptyState = ({ icon, title, description, action }) => (
   <div className="flex flex-col items-center justify-center py-14 text-center xecon-fade-in">
     <div
       className="flex items-center justify-center rounded-2xl mb-4"
-      style={{ width: 56, height: 56, background: "#F4F7FC", color: THEME.blue, fontSize: 26 }}
+      style={{ width: 56, height: 56, background: THEME.blueCard, color: THEME.blue, fontSize: 26 }}
     >
       {icon}
     </div>
@@ -229,18 +229,6 @@ const CardDescription = ({ children, className = "" }) => (
 )
 
 const CardContent = ({ children, className = "" }) => <div className={`p-6 ${className}`}>{children}</div>
-
-function SectionHeader({ title, subtitle, icon: Icon }) {
-  return (
-    <div className="flex items-center gap-3">
-      {Icon && <Icon className="w-6 h-6" style={{ color: THEME.blue }} />}
-      <div>
-        <h2 className="text-base font-semibold text-gray-900">{title}</h2>
-        {subtitle ? <p className="text-sm text-gray-500">{subtitle}</p> : null}
-      </div>
-    </div>
-  )
-}
 
 function isThairathAgency(name) {
   const s = String(name || "").toLowerCase()
@@ -302,16 +290,6 @@ function normalizeDirection(direction, t) {
     label: t("Stable", "ทรงตัว"),
     badge: direction || t("Stable", "ทรงตัว"),
   }
-}
-
-function toneClasses(tone) {
-  if (tone === "up") {
-    return { bg: "#DCFCE7", text: THEME.success, soft: "#ECFDF3" }
-  }
-  if (tone === "down") {
-    return { bg: "#FEE2E2", text: THEME.danger, soft: "#FEF2F2" }
-  }
-  return { bg: "#F3F4F6", text: THEME.gray, soft: "#F9FAFB" }
 }
 
 function filterNewsLast12Months(items) {
@@ -438,21 +416,14 @@ function useNavigation() {
   return { page, setPage }
 }
 
-function ForecastXAxisTick({ x, y, payload, lang }) {
+function ForecastXAxisTick({ x, y, payload, lang, compact }) {
   const raw = payload?.value
   const d = new Date(raw)
 
   if (Number.isNaN(d.getTime())) {
     return (
       <g transform={`translate(${x},${y})`}>
-        <text
-          x={0}
-          y={0}
-          dy={14}
-          textAnchor="middle"
-          fill="#6B7280"
-          fontSize={10}
-        >
+        <text x={0} y={0} dy={12} textAnchor="middle" fill={THEME.gray} fontSize={10}>
           {String(raw || "")}
         </text>
       </g>
@@ -461,13 +432,23 @@ function ForecastXAxisTick({ x, y, payload, lang }) {
 
   const monthTH = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."]
   const monthEN = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
-
   const month = lang === "th" ? monthTH[d.getMonth()] : monthEN[d.getMonth()]
   const year = lang === "th" ? String(d.getFullYear() + 543) : String(d.getFullYear())
 
+  if (compact) {
+    return (
+      <g transform={`translate(${x},${y})`}>
+        <text textAnchor="middle" fill={THEME.gray} fontSize={9}>
+          <tspan x="0" dy="12">{month}</tspan>
+          <tspan x="0" dy="11">{year}</tspan>
+        </text>
+      </g>
+    )
+  }
+
   return (
     <g transform={`translate(${x},${y})`}>
-      <text textAnchor="middle" fill="#6B7280" fontSize={10}>
+      <text textAnchor="middle" fill={THEME.gray} fontSize={10}>
         <tspan x="0" dy="12">{month}</tspan>
         <tspan x="0" dy="14">{year}</tspan>
       </text>
@@ -477,27 +458,57 @@ function ForecastXAxisTick({ x, y, payload, lang }) {
 
 function ForecastPageSkeleton() {
   return (
-    <div className="space-y-6">
-      <div className="bg-white rounded-2xl border p-6" style={{ borderColor: "#E6ECF5" }}>
-        <Skeleton className="mb-2" style={{ height: 14, width: 120 }} />
-        <Skeleton className="mb-6" style={{ height: 22, width: 180 }} />
-        <div className="flex gap-4">
-          <Skeleton style={{ height: 88, width: 280, borderRadius: 16 }} />
-          <Skeleton style={{ height: 88, flex: 1, borderRadius: 16 }} />
+    <div className="space-y-5">
+      {/* Summary card row */}
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+        <div className="lg:col-span-3 bg-white rounded-2xl border p-6" style={{ borderColor: THEME.border }}>
+          <div className="flex items-center gap-2.5 mb-2 mt-2">
+            <Skeleton style={{ width: 36, height: 36, borderRadius: 9 }} />
+            <Skeleton style={{ height: 18, width: 260 }} />
+          </div>
+          <Skeleton className="mb-5" style={{ height: 12, width: 140, marginLeft: 46 }} />
+          <div className="grid grid-cols-2 gap-3">
+            <Skeleton style={{ height: 110, borderRadius: 12 }} />
+            <Skeleton style={{ height: 110, borderRadius: 12 }} />
+          </div>
+        </div>
+        <div className="lg:col-span-2 bg-white rounded-2xl border p-6" style={{ borderColor: THEME.border }}>
+          <div className="flex items-center gap-2.5 mb-4">
+            <Skeleton style={{ width: 36, height: 36, borderRadius: 9 }} />
+            <Skeleton style={{ height: 18, width: 120 }} />
+          </div>
+          <Skeleton style={{ height: 12, width: "90%" }} className="mb-2" />
+          <Skeleton style={{ height: 12, width: "80%" }} className="mb-2" />
+          <Skeleton style={{ height: 12, width: "85%" }} className="mb-2" />
+          <Skeleton style={{ height: 12, width: "60%" }} />
         </div>
       </div>
-      <div className="bg-white rounded-2xl border p-6" style={{ borderColor: "#E6ECF5" }}>
-        <Skeleton className="mb-2" style={{ height: 18, width: 160 }} />
-        <Skeleton style={{ height: 400, borderRadius: 12 }} />
-      </div>
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 bg-white rounded-2xl border p-6" style={{ borderColor: "#E6ECF5" }}>
-          <Skeleton className="mb-4" style={{ height: 18, width: 200 }} />
-          <Skeleton style={{ height: 160, borderRadius: 12 }} />
+
+      {/* Chart */}
+      <div className="bg-white rounded-2xl border p-6" style={{ borderColor: THEME.border }}>
+        <div className="flex items-center gap-2.5 mb-4">
+          <Skeleton style={{ width: 36, height: 36, borderRadius: 9 }} />
+          <Skeleton style={{ height: 18, width: 220 }} />
         </div>
-        <div className="bg-white rounded-2xl border p-6" style={{ borderColor: "#E6ECF5" }}>
-          <Skeleton className="mb-4" style={{ height: 18, width: 140 }} />
-          {[1, 2, 3, 4].map(i => <Skeleton key={i} className="mb-2" style={{ height: 44, borderRadius: 12 }} />)}
+        <Skeleton style={{ height: 420, borderRadius: 12 }} />
+      </div>
+
+      {/* Reasoning panel */}
+      <div className="bg-white rounded-2xl border p-6" style={{ borderColor: THEME.border }}>
+        <div className="flex items-center gap-2.5 mb-6">
+          <Skeleton style={{ width: 36, height: 36, borderRadius: 9 }} />
+          <Skeleton style={{ height: 18, width: 200 }} />
+        </div>
+        <div className="flex gap-6">
+          <div style={{ flex: "0 0 70%" }} className="flex flex-col gap-3">
+            <Skeleton style={{ height: 80, borderRadius: 12 }} />
+            <Skeleton style={{ height: 80, borderRadius: 12 }} />
+            <Skeleton style={{ height: 80, borderRadius: 12 }} />
+          </div>
+          <div style={{ flex: "0 0 30%" }} className="flex flex-col gap-3">
+            <Skeleton style={{ height: 14, width: 100 }} className="mb-1" />
+            {[1, 2, 3, 4, 5].map(i => <Skeleton key={i} style={{ height: 38, borderRadius: 10 }} />)}
+          </div>
         </div>
       </div>
     </div>
@@ -513,6 +524,7 @@ function ForecastPage({
   news = [],
   onSelectAspect,
   selectedForecastMonth,
+  dataLoaded,
 }) {
   const previousMonthActual = React.useMemo(() => {
     if (!selectedForecastMonth || !series?.length) return null
@@ -538,8 +550,7 @@ function ForecastPage({
     [series, selectedForecastMonth]
   )
 
-  const isLoading = !series?.length && !allExplain?.length
-
+  const isLoading = !dataLoaded
   if (isLoading) return <ForecastPageSkeleton />
 
   return (
@@ -623,17 +634,14 @@ function ForecastSummaryCard({
         {/* Header with rising-bar icon */}
         <div className="flex items-center gap-2.5 mb-1 mt-2">
           <div
-            className="flex items-center justify-center rounded-lg flex-shrink-0"
-            style={{ width: 28, height: 28, background: "#EEF4FF" }}
-          >
-            <svg width="30" height="30" viewBox="0 0 30 30" fill="none">
-              <text x="15" y="15" textAnchor="middle" dominantBaseline="central" fontSize="10" fontWeight="800" fontStyle="italic" fill={THEME.blue} fontFamily="Roboto, Arial, sans-serif" letterSpacing="0.6">CCI</text></svg>
+            className="flex items-center justify-center rounded-lg flex-shrink-0" style={{ width: 28, height: 28, background: THEME.blueSoft }}>
+            <img src={forecastsummary} width="20" height="20" alt="" />
           </div>
-          <span className="text-lg font-medium" style={{ color: "#1E2F47" }}>
+          <span className="text-lg font-medium" style={{ color: THEME.textPrimary }}>
             {t("Consumer Confidence Forecast", "ค่าพยากรณ์ดัชนีความเชื่อมั่นผู้บริโภค (CCI)")}
           </span>
         </div>
-        <div className="text-xs mb-5" style={{ color: "#8A9BB8", paddingLeft: 38 }}>
+        <div className="text-xs mb-5" style={{ color: THEME.textMuted, paddingLeft: 38 }}>
           {t("Forecast Month", "เดือนพยากรณ์")} · {monthLabel(month, lang)}
         </div>
 
@@ -643,17 +651,17 @@ function ForecastSummaryCard({
             className="rounded-xl p-4 border flex flex-col gap-2"
             style={{ background: THEME.blueSoft, borderColor: THEME.border }}
           >
-            <div className="text-xs" style={{ color: "#8A9BB8" }}>
+            <div className="text-xs font-semibold" style={{ color: THEME.blue }}>
               {comparisonBasis === "predicted"
                 ? t("Forecast value —", "ค่าพยากรณ์ของ")
                 : t("Actual data —", "ค่าจริง")}{" "}
-              <span style={{ color: "#4A5D7A", fontWeight: 500 }}>{prevMonthLabel}</span>
+              {prevMonthLabel}
             </div>
-            <div className="text-[38px] font-semibold leading-none" style={{ color: "#1E2F47" }}>
+            <div className="text-[38px] font-semibold leading-none" style={{ color: THEME.blue }}>
               {comparisonValue != null ? Number(comparisonValue).toFixed(1) : "—"}
             </div>
-            <div className="text-xs" style={{ color: "#A0B0C8" }}>
-              {prevMonthLabel}
+            <div className="text-xs mt-1" style={{ color: THEME.blue }}>
+              {t("Latest recorded value", "ข้อมูลจริงเดือนล่าสุด")}
             </div>
           </div>
 
@@ -661,23 +669,23 @@ function ForecastSummaryCard({
           <div
             className="rounded-xl p-4 border flex flex-col gap-2"
             style={{
-              background: info.tone === "down" ? "#FEF2F2" : info.tone === "up" ? "#F0FDF7" : "#F4F7FC",
-              borderColor: info.tone === "down" ? "#FECACA" : info.tone === "up" ? "#A7F3D0" : THEME.border,
+              background: info.tone === "down" ? "rgba(214,69,69,0.06)" : info.tone === "up" ? "rgba(5,150,105,0.06)" : THEME.blueCard,
+              borderColor: info.tone === "down" ? "rgba(214,69,69,0.3)" : info.tone === "up" ? "rgba(5,150,105,0.3)" : THEME.border,
             }}
           >
             <div className="text-xs font-medium" style={{ color: info.tone === "down" ? THEME.danger : info.tone === "up" ? THEME.success : THEME.gray }}>
               {t("Forecast —", "พยากรณ์")} <span style={{ fontWeight: 600 }}>{monthLabel(month, lang)}</span>
             </div>
-            <div className="text-[38px] font-semibold leading-none" style={{ color: info.tone === "down" ? THEME.danger : info.tone === "up" ? THEME.success : "#1E2F47" }}>
+            <div className="text-[38px] font-semibold leading-none" style={{ color: info.tone === "down" ? THEME.danger : info.tone === "up" ? THEME.success : THEME.textPrimary }}>
               {predicted != null ? Number(predicted).toFixed(1) : "—"}
             </div>
             <div className="flex items-center gap-2 flex-wrap">
               <span
                 className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium"
                 style={{
-                  background: info.tone === "down" ? "#FEE2E2" : info.tone === "up" ? "#DCFCE7" : "#F3F4F6",
+                  background: info.tone === "down" ? "rgba(214,69,69,0.15)" : info.tone === "up" ? "rgba(5,150,105,0.15)" : THEME.blueCard,
                   color: info.tone === "down" ? THEME.danger : info.tone === "up" ? THEME.success : THEME.gray,
-                  border: `1px solid ${info.tone === "down" ? "#FECACA" : info.tone === "up" ? "#A7F3D0" : "#E5E7EB"}`,
+                  border: `1px solid ${info.tone === "down" ? "rgba(214,69,69,0.3)" : info.tone === "up" ? "rgba(5,150,105,0.3)" : THEME.border}`,
                 }}
               >
                 {arrow} {info.tone === "up"
@@ -687,7 +695,7 @@ function ForecastSummaryCard({
                     : t("Stable", "ทรงตัว")}
               </span>
               {showDelta && (
-                <span className="text-xs" style={{ color: "#8A9BB8" }}>
+                <span className="text-xs" style={{ color: THEME.textMuted }}>
                   {isPos ? "+" : ""}{delta.toFixed(1)} ({isPos ? "+" : ""}{pct.toFixed(1)}%)
                 </span>
               )}
@@ -697,39 +705,45 @@ function ForecastSummaryCard({
       </div>
 
       {/* ── Summary card (2 cols) ── */}
-      <div
-        className="lg:col-span-2 rounded-2xl border p-6 flex flex-col gap-3"
-        style={{ background: "#F4F7FC", borderColor: THEME.border }}
-      >
-        <div className="flex items-center gap-2.5">
-          <div
-            className="flex items-center justify-center rounded-lg flex-shrink-0"
-            style={{ width: 28, height: 28, background: "#E0ECFF" }}
-          >
-            <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
-              <circle cx="6.5" cy="6.5" r="5" stroke={THEME.blue} strokeWidth="1.3" />
-              <line x1="6.5" y1="4.5" x2="6.5" y2="7" stroke={THEME.blue} strokeWidth="1.3" strokeLinecap="round" />
-              <circle cx="6.5" cy="9" r=".65" fill={THEME.blue} />
-            </svg>
-          </div>
-          <span
-            className="text-sm font-medium tracking-wider"
-            style={{ color: THEME.blue }}
-          >
-            {t("Overview", "ภาพรวมรายงาน")}
-          </span>
-        </div>
+      <SummaryCard t={t} conclusion={conclusion} />
+    </div>
+  )
+}
 
-        <div className="flex flex-col justify-start flex-1 pt-7">
-          {conclusion ? (
-            <p className="text-sm leading-7" style={{ color: "#2D3F5C" }}>
-              {conclusion}
-            </p>
-          ) : (
-            <p className="text-sm" style={{ color: "#A0B0C8" }}>—</p>
-          )}
-
+function SummaryCard({ t, conclusion }) {
+  return (
+    <div
+      className="lg:col-span-2 rounded-2xl border p-6 flex flex-col gap-3"
+      style={{ background: THEME.white, borderColor: THEME.border }}
+    >
+      <div className="flex items-center gap-2.5 mb-1 mt-2">
+        <div
+          className="flex items-center justify-center rounded-lg flex-shrink-0"
+          style={{ width: 28, height: 28, background: THEME.blueSoft }}
+        >
+          {/* <svg width="15" height="15" viewBox="0 0 22 22" fill="none">
+            <rect x="3" y="2" width="10" height="16" rx="1.5" fill="rgba(5,101,150,0.06)" stroke={THEME.blue} strokeWidth="1.3" />
+            <line x1="5.5" y1="6" x2="10.5" y2="6" stroke={THEME.blue} strokeWidth="1.1" strokeLinecap="round" opacity="0.5" />
+            <line x1="5.5" y1="9" x2="10.5" y2="9" stroke={THEME.blue} strokeWidth="1.1" strokeLinecap="round" opacity="0.5" />
+            <line x1="5.5" y1="12" x2="8.5" y2="12" stroke={THEME.blue} strokeWidth="1.1" strokeLinecap="round" opacity="0.5" />
+            <path d="M12 12 L18 6 L20 8 L14 14 L11 15 Z" fill="rgba(5,101,150,0.12)" stroke={THEME.blue} strokeWidth="1.2" strokeLinejoin="round" />
+            <line x1="16" y1="8" x2="18" y2="10" stroke={THEME.blue} strokeWidth="1" />
+          </svg> */}
+          <img src={summary2} width="17" height="17" alt="" />
         </div>
+        <span className="text-lg font-medium" style={{ color: THEME.textPrimary }}>
+          {t("Overview", "ภาพรวมรายงาน")}
+        </span>
+      </div>
+
+      <div className="flex flex-col justify-start flex-1 pt-5">
+        {conclusion ? (
+          <p className="text-sm leading-7" style={{ color: THEME.textPrimary }}>
+            {conclusion}
+          </p>
+        ) : (
+          <p className="text-sm" style={{ color: THEME.textHint }}>—</p>
+        )}
       </div>
     </div>
   )
@@ -765,18 +779,27 @@ function ForecastChart({ t, lang, series, selectedMonth }) {
       .flatMap((d) => [d.actual, d.pred])
       .filter((v) => v != null && !Number.isNaN(Number(v)))
       .map(Number)
-    if (!values.length) return [0, 100]
+    if (!values.length) return [30, 80]
     const min = Math.min(...values)
     const max = Math.max(...values)
-    const pad = Math.max((max - min) * 0.1, 1)
-    return [Math.floor(min - pad), Math.ceil(max + pad)]
+    const floor = Math.floor((min - 3) / 5) * 5
+    const ceil = Math.ceil((max + 3) / 5) * 5
+    return [floor, ceil]
   }, [chartData])
+
+  // Generate explicit tick values as multiples of 5
+  const yTicks = React.useMemo(() => {
+    const [floor, ceil] = yDomain
+    const ticks = []
+    for (let v = floor; v <= ceil; v += 5) ticks.push(v)
+    return ticks
+  }, [yDomain])
 
   const rangeIndexes = React.useMemo(() => {
     const len = chartData.length
     if (!len) return { startIndex: 0, endIndex: 0 }
     const lastIndex = len - 1
-    if (activeRange === "1y") return { startIndex: Math.max(0, len - 12), endIndex: lastIndex }
+    if (activeRange === "1y") return { startIndex: Math.max(0, len - 15), endIndex: lastIndex }
     if (activeRange === "2y") return { startIndex: Math.max(0, len - 24), endIndex: lastIndex }
     return { startIndex: 0, endIndex: lastIndex }
   }, [chartData, activeRange])
@@ -800,17 +823,42 @@ function ForecastChart({ t, lang, series, selectedMonth }) {
       .filter((v) => v != null && !Number.isNaN(Number(v)))
       .map(Number)
     if (!values.length) return yDomain
-    const min = Math.min(...values)
     const max = Math.max(...values)
-    const pad = Math.max((max - min) * 0.1, 1)
-    return [Math.floor(min - pad), Math.ceil(max + pad)]
+    const ceil = Math.ceil((max + 3) / 5) * 5
+    return [yDomain[0], ceil]
   }, [visibleData, yDomain])
+
+  // Ticks for visible range — still multiples of 5
+  const visibleYTicks = React.useMemo(() => {
+    const [floor, ceil] = visibleYDomain
+    const ticks = []
+    for (let v = floor; v <= ceil; v += 5) ticks.push(v)
+    return ticks
+  }, [visibleYDomain])
 
   const rangeButtons = [
     { key: "1y", en: "1 Year", th: "1 ปี" },
     { key: "2y", en: "2 Years", th: "2 ปี" },
     { key: "all", en: "All", th: "ทั้งหมด" },
   ]
+
+  const xAxisInterval = activeRange === "all"
+    ? Math.max(1, Math.floor(visibleData.length / 14))
+    : 0
+
+  const xAxisTicks = React.useMemo(() => {
+    if (!visibleData.length) return []
+    if (activeRange === "all") return visibleData
+      .filter((_, i) => i % Math.max(1, Math.floor(visibleData.length / 14)) === 0)
+      .map((d) => d.date)
+    if (activeRange === "2y") return visibleData
+      .filter((_, i) => i % 2 === 0)
+      .map((d) => d.date)
+    if (activeRange === "1y") return visibleData
+      .filter((_, i) => visibleData.length <= 16 || i % 2 === 0)
+      .map((d) => d.date)
+    return visibleData.map((d) => d.date)
+  }, [visibleData, activeRange])
 
   return (
     <Card>
@@ -819,23 +867,24 @@ function ForecastChart({ t, lang, series, selectedMonth }) {
           <div className="flex items-center gap-2.5">
             <div
               className="flex items-center justify-center rounded-lg flex-shrink-0"
-              style={{ width: 28, height: 28, background: "#EEF4FF", alignSelf: "flex-start", marginTop: 2 }}
+              style={{ width: 28, height: 28, background: THEME.blueSoft, alignSelf: "flex-start", marginTop: 2 }}
             >
-              <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
+              {/* <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
                 <polyline points="1,11 4,7 7,9 10,4 14,6" stroke={THEME.blue} strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
                 <line x1="1" y1="13" x2="14" y2="13" stroke={THEME.blue} strokeWidth="1.2" strokeLinecap="round" />
-              </svg>
+              </svg> */}
+              <img src={forecastchart} width="20" height="20" alt="" />
+
             </div>
             <div>
-              <div className="text-lg font-medium" style={{ color: "#1E2F47" }}>
+              <div className="text-lg font-medium" style={{ color: THEME.blueDark }}>
                 {t("Consumer Confidence Index Forecast Trend", "แผนภูมิพยากรณ์ค่าดัชนีความเชื่อมั่นผู้บริโภค (CCI)")}
               </div>
-              <div className="text-xs mt-1" style={{ color: "#8A9BB8" }}>
+              <div className="text-xs mt-1" style={{ color: THEME.textMuted }}>
                 {t("Comparing actual recorded data to forecast values", "เปรียบเทียบค่าจริงและค่าพยากรณ์")}
               </div>
             </div>
           </div>
-
           <div className="flex items-center gap-2">
             <div className="flex gap-1" style={{ background: THEME.blueSoft, borderRadius: 8, padding: 3 }}>
               {rangeButtons.map(({ key, en, th }) => (
@@ -843,14 +892,11 @@ function ForecastChart({ t, lang, series, selectedMonth }) {
                   key={key}
                   onClick={() => setActiveRange(key)}
                   style={{
-                    padding: "4px 12px",
-                    borderRadius: 6,
-                    fontSize: 12,
-                    fontWeight: activeRange === key ? 500 : 400,
-                    border: "none",
+                    padding: "4px 12px", borderRadius: 6, fontSize: 12,
+                    fontWeight: activeRange === key ? 500 : 400, border: "none",
                     cursor: "pointer",
                     background: activeRange === key ? THEME.navy : "transparent",
-                    color: activeRange === key ? "#fff" : "#7A8CAA",
+                    color: activeRange === key ? THEME.white : THEME.gray,
                     transition: "all 0.15s",
                   }}
                 >
@@ -863,159 +909,127 @@ function ForecastChart({ t, lang, series, selectedMonth }) {
       </CardHeader>
 
       <CardContent>
-        <div
-          className="w-full rounded-xl border bg-white overflow-hidden"
-          style={{ borderColor: THEME.border }}
-        >
-          <div className="flex w-full" style={{ height: 420 }}>
-            <div
-              className="flex-shrink-0 bg-white border-r"
-              style={{ width: 90, borderColor: THEME.border }}
-            >
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart
-                  data={visibleData}
-                  margin={{ top: 60, right: 0, left: 0, bottom: 55 }}
-                  syncId="forecast-chart"
-                >
-                  <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" horizontal vertical={false} />
-                  <YAxis tick={{ fontSize: 11 }} width={75} domain={visibleYDomain} />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
+        <div className="w-full bg-white" style={{ borderRadius: 12 }}>
+          <div style={{ height: 420 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <ComposedChart
+                data={visibleData}
+                margin={{ top: 20, right: 20, left: 10, bottom: 10 }}
+              >
+                <CartesianGrid stroke={THEME.border} horizontal={true} vertical={false} strokeOpacity={0.6} />
 
-            <div className="flex-1 overflow-hidden">
-              <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart
-                  data={visibleData}
-                  margin={{ top: 20, right: 20, left: 0, bottom: 55 }}
-                  syncId="forecast-chart"
-                >
-                  <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                  <XAxis
-                    dataKey="date"
-                    height={52}
-                    interval={activeRange === "all" ? Math.max(1, Math.floor(visibleData.length / 14)) : 0}
-                    tickMargin={8}
-                    tick={<ForecastXAxisTick lang={lang} />}
-                  />
-                  <YAxis hide domain={visibleYDomain} />
+                <XAxis
+                  dataKey="date"
+                  height={55}
+                  ticks={xAxisTicks}
+                  interval={0}
+                  minTickGap={activeRange === "1y" ? -50 : 0}
+                  tickMargin={8}
+                  tick={<ForecastXAxisTick lang={lang} compact={activeRange === "1y"} />}
+                  axisLine={{ stroke: THEME.textPrimary }}
+                  tickLine={false}
+                />
 
-                  <ReTooltip
-                    content={({ active, payload, label }) => {
-                      if (!active || !payload?.length) return null
-
-                      const actualItem = payload.find((p) => p.dataKey === "actual")
-                      const predItem = payload.find((p) => p.dataKey === "pred")
-
-                      return (
-                        <div
-                          className="rounded-xl border bg-white p-3 shadow-lg"
-                          style={{ borderColor: THEME.border }}
-                        >
-                          <div className="text-sm font-semibold text-gray-900 mb-1">
-                            {monthLabel(label, lang)}
-                          </div>
-
-                          {actualItem?.value != null ? (
-                            <div className="text-sm" style={{ color: THEME.navy }}>
-                              {t("Actual", "ค่าจริง")}: {Number(actualItem.value).toFixed(2)}
-                            </div>
-                          ) : null}
-
-                          {predItem?.value != null ? (
-                            <div className="text-sm" style={{ color: THEME.blue }}>
-                              {t("Forecast", "ค่าพยากรณ์")}: {Number(predItem.value).toFixed(2)}
-                            </div>
-                          ) : null}
+                <YAxis
+                  tick={{ fontSize: 11 }}
+                  domain={visibleYDomain}
+                  ticks={visibleYTicks}
+                  axisLine={{ stroke: THEME.textPrimary }}
+                  tickLine={false}
+                  allowDataOverflow={true}
+                  width={45}
+                />
+                <ReTooltip
+                  content={({ active, payload, label }) => {
+                    if (!active || !payload?.length) return null
+                    const actualItem = payload.find((p) => p.dataKey === "actual")
+                    const predItem = payload.find((p) => p.dataKey === "pred")
+                    return (
+                      <div className="rounded-xl border bg-white p-3 shadow-lg" style={{ borderColor: THEME.border }}>
+                        <div className="text-sm font-semibold text-gray-900 mb-1">
+                          {monthLabel(label, lang)}
                         </div>
-                      )
+                        {actualItem?.value != null ? (
+                          <div className="text-sm" style={{ color: THEME.blue }}>
+                            {t("Actual", "ค่าจริง")}: {Number(actualItem.value).toFixed(2)}
+                          </div>
+                        ) : null}
+                        {predItem?.value != null ? (
+                          <div className="text-sm" style={{ color: THEME.success }}>
+                            {t("Forecast", "ค่าพยากรณ์")}: {Number(predItem.value).toFixed(2)}
+                          </div>
+                        ) : null}
+                      </div>
+                    )
+                  }}
+                />
+                <Legend verticalAlign="top" height={40} />
+                {lastActualDate && visibleData[visibleData.length - 1]?.date ? (
+                  <ReferenceArea
+                    x1={lastActualDate}
+                    x2={visibleData[visibleData.length - 1]?.date}
+                    fill={THEME.blue}
+                    fillOpacity={0.05}
+                  />
+                ) : null}
+                {selectedDate && visibleData.some((d) => d.date === selectedDate) ? (
+                  <ReferenceLine
+                    x={selectedDate}
+                    stroke={THEME.blue}
+                    strokeDasharray="4 4"
+                    label={{
+                      value: t("Selected period", "เดือนที่เลือก"),
+                      position: "insideTopRight",
+                      fontSize: 11,
+                      fill: THEME.blue,
                     }}
                   />
-
-                  <Legend verticalAlign="top" height={40} />
-
-                  {lastActualDate && forecastStartDate ? (
-                    <ReferenceArea
-                      x1={lastActualDate}
-                      x2={visibleData[visibleData.length - 1]?.date}
-                      fill={THEME.blue}
-                      fillOpacity={0.05}
-                    />
-                  ) : null}
-
-                  {selectedDate && visibleData.some((d) => d.date === selectedDate) ? (
-                    <ReferenceLine
-                      x={selectedDate}
-                      stroke={THEME.blue}
-                      strokeDasharray="4 4"
-                      label={{
-                        value: t("Selected period", "เดือนที่เลือก"),
-                        position: "insideTopRight",
-                        fontSize: 11,
-                        fill: THEME.blue,
-                      }}
-                    />
-                  ) : null}
-
-                  <Line
-                    type="monotone"
-                    dataKey="actual"
-                    stroke={THEME.blue}
-                    strokeWidth={2.5}
-                    dot={{ r: 3 }}
-                    activeDot={{ r: 5 }}
-                    name={t("Actual", "ค่าจริง")}
-                    connectNulls={false}
-                  />
-
-                  <Line
-                    type="monotone"
-                    dataKey="pred"
-                    stroke={THEME.success}
-                    strokeWidth={2}
-                    dot={{ r: 3 }}
-                    activeDot={{ r: 5 }}
-                    strokeDasharray="6 4"
-                    name={t("Forecast", "ค่าพยากรณ์")}
-                    connectNulls={false}
-                  />
-                </ComposedChart>
-              </ResponsiveContainer>
-            </div>
+                ) : null}
+                <Line
+                  type="monotone"
+                  dataKey="actual"
+                  stroke={THEME.blue}
+                  strokeWidth={2.5}
+                  dot={{ r: 3 }}
+                  activeDot={{ r: 5 }}
+                  name={t("Actual", "ค่าจริง")}
+                  connectNulls={false}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="pred"
+                  stroke={THEME.success}
+                  strokeWidth={2}
+                  dot={{ r: 3 }}
+                  activeDot={{ r: 5 }}
+                  strokeDasharray="6 4"
+                  name={t("Forecast", "ค่าพยากรณ์")}
+                  connectNulls={false}
+                />
+              </ComposedChart>
+            </ResponsiveContainer>
           </div>
 
-          <div
-            className="border-t px-4 py-1 bg-white"
-            style={{ borderColor: THEME.border }}
-          >
+          <div className="border-t px-4 py-1 bg-white" style={{ borderColor: THEME.border }}>
             <div style={{ width: "100%", height: 60 }}>
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={chartData}>
                   <XAxis dataKey="date" hide />
-                  <YAxis hide domain={yDomain} />
-
+                  <YAxis hide domain={yDomain} ticks={yTicks} />
                   <Brush
                     dataKey="date"
                     height={28}
                     travellerWidth={10}
+                    gap={Math.max(1, Math.floor(chartData.length / 14))}
                     startIndex={brushRange.startIndex}
                     endIndex={brushRange.endIndex}
                     onChange={(range) => {
-                      if (
-                        range &&
-                        typeof range.startIndex === "number" &&
-                        typeof range.endIndex === "number"
-                      ) {
-                        setBrushRange({
-                          startIndex: range.startIndex,
-                          endIndex: range.endIndex,
-                        })
+                      if (range && typeof range.startIndex === "number" && typeof range.endIndex === "number") {
+                        setBrushRange({ startIndex: range.startIndex, endIndex: range.endIndex })
+                        setActiveRange("all")
                       }
                     }}
-                    tickFormatter={(v) =>
-                      lang === "th" ? thaiMonthYear(v) : String(v).slice(0, 7)
-                    }
+                    tickFormatter={(v) => lang === "th" ? thaiMonthYear(v) : String(v).slice(0, 7)}
                   />
                 </LineChart>
               </ResponsiveContainer>
@@ -1059,23 +1073,22 @@ function ReasoningPanel({ t, lang, activeRow, selectedMonth, news, onSelectAspec
       <CardHeader>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div
-              className="flex items-center justify-center rounded-lg flex-shrink-0"
-              style={{ width: 28, height: 28, background: "#EEF4FF" }}
-            >
-              {/* 4-point sparkle / ✦ icon */}
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+            <div className="flex items-center justify-center rounded-lg flex-shrink-0" style={{ width: 28, height: 28, background: THEME.blueSoft, alignSelf: "flex-start" }}>
+              {/* <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
                 <path d="M7 1 L7.8 6.2 L13 7 L7.8 7.8 L7 13 L6.2 7.8 L1 7 L6.2 6.2 Z" fill="none" stroke={THEME.blue} strokeWidth="1.6" strokeLinejoin="round" />
-              </svg>
+              </svg> */}
+              <img src={reasoningpanel} width="20" height="20" alt="" />
             </div>
-            <span className="text-lg font-medium" style={{ color: "#1E2F47" }}>
-              {t("Key Factors", "ปัจจัยหลักของการพยากรณ์")}
-            </span>
+            <div>
+              <span className="text-lg font-medium" style={{ color: THEME.textPrimary }}>
+                {t("Key Factors", "ปัจจัยหลักของการพยากรณ์")}
+              </span>
+              <p className="text-xs mt-0.5" style={{ color: THEME.textMuted }}>
+                {t("Description:", "คำอธิบายเดือน:")} {monthLabel(selectedMonth, lang)}
+              </p>
+            </div>
 
           </div>
-          <Badge variant="outline">
-            {monthLabel(selectedMonth, lang)}
-          </Badge>
         </div>
       </CardHeader>
 
@@ -1092,7 +1105,7 @@ function ReasoningPanel({ t, lang, activeRow, selectedMonth, news, onSelectAspec
                   <div
                     key={idx}
                     className="flex gap-3 rounded-xl p-4 border"
-                    style={{ background: "#F0F4FF", borderColor: "#C8D9F5" }}
+                    style={{ background: THEME.blueSoft, borderColor: THEME.border }}
                   >
                     <div
                       className="flex items-center justify-center rounded-lg flex-shrink-0 mt-0.5"
@@ -1100,7 +1113,7 @@ function ReasoningPanel({ t, lang, activeRow, selectedMonth, news, onSelectAspec
                         width: 24,
                         height: 24,
                         background: THEME.navy,
-                        color: "#fff",
+                        color: THEME.white,
                         fontSize: 12,
                         fontWeight: 500
                       }}
@@ -1108,7 +1121,7 @@ function ReasoningPanel({ t, lang, activeRow, selectedMonth, news, onSelectAspec
                       {idx + 1}
                     </div>
 
-                    <p className="text-sm leading-7" style={{ color: "#2D3F5C" }}>
+                    <p className="text-sm leading-7" style={{ color: THEME.textPrimary }}>
                       {f.text}
                     </p>
                   </div>
@@ -1131,7 +1144,7 @@ function ReasoningPanel({ t, lang, activeRow, selectedMonth, news, onSelectAspec
               <p
                 className="text-xs font-medium tracking-wider"
                 style={{
-                  color: "#8A9BB8",
+                  color: THEME.textMuted,
                   height: 20,
                   display: "flex",
                   alignItems: "center"
@@ -1141,7 +1154,7 @@ function ReasoningPanel({ t, lang, activeRow, selectedMonth, news, onSelectAspec
               </p>
 
               {ranked.length === 0 ? (
-                <p className="text-xs" style={{ color: "#A0B0C8" }}>—</p>
+                <p className="text-xs" style={{ color: THEME.textHint }}>—</p>
               ) : (
                 ranked.map(({ aspect, count }) => (
                   <button
@@ -1157,40 +1170,63 @@ function ReasoningPanel({ t, lang, activeRow, selectedMonth, news, onSelectAspec
                       alignItems: "center",
                       justifyContent: "space-between",
                       gap: 8,
-                      transition: "background 0.12s",
+                      transition: "background 0.12s, border-color 0.12s",
                     }}
-                    onMouseEnter={e => e.currentTarget.style.background = "#E5EBF5"}
-                    onMouseLeave={e => e.currentTarget.style.background = THEME.blueSoft}
+                    onMouseEnter={e => {
+                      e.currentTarget.style.background = THEME.blueCard
+                      e.currentTarget.style.borderColor = THEME.blue
+                      e.currentTarget.querySelector(".aspect-arrow").style.opacity = "1"
+                      e.currentTarget.querySelector(".aspect-arrow").style.transform = "translateX(3px)"
+                    }}
+                    onMouseLeave={e => {
+                      e.currentTarget.style.background = THEME.blueSoft
+                      e.currentTarget.style.borderColor = THEME.border
+                      e.currentTarget.querySelector(".aspect-arrow").style.opacity = "0"
+                      e.currentTarget.querySelector(".aspect-arrow").style.transform = "translateX(0)"
+                    }}
                   >
-                    <span style={{ fontSize: 12, color: "#2D3F5C", fontWeight: 400 }}>
+                    <span style={{ fontSize: 12, color: THEME.textPrimary, fontWeight: 400 }}>
                       {lang === "en" ? (ASPECT_EN[aspect] ?? aspect) : aspect}
                     </span>
-
-
-                    <span
-                      style={{
-                        fontSize: 12,
-                        fontWeight: 600,
-                        color: THEME.blue,
-                        background: "rgba(47,111,237,0.12)",
-                        minWidth: 38,
-                        height: 22,
-                        display: "inline-flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        borderRadius: 99,
-                        padding: "0 8px",
-                      }}
-                    >
-                      {count}
-                    </span>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+                      <span
+                        style={{
+                          fontSize: 12,
+                          fontWeight: 600,
+                          color: THEME.blue,
+                          background: "rgba(47,111,237,0.12)",
+                          minWidth: 38,
+                          height: 22,
+                          display: "inline-flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          borderRadius: 99,
+                          padding: "0 8px",
+                        }}
+                      >
+                        {count}
+                      </span>
+                      <span
+                        className="aspect-arrow"
+                        style={{
+                          fontSize: 13,
+                          color: THEME.blue,
+                          opacity: 0,
+                          transition: "opacity 0.15s, transform 0.15s",
+                          transform: "translateX(0)",
+                          lineHeight: 1,
+                        }}
+                      >
+                        →
+                      </span>
+                    </div>
                   </button>
                 ))
               )}
             </div>
           </div>
         ) : (
-          <div className="text-center py-10 text-sm" style={{ color: "#A0B0C8" }}>
+          <div className="text-center py-10 text-sm" style={{ color: THEME.textHint }}>
             {t("No analysis available for this period", "ไม่พบคำอธิบาย")}
           </div>
         )}
@@ -1201,22 +1237,39 @@ function ReasoningPanel({ t, lang, activeRow, selectedMonth, news, onSelectAspec
 
 const PER_PAGE = 15
 
-function AspectNewsPage({ t, lang, aspect, news = [], onBack }) {
+function AspectNewsPage({ t, lang, aspect, news = [], onBack, selectedForecastMonth }) {
   const [currentPage, setCurrentPage] = React.useState(1)
   const [search, setSearch] = React.useState("")
+
+  const backwardMonths = React.useMemo(() => {
+    if (!selectedForecastMonth) return null
+    const [year, month] = selectedForecastMonth.split("-").map(Number)
+    const base = new Date(year, month - 1, 1)
+    const months = []
+    for (let i = 3; i >= 1; i--) {
+      const d = new Date(base)
+      d.setMonth(d.getMonth() - i)
+      months.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`)
+    }
+    return months
+  }, [selectedForecastMonth])
 
   const newsForAspect = React.useMemo(() => {
     if (!aspect) return []
     return [...news]
-      .filter((n) => (n.aspect || "Unknown") === aspect)
+      .filter((n) => {
+        if ((n.aspect || "Unknown") !== aspect) return false
+        if (backwardMonths) return backwardMonths.includes(String(n.date || "").slice(0, 7))
+        return true
+      })
       .sort((a, b) => b.date.localeCompare(a.date))
-  }, [aspect, news])
+  }, [aspect, news, backwardMonths])
 
   const filteredNews = React.useMemo(() => {
     if (!search.trim()) return newsForAspect
     const q = search.toLowerCase()
     return newsForAspect.filter(
-      (n) => (<n className="headline"></n> || "").toLowerCase().includes(q) || (n.source || "").toLowerCase().includes(q)
+      (n) => (n.title || "").toLowerCase().includes(q) || (n.source || "").toLowerCase().includes(q)
     )
   }, [newsForAspect, search])
 
@@ -1328,7 +1381,7 @@ function AspectNewsPage({ t, lang, aspect, news = [], onBack }) {
                 <button
                   onClick={() => setSearch("")}
                   className="px-4 py-2 rounded-xl text-sm font-medium"
-                  style={{ border: `1px solid ${THEME.border}`, background: "#fff", cursor: "pointer" }}
+                  style={{ border: `1px solid ${THEME.border}`, background: THEME.white, cursor: "pointer" }}
                 >
                   {t("Clear filter", "ล้างการค้นหา")}
                 </button>
@@ -1339,7 +1392,7 @@ function AspectNewsPage({ t, lang, aspect, news = [], onBack }) {
               <div className="divide-y divide-gray-100">
                 {pagedNews.map((n, idx) => {
                   const displayDate = lang === "th" ? thaiDateShort(n.date) : n.date
-                  const tagColor = tagColors[n.tag] || "#6b7280"
+                  const tagColor = tagColors[n.tag] || THEME.gray
                   const tagLabel = lang === "th" ? tagTH[n.tag] || n.tag : n.tag
                   const globalIdx = (currentPage - 1) * PER_PAGE + idx
 
@@ -1417,8 +1470,8 @@ function AspectNewsPage({ t, lang, aspect, news = [], onBack }) {
                       }}
                       className="w-9 h-9 rounded-lg text-sm font-medium transition"
                       style={{
-                        backgroundColor: p === currentPage ? THEME.navy : "#FFFFFF",
-                        color: p === currentPage ? "#FFFFFF" : "#111827",
+                        backgroundColor: p === currentPage ? THEME.navy : THEME.white,
+                        color: p === currentPage ? THEME.white : THEME.textPrimary,
                         border: `1px solid ${p === currentPage ? THEME.navy : THEME.border}`,
                       }}
                     >
@@ -1856,8 +1909,8 @@ function MonthCalendarPicker({ months, selectedMonth, onSelect, lang, t }) {
           style={{
             position: "absolute", top: "calc(100% + 8px)", left: "50%",
             transform: "translateX(-50%)",
-            background: "#fff", borderRadius: 14,
-            border: "1px solid #DDE4EF",
+            background: THEME.white, borderRadius: 14,
+            border: "1px solid theme.border",
             boxShadow: "0 8px 32px rgba(18,32,64,0.14)",
             padding: 16, zIndex: 100, width: 240,
           }}
@@ -1871,15 +1924,15 @@ function MonthCalendarPicker({ months, selectedMonth, onSelect, lang, t }) {
               }}
               disabled={availableYears.indexOf(viewYear) >= availableYears.length - 1}
               style={{
-                width: 28, height: 28, border: "1px solid #DDE4EF", borderRadius: 7,
+                width: 28, height: 28, border: `1px solid ${THEME.border}`, borderRadius: 7,
                 background: "transparent", cursor: "pointer", display: "flex",
-                alignItems: "center", justifyContent: "center", color: "#4A5D7A",
+                alignItems: "center", justifyContent: "center", color: THEME.textPrimary,
                 opacity: availableYears.indexOf(viewYear) >= availableYears.length - 1 ? 0.3 : 1,
               }}
             >
               <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><polyline points="7,2 3,5 7,8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" /></svg>
             </button>
-            <span style={{ fontSize: 13, fontWeight: 500, color: "#1E2F47" }}>{thaiYear}</span>
+            <span style={{ fontSize: 13, fontWeight: 500, color: THEME.textPrimary }}>{thaiYear}</span>
             <button
               onClick={() => {
                 const idx = availableYears.indexOf(viewYear)
@@ -1887,9 +1940,9 @@ function MonthCalendarPicker({ months, selectedMonth, onSelect, lang, t }) {
               }}
               disabled={availableYears.indexOf(viewYear) <= 0}
               style={{
-                width: 28, height: 28, border: "1px solid #DDE4EF", borderRadius: 7,
+                width: 28, height: 28, border: `1px solid ${THEME.border}`, borderRadius: 7,
                 background: "transparent", cursor: "pointer", display: "flex",
-                alignItems: "center", justifyContent: "center", color: "#4A5D7A",
+                alignItems: "center", justifyContent: "center", color: THEME.textPrimary,
                 opacity: availableYears.indexOf(viewYear) <= 0 ? 0.3 : 1,
               }}
             >
@@ -1912,12 +1965,12 @@ function MonthCalendarPicker({ months, selectedMonth, onSelect, lang, t }) {
                     padding: "6px 4px", borderRadius: 8, fontSize: 12,
                     fontWeight: selected ? 600 : 400, border: "none",
                     cursor: available ? "pointer" : "default",
-                    background: selected ? THEME.navy : available ? "#F4F7FC" : "transparent",
-                    color: selected ? "#fff" : available ? "#1E2F47" : "#C8D4E8",
+                    background: selected ? THEME.navy : available ? THEME.blueCard : "transparent",
+                    color: selected ? THEME.white : available ? "#1E2F47" : THEME.border,
                     transition: "background 0.12s",
                   }}
-                  onMouseEnter={e => { if (available && !selected) e.currentTarget.style.background = "#E5EBF5" }}
-                  onMouseLeave={e => { if (available && !selected) e.currentTarget.style.background = "#F4F7FC" }}
+                  onMouseEnter={e => { if (available && !selected) e.currentTarget.style.background = THEME.blueCardS }}
+                  onMouseLeave={e => { if (available && !selected) e.currentTarget.style.background = THEME.blueCard }}
                 >
                   {name}
                 </button>
@@ -1926,7 +1979,7 @@ function MonthCalendarPicker({ months, selectedMonth, onSelect, lang, t }) {
           </div>
 
           {/* Available count hint */}
-          <div style={{ marginTop: 10, fontSize: 11, color: "#A0B0C8", textAlign: "center" }}>
+          <div style={{ marginTop: 10, fontSize: 11, color: THEME.textHint, textAlign: "center" }}>
             {monthsInYear.length > 0
               ? `${monthsInYear.length} ${t("months with data", "เดือนที่มีข้อมูล")}`
               : t("No data available for this year", "ไม่มีข้อมูลปีนี้")}
@@ -1944,6 +1997,9 @@ export default function App() {
 
   const [summary, setSummary] = React.useState(null)
   const [allExplain, setAllExplain] = React.useState([])
+  const [allExplainEN, setAllExplainEN] = React.useState([])
+  const [dataLoaded, setDataLoaded] = React.useState(false)
+
   const [series, setSeries] = React.useState([])
   const [err, setErr] = React.useState("")
   const [newsReal, setNewsReal] = React.useState([])
@@ -2007,9 +2063,10 @@ export default function App() {
     async function load() {
       setErr("")
       try {
-        const [s, e, ts, newsRows, shapRes] = await Promise.allSettled([
+        const [s, e, enE, ts, newsRows, shapRes] = await Promise.allSettled([
           getSummary(),
           getAllExplain(),
+          getAllExplainEN(),
           getTimeSeries(2000),
           getNewsSentimentFromCSV(),
           getShap(),
@@ -2019,9 +2076,11 @@ export default function App() {
 
         setSummary(s.status === "fulfilled" ? s.value : null)
         setAllExplain(e.status === "fulfilled" ? e.value?.data || [] : [])
+        setAllExplainEN(enE.status === "fulfilled" ? enE.value?.data || [] : [])  // add this
         setSeries(ts.status === "fulfilled" ? ts.value?.data || [] : [])
         setNewsReal(newsRows.status === "fulfilled" ? newsRows.value || [] : [])
         setShapData(shapRes.status === "fulfilled" ? shapRes.value?.data || [] : [])
+        setDataLoaded(true)
       } catch (ex) {
         if (!alive) return
         setErr(String(ex?.message || ex))
@@ -2078,7 +2137,7 @@ export default function App() {
     borderRadius: 99,
     fontSize: 12,
     fontWeight: active ? 600 : 500,
-    color: active ? "#fff" : "rgba(255,255,255,0.6)",
+    color: active ? THEME.white : "rgba(255,255,255,0.6)",
     background: active ? "rgba(255,255,255,0.18)" : "transparent",
     border: `1px solid ${active ? "rgba(255,255,255,0.4)" : "rgba(255,255,255,0.15)"}`,
     cursor: "pointer",
@@ -2131,7 +2190,7 @@ export default function App() {
                     height: 60,
                     fontSize: 13,
                     fontWeight: active ? 500 : 400,
-                    color: active ? "#fff" : "rgba(255,255,255,0.45)",
+                    color: active ? THEME.white : "rgba(255,255,255,0.45)",
                     background: "transparent",
                     border: "none",
                     borderBottom: active ? "2px solid #fff" : "2px solid transparent",
@@ -2165,7 +2224,7 @@ export default function App() {
                     borderRadius: 6,
                     fontSize: 12,
                     fontWeight: 600,
-                    background: lang === code ? "#fff" : "transparent",
+                    background: lang === code ? THEME.white : "transparent",
                     color: lang === code ? THEME.navy : "rgba(255,255,255,0.55)",
                     border: "none",
                     cursor: "pointer",
@@ -2188,7 +2247,7 @@ export default function App() {
               }}
             >
               {mobileMenuOpen ? (
-                <span style={{ color: "#fff", fontSize: 18, lineHeight: 1 }}>✕</span>
+                <span style={{ color: THEME.white, fontSize: 18, lineHeight: 1 }}>✕</span>
               ) : (
                 <>
                   <span style={{ display: "block", width: 16, height: 2, background: "rgba(255,255,255,0.8)", borderRadius: 2 }} />
@@ -2217,7 +2276,7 @@ export default function App() {
                     padding: "14px 20px",
                     fontSize: 15,
                     fontWeight: active ? 600 : 400,
-                    color: active ? "#fff" : "rgba(255,255,255,0.65)",
+                    color: active ? THEME.white : "rgba(255,255,255,0.65)",
                     background: active ? "rgba(255,255,255,0.08)" : "transparent",
                     border: "none",
                     borderBottom: "1px solid rgba(255,255,255,0.06)",
@@ -2297,7 +2356,7 @@ export default function App() {
         {err && (
           <div
             className="rounded-xl px-4 py-2.5 text-sm flex items-center gap-2"
-            style={{ background: "#FEF2F2", border: "1px solid #FECACA", color: "#B91C1C" }}
+            style={{ background: "rgba(214,69,69,0.06)", border: "1px solid #FECACA", color: "#B91C1C" }}
           >
             <span>⚠️</span> {err}
           </div>
@@ -2309,12 +2368,13 @@ export default function App() {
             lang={lang}
             series={series}
             summary={summary}
-            allExplain={allExplain}
+            allExplain={lang === "en" ? allExplainEN : allExplain}
             news={newsReal}
             selectedForecastMonth={selectedForecastMonth}
             setSelectedForecastMonth={setSelectedForecastMonth}
             availableFutureMonths={availableFutureMonths}
             historicalMonths={historicalMonths}
+            dataLoaded={dataLoaded}
             onSelectAspect={(asp) => {
               setSelectedAspect(asp)
               setPage("aspectNews")
@@ -2333,6 +2393,8 @@ export default function App() {
             aspect={selectedAspect}
             news={newsReal}
             onBack={() => setPage("forecast")}
+            selectedForecastMonth={selectedForecastMonth}
+
           />
         )}
       </div>
