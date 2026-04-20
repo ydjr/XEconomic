@@ -1,68 +1,58 @@
 import pandas as pd
 from pathlib import Path
 
+# --- Setup Paths ---
 BASE_DIR = Path(__file__).resolve().parents[2]
 DATA_DIR = BASE_DIR / "data"
 
-IN_ABSA = DATA_DIR / "absa_2024-2025.csv"
+# Input file
+# IN_ABSA = DATA_DIR / "filter_pca1.csv"
 
+IN_ABSA = "filter_pca1.csv"
+
+# Output folder and file
 OUT_DIR = DATA_DIR / "4_absa_features"
 OUT_DIR.mkdir(parents=True, exist_ok=True)
-OUT_CSV = OUT_DIR / "aspect_monthly_features.csv"
+OUT_CSV = OUT_DIR / "aspect_monthly_features_pcafilter.csv"
 
-DATE_COL = "published_at"
-ASPECT_COL = "Aspect"
-SENTIMENT_SCORE_COL = "sentiment_score"
+def analyze_and_pivot_sentiment(file_path, output_path):
+    try:
+        # 1. Load data
+        df = pd.read_csv(file_path)
+        
+        # 2. Clean and Format Time
+        df['published_at'] = pd.to_datetime(df['published_at'], errors='coerce')
+        df = df.dropna(subset=['published_at']) 
+        df['date'] = df['published_at'].dt.to_period('M').astype(str)
 
+        # 3. Clean Aspects & FILTER OUT OTHERS
+        df['Aspect'] = df['Aspect'].astype(str).str.strip()
+        
+        # --- ADDED FILTER LINE HERE ---
+        # This removes rows where aspect is 'Others' OR 'Other'
+        df = df[~df['Aspect'].isin(['Others', 'Other'])]
+        # ------------------------------
 
-def month_start(s):
-    return pd.to_datetime(s, errors="coerce").dt.to_period("M").dt.to_timestamp()
+        # 4. Create Wide Format (Pivot Table)
+        pivot_df = df.pivot_table(
+            index='date',
+            columns='Aspect',
+            values='sentiment_score',
+            aggfunc='mean'
+        )
 
+        # 5. Clean up the DataFrame
+        pivot_df = pivot_df.round(4).reset_index()
 
-def main():
-    df = pd.read_csv(IN_ABSA)
+        # 6. Save to CSV 
+        pivot_df.to_csv(output_path, index=False, encoding="utf-8-sig")
+        
+        print(f"--- Success! ---")
+        print(f"Wide-format file saved to: {output_path}")
+        print(f"Columns created: {list(pivot_df.columns)}")
 
-    # Validate required columns
-    for c in [DATE_COL, ASPECT_COL, SENTIMENT_SCORE_COL]:
-        if c not in df.columns:
-            raise ValueError(f"Missing column '{c}' in {IN_ABSA}. Found: {df.columns.tolist()}")
-
-    # Clean
-    df = df.copy()
-    df["date"] = month_start(df[DATE_COL])
-    df[ASPECT_COL] = df[ASPECT_COL].astype(str).str.strip()
-    df[SENTIMENT_SCORE_COL] = pd.to_numeric(df[SENTIMENT_SCORE_COL], errors="coerce")
-
-    # Drop invalid rows
-    df = df.dropna(subset=["date", ASPECT_COL, SENTIMENT_SCORE_COL])
-    df = df[df[ASPECT_COL] != "Other"]
-
-    # Compute average sentiment per (month, aspect)
-    avg_df = (
-        df.groupby(["date", ASPECT_COL])[SENTIMENT_SCORE_COL]
-        .mean()
-        .reset_index()
-    )
-
-    # Wide format: one column per aspect
-    wide = avg_df.pivot_table(
-        index="date",
-        columns=ASPECT_COL,
-        values=SENTIMENT_SCORE_COL,
-        aggfunc="mean",
-    )
-
-    # Rename columns -> {aspect}_avg_sentiment
-    wide.columns = [f"{asp}" for asp in wide.columns]
-
-    wide = wide.reset_index().sort_values("date")
-
-    wide.to_csv(OUT_CSV, index=False, encoding="utf-8-sig")
-
-    print("Saved:", OUT_CSV)
-    print("Columns:", len(wide.columns))
-    print(wide.tail(5).to_string(index=False))
-
+    except Exception as e:
+        print(f"An unexpected error occurred: {e}")
 
 if __name__ == "__main__":
-    main()
+    analyze_and_pivot_sentiment(IN_ABSA, OUT_CSV)

@@ -14,7 +14,7 @@ CCI_CSV = os.path.join(DATA_DIR, "indicators/cci.csv")
 
 # DASHBOARD_CSV = os.path.join(ART_DIR, "cci_dashboard_latest.csv")
 PRED_LATEST_CSV = os.path.join(ART_DIR, "pred_latest.csv")
-EXPLAIN_CSV = os.path.join(ART_DIR, "reasoning_2025-08_to_2025-08.csv") # explain path from cream
+EXPLAIN_CSV = os.path.join(ART_DIR, "reasoning_2025-08_to_2025-08.csv")
 NEWS_CSV = os.path.join(DATA_DIR, "absa_2024-2025.csv")
 
 SHAP_CSV = os.path.join(ART_DIR, "shap_predicted_month_rank.csv")

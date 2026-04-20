@@ -6,3 +6,6 @@ python-multipart
 darts
 pythainlp
 transformers
+
+tiktoken
+datasets

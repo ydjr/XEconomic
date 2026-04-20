@@ -34,3 +34,28 @@ THSarabun.ttf
 
 package-lock.json
 package.json
+
+# temp ignore
+anydesk/
+artifacts_arimax_predict/
+artifacts_backtest/
+artifacts_backtest_allpoints/
+artifacts_backtest_allpoints1/
+artifacts_emb_absa/
+artifacts_predict/
+filter_pca1.csv
+mean_emb/
+models_emb_absa_l22_h3_true/
+models_emb_absa_l22_h4_true/
+models_emb_absa_l22_h5_true/
+models_emb_absa_l22_h6_true/
+pipeline/backtest_allpoints.py
+pipeline/backtest_v2.py
+pipeline/consistency_check.py
+pipeline/embeddings/
+pipeline/news_prep/2_relevance_filter/
+pipeline/predict.py
+results/
+results_backtest/
+results_backtest_allpoints/
+results_feature_comparison.csv

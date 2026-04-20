@@ -8,11 +8,13 @@ from transformers import AutoTokenizer, AutoModelForSequenceClassification
 # =====================
 # CONFIG
 # =====================
-MODEL_DIR = "../wangchanberta_cls/best_model"
-BASE_DIR = Path(__file__).resolve().parents[1]
+MODEL_DIR = "pipeline/wangchanberta_cls/best_model"
+BASE_DIR = Path(__file__).resolve().parents[2]
 DATA_DIR = BASE_DIR / "data"
 INPUT_CSV = DATA_DIR /  "1_cleaned_news/all_news.csv"
-OUTPUT_CSV = DATA_DIR / "2_news_cci_r.csv"
+OUTPUT_DIR = DATA_DIR / "2_news_cci_r"
+OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+OUTPUT_CSV = OUTPUT_DIR / "news_cci_results.csv"
 
 TEXT_COL = "summary"
 MAX_LENGTH = 512
@@ -88,4 +90,3 @@ print(counts)
 
 print("\nPredicted ratios:")
 print(ratios)
-

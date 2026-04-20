@@ -1167,7 +1167,7 @@ function AnalyticsPage({ t, lang, news = [], shapData = [] }) {
             </CardContent>
           </Card>
 
-          <Card>
+          {/* <Card>
             <CardHeader>
               <CardTitle>{t("Sentiment Flow Over Time", "กระแสความรู้สึกตามเวลา")}</CardTitle>
             </CardHeader>
@@ -1185,9 +1185,9 @@ function AnalyticsPage({ t, lang, news = [], shapData = [] }) {
                 </ComposedChart>
               </ResponsiveContainer>
             </CardContent>
-          </Card>
+          </Card> */}
 
-          <Card>
+          {/* <Card>
             <CardHeader>
               <CardTitle>{t("Impact vs Sentiment Matrix", "เมทริกซ์ผลกระทบกับความรู้สึก")}</CardTitle>
               <CardDescription>{t("Each dot = 1 news article. X=Sentiment, Y=Impact direction", "แต่ละจุด = 1 ข่าว, แกน X=Sentiment, แกน Y=ทิศทางผลกระทบ")}</CardDescription>
@@ -1216,7 +1216,7 @@ function AnalyticsPage({ t, lang, news = [], shapData = [] }) {
                 </ScatterChart>
               </ResponsiveContainer>
             </CardContent>
-          </Card>
+          </Card> */}
 
           <Card>
             <CardHeader>
