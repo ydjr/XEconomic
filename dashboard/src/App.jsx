@@ -1605,10 +1605,21 @@ function AnalyticsPage({ t, lang, news = [] }) {
     const shortTerm = []
     const longTerm = []
 
-    news.forEach((n) => {
+    news.forEach((n, idx) => {
+      // สุ่มข้ามเพื่อลดภาระกระตุกของเบราว์เซอร์ เนื่องจากข้อมูลจาก CSV มีมากกว่า 40,000 แถว
+      // เอามาโชว์แค่ 10% (ประมาณ 4,000 จุด) สีก็จะดูแน่นมากๆ แล้วครับ
+      if (idx % 10 !== 0) return;
+
+      const sBase = Number(n.rawSentiment) || 0;
+      const iBase = impactMap[n.impactType] ?? 0;
+
+      // Jitter (แกว่งจุด) เพื่อไม่ให้ค่าเดิมซ้อนทับกันเป็นจุดเดียวจนดูเหมือนน้อย
+      const sJitter = (Math.random() * 0.06) - 0.03;
+      const iJitter = (Math.random() * 0.16) - 0.08;
+
       const point = {
-        sentiment: Number(n.rawSentiment) || 0,
-        impact: impactMap[n.impactType] ?? 0,
+        sentiment: Math.max(0, Math.min(1, sBase + sJitter)),
+        impact: iBase + iJitter,
         headline: String(n.title || "").substring(0, 60),
         impactLabel: n.impactType || "Neutral",
         effectLabel: n.effectType || "Short-term",
