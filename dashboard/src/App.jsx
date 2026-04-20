@@ -1613,9 +1613,9 @@ function AnalyticsPage({ t, lang, news = [] }) {
       const sBase = Number(n.rawSentiment) || 0;
       const iBase = impactMap[n.impactType] ?? 0;
 
-      // Jitter (แกว่งจุด) เพื่อไม่ให้ค่าเดิมซ้อนทับกันเป็นจุดเดียวจนดูเหมือนน้อย
-      const sJitter = (Math.random() * 0.06) - 0.03;
-      const iJitter = (Math.random() * 0.16) - 0.08;
+      // Jitter (แกว่งจุด) แบบกระจายตัวกว้างขึ้นให้เต็มสเปซกราฟที่ว่างอยู่
+      const sJitter = (Math.random() * 0.16) - 0.08;
+      const iJitter = (Math.random() * 0.60) - 0.30;
 
       const point = {
         sentiment: Math.max(0, Math.min(1, sBase + sJitter)),
