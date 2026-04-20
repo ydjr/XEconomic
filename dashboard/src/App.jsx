@@ -218,6 +218,16 @@ const CardHeader = ({ children, className = "" }) => (
   </div>
 )
 
+const SectionHeader = ({ title, subtitle, icon: Icon }) => (
+  <div className="flex flex-col gap-1.5 mb-6 mt-4">
+    <div className="flex items-center gap-2">
+      {Icon && <Icon className="w-5 h-5 text-indigo-600" />}
+      <h2 className="text-xl font-bold text-slate-800">{title}</h2>
+    </div>
+    {subtitle && <p className="text-slate-500 text-sm">{subtitle}</p>}
+  </div>
+)
+
 const CardTitle = ({ children, className = "" }) => (
   <h3 className={`text-base font-semibold text-gray-900 ${className}`}>
     {children}
