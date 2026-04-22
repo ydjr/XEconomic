@@ -355,6 +355,10 @@ function toAgencyStack(rows) {
   rows.forEach((r) => {
     const month = r.month
     const agency = r.agency || "Unknown"
+    
+    // กรอง Thai PBS ออกจากกราฟตามที่คุณจีนต้องการ
+    if (agency.toLowerCase().includes("thaipbs") || agency.includes("ไทยพีบีเอส")) return;
+
     const count = Number(r.count || 0)
 
     groupsSet.add(agency)
@@ -1541,7 +1545,7 @@ function AnalyticsPage({ t, lang, news = [] }) {
     async function loadAgency() {
       setAgencyErr("")
       try {
-        const rows = await getAgencyVolumeFromCSV(news)
+        const rows = await getAgencyVolumeLastNMonths(120) // ดึงข้อมูล 10 ปี (120 เดือน) จาก Supabase ทันที
         if (!alive) return
         setAgencyStack(toAgencyStack(rows))
       } catch (e) {
