@@ -862,7 +862,6 @@ function ForecastChart({ t, lang, series, selectedMonth }) {
       .filter((_, i) => i % Math.max(1, Math.floor(visibleData.length / 14)) === 0)
       .map((d) => d.date)
     if (activeRange === "2y") return visibleData
-      .filter((_, i) => i % 2 === 0)
       .map((d) => d.date)
     if (activeRange === "1y") return visibleData
       .filter((_, i) => visibleData.length <= 16 || i % 2 === 0)
@@ -933,7 +932,7 @@ function ForecastChart({ t, lang, series, selectedMonth }) {
                   height={55}
                   ticks={xAxisTicks}
                   interval={0}
-                  minTickGap={activeRange === "1y" ? -50 : 0}
+                  minTickGap={activeRange === "2y" ? -20 : activeRange === "1y" ? -50 : 0}
                   tickMargin={8}
                   tick={<ForecastXAxisTick lang={lang} compact={activeRange === "1y"} />}
                   axisLine={{ stroke: THEME.textPrimary }}
@@ -1050,6 +1049,8 @@ function ForecastChart({ t, lang, series, selectedMonth }) {
     </Card>
   )
 }
+
+
 
 function ReasoningPanel({ t, lang, activeRow, selectedMonth, news, onSelectAspect }) {
   const getPrevious3Months = React.useCallback((targetMonth) => {
