@@ -321,6 +321,7 @@ function filterNewsLast12Months(items) {
 function stackCountByMonth(items, getGroupKey, groupsOverride = null) {
   const monthMap = {}
   const groupSet = new Set(groupsOverride || [])
+  const totals = {}
 
   items.forEach((n) => {
     const monthKey = n.date?.slice(0, 7)
@@ -330,9 +331,11 @@ function stackCountByMonth(items, getGroupKey, groupsOverride = null) {
     groupSet.add(group)
     if (!monthMap[monthKey]) monthMap[monthKey] = {}
     monthMap[monthKey][group] = (monthMap[monthKey][group] || 0) + 1
+    totals[group] = (totals[group] || 0) + 1
   })
 
-  const groups = groupsOverride ? [...groupsOverride] : [...groupSet].sort()
+  const groups = groupsOverride ? [...groupsOverride] : [...groupSet]
+  groups.sort((a, b) => (totals[b] || 0) - (totals[a] || 0))
   const months = Object.keys(monthMap).sort((a, b) => a.localeCompare(b))
 
   const data = months.map((month) => {
@@ -351,6 +354,7 @@ function toAgencyStack(rows) {
 
   const monthMap = {}
   const groupsSet = new Set()
+  const totals = {}
 
   rows.forEach((r) => {
     const month = r.month
@@ -364,9 +368,10 @@ function toAgencyStack(rows) {
     groupsSet.add(agency)
     if (!monthMap[month]) monthMap[month] = {}
     monthMap[month][agency] = (monthMap[month][agency] || 0) + count
+    totals[agency] = (totals[agency] || 0) + count
   })
 
-  const groups = [...groupsSet].sort()
+  const groups = [...groupsSet].sort((a, b) => totals[b] - totals[a])
   const months = Object.keys(monthMap).sort()
 
   const data = months.map((m) => {
@@ -1678,7 +1683,7 @@ function AnalyticsPage({ t, lang, news = [] }) {
               <ResponsiveContainer width="100%" height={380}>
                 <BarChart data={agencyStack.data} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#E8EDF5" />
-                  <XAxis dataKey="month" tick={{ fontSize: 11, fill: "#6B7A99" }} />
+                  <XAxis dataKey="month" tick={{ fontSize: 11, fill: "#6B7A99" }} tickFormatter={(v) => lang === "th" ? thaiMonthYear(v) : String(v).slice(0, 7)} />
                   <YAxis tick={{ fontSize: 11, fill: "#6B7A99" }} />
                   <ReTooltip
                     contentStyle={{ borderRadius: 10, border: "1px solid #DDE4EF", boxShadow: "0 4px 20px rgba(18,32,64,0.08)" }}
@@ -1702,7 +1707,7 @@ function AnalyticsPage({ t, lang, news = [] }) {
                     travellerWidth={10}
                     startIndex={agencyBrushStart}
                     endIndex={agencyStack.data.length - 1}
-                    tickFormatter={(v) => v}
+                    tickFormatter={(v) => lang === "th" ? thaiMonthYear(v) : String(v).slice(0, 7)}
                   />
                 </BarChart>
               </ResponsiveContainer>
@@ -1725,7 +1730,7 @@ function AnalyticsPage({ t, lang, news = [] }) {
             <ResponsiveContainer width="100%" height={380}>
               <BarChart data={aspectStackAll.data} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#E8EDF5" />
-                <XAxis dataKey="month" tick={{ fontSize: 11, fill: "#6B7A99" }} />
+                <XAxis dataKey="month" tick={{ fontSize: 11, fill: "#6B7A99" }} tickFormatter={(v) => lang === "th" ? thaiMonthYear(v) : String(v).slice(0, 7)} />
                 <YAxis tick={{ fontSize: 11, fill: "#6B7A99" }} />
                 <ReTooltip
                   contentStyle={{ borderRadius: 10, border: "1px solid #DDE4EF", boxShadow: "0 4px 20px rgba(18,32,64,0.08)" }}
@@ -1748,7 +1753,7 @@ function AnalyticsPage({ t, lang, news = [] }) {
                   travellerWidth={10}
                   startIndex={aspectBrushStart}
                   endIndex={aspectStackAll.data.length - 1}
-                  tickFormatter={(v) => v}
+                  tickFormatter={(v) => lang === "th" ? thaiMonthYear(v) : String(v).slice(0, 7)}
                 />
               </BarChart>
             </ResponsiveContainer>
@@ -1837,7 +1842,7 @@ function AnalyticsPage({ t, lang, news = [] }) {
             <ResponsiveContainer width="100%" height={380}>
               <BarChart data={impactMonthlyVolume} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#E8EDF5" />
-                <XAxis dataKey="month" tick={{ fontSize: 11, fill: "#6B7A99" }} />
+                <XAxis dataKey="month" tick={{ fontSize: 11, fill: "#6B7A99" }} tickFormatter={(v) => lang === "th" ? thaiMonthYear(v) : String(v).slice(0, 7)} />
                 <YAxis tick={{ fontSize: 11, fill: "#6B7A99" }} />
                 <ReTooltip
                   contentStyle={{ borderRadius: 10, border: "1px solid #DDE4EF", boxShadow: "0 4px 20px rgba(18,32,64,0.08)" }}
@@ -1854,7 +1859,7 @@ function AnalyticsPage({ t, lang, news = [] }) {
                   travellerWidth={10}
                   startIndex={sentimentBrushStart}
                   endIndex={impactMonthlyVolume.length - 1}
-                  tickFormatter={(v) => v}
+                  tickFormatter={(v) => lang === "th" ? thaiMonthYear(v) : String(v).slice(0, 7)}
                 />
               </BarChart>
             </ResponsiveContainer>
