@@ -892,7 +892,7 @@ function ForecastChart({ t, lang, series, selectedMonth }) {
             </div>
             <div>
               <div className="text-lg font-medium" style={{ color: THEME.blueDark }}>
-                {t("Consumer Confidence Index Forecast Trend", "แผนภูมิพยากรณ์ค่าดัชนีความเชื่อมั่นผู้บริโภค (CCI)")}
+                {t("Consumer Confidence Index Forecast Trend", "กราฟค่าดัชนีความเชื่อมั่นผู้บริโภค (CCI)")}
               </div>
               <div className="text-xs mt-1" style={{ color: THEME.textMuted }}>
                 {t("Comparing actual recorded data to forecast values", "เปรียบเทียบค่าจริงและค่าพยากรณ์")}
