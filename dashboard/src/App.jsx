@@ -261,6 +261,15 @@ function thaiMonthYear(dateLike) {
   return `${months[d.getMonth()]} ${d.getFullYear() + 543}`
 }
 
+function engMonthYear(dateLike) {
+  if (!dateLike) return "-"
+  const d = new Date(dateLike.length === 7 ? `${dateLike}-01` : dateLike)
+  if (Number.isNaN(d.getTime())) return String(dateLike)
+
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+  return `${months[d.getMonth()]} ${d.getFullYear()}`
+}
+
 function thaiDateShort(dateStr) {
   const d = new Date(dateStr)
   if (Number.isNaN(d.getTime())) return String(dateStr || "")
@@ -1055,7 +1064,7 @@ function ForecastChart({ t, lang, series, selectedMonth }) {
                         setActiveRange("all")
                       }
                     }}
-                    tickFormatter={(v) => lang === "th" ? thaiMonthYear(v) : String(v).slice(0, 7)}
+                    tickFormatter={(v) => lang === "th" ? thaiMonthYear(v) : engMonthYear(v)}
                   />
                 </LineChart>
               </ResponsiveContainer>
@@ -1709,10 +1718,11 @@ function AnalyticsPage({ t, lang, news = [] }) {
               <ResponsiveContainer width="100%" height={380}>
                 <BarChart data={agencyStack.data} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
                   <CartesianGrid stroke={THEME.border} horizontal={true} vertical={false} strokeOpacity={0.6} />
-                  <XAxis dataKey="month" tick={{ fontSize: 11, fill: "#6B7A99" }} tickFormatter={(v) => lang === "th" ? thaiMonthYear(v) : String(v).slice(0, 7)} />
+                  <XAxis dataKey="month" tick={{ fontSize: 11, fill: "#6B7A99" }} tickFormatter={(v) => lang === "th" ? thaiMonthYear(v) : engMonthYear(v)} />
                   <YAxis tick={{ fontSize: 11, fill: "#6B7A99" }} />
                   <ReTooltip
                     contentStyle={{ borderRadius: 10, border: "1px solid #DDE4EF", boxShadow: "0 4px 20px rgba(18,32,64,0.08)" }}
+                    labelFormatter={(label) => lang === "th" ? thaiMonthYear(label) : engMonthYear(label)}
                   />
                   <Legend />
                   {agencyStack.groups.map((agency, i) => (
@@ -1733,7 +1743,7 @@ function AnalyticsPage({ t, lang, news = [] }) {
                     travellerWidth={10}
                     startIndex={agencyBrushStart}
                     endIndex={agencyStack.data.length - 1}
-                    tickFormatter={(v) => lang === "th" ? thaiMonthYear(v) : String(v).slice(0, 7)}
+                    tickFormatter={(v) => lang === "th" ? thaiMonthYear(v) : engMonthYear(v)}
                   />
                 </BarChart>
               </ResponsiveContainer>
@@ -1756,10 +1766,11 @@ function AnalyticsPage({ t, lang, news = [] }) {
             <ResponsiveContainer width="100%" height={380}>
               <BarChart data={aspectStackAll.data} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
                 <CartesianGrid stroke={THEME.border} horizontal={true} vertical={false} strokeOpacity={0.6} />
-                <XAxis dataKey="month" tick={{ fontSize: 11, fill: "#6B7A99" }} tickFormatter={(v) => lang === "th" ? thaiMonthYear(v) : String(v).slice(0, 7)} />
+                <XAxis dataKey="month" tick={{ fontSize: 11, fill: "#6B7A99" }} tickFormatter={(v) => lang === "th" ? thaiMonthYear(v) : engMonthYear(v)} />
                 <YAxis tick={{ fontSize: 11, fill: "#6B7A99" }} />
                 <ReTooltip
                   contentStyle={{ borderRadius: 10, border: "1px solid #DDE4EF", boxShadow: "0 4px 20px rgba(18,32,64,0.08)" }}
+                  labelFormatter={(label) => lang === "th" ? thaiMonthYear(label) : engMonthYear(label)}
                 />
                 <Legend />
                 {aspectStackAll.groups.map((asp, i) => {
@@ -1779,7 +1790,7 @@ function AnalyticsPage({ t, lang, news = [] }) {
                   travellerWidth={10}
                   startIndex={aspectBrushStart}
                   endIndex={aspectStackAll.data.length - 1}
-                  tickFormatter={(v) => lang === "th" ? thaiMonthYear(v) : String(v).slice(0, 7)}
+                  tickFormatter={(v) => lang === "th" ? thaiMonthYear(v) : engMonthYear(v)}
                 />
               </BarChart>
             </ResponsiveContainer>
@@ -1791,71 +1802,26 @@ function AnalyticsPage({ t, lang, news = [] }) {
         <Card>
           <CardHeader>
             <CardTitle>{t("Sentiment distribution", "สรุปภาพรวมข่าวในแต่ละระดับ")}</CardTitle>
+            <CardDescription>
+              {t("Distribution of news articles across sentiment score ranges",
+                "การกระจายตัวของจำนวนข่าวในแต่ละช่วงคะแนนความรู้สึก")}
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
               <BarChart data={sentimentHistogram}>
                 <CartesianGrid stroke={THEME.border} horizontal={true} vertical={false} strokeOpacity={0.6} />
                 <XAxis dataKey="range" tick={{ fontSize: 10, fill: "#6B7A99" }} />
-                <YAxis tick={{ fontSize: 11, fill: "#6B7A99" }} />
+                <YAxis tick={{ fontSize: 11, fill: "#6B7A99" }} tickFormatter={(v) => v >= 1000 ? v.toLocaleString() : v} />
                 <ReTooltip
                   contentStyle={{ borderRadius: 10, border: "1px solid #DDE4EF", boxShadow: "0 4px 20px rgba(18,32,64,0.08)" }}
                 />
-                <Bar dataKey="count" fill={THEME.blue} name={t("News count", "จำนวนข่าว")} radius={[4, 4, 0, 0]} />
+                <Bar dataKey="count" fill="#0072B2" name={t("News count", "จำนวนข่าว")} radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>{t("Impact vs. sentiment matrix", "เมทริกซ์ผลกระทบกับความรู้สึก")}</CardTitle>
-            <CardDescription>{t("Each data point represents one article", "แต่ละจุดคือข่าว 1 ชิ้น")}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={320}>
-              <ScatterChart margin={{ bottom: 25, left: 20, right: 10, top: 5 }}>
-                <CartesianGrid stroke={THEME.border} horizontal={true} vertical={false} strokeOpacity={0.6} />
-                <XAxis
-                  dataKey="sentiment"
-                  tick={{ fontSize: 11, fill: "#6B7A99" }}
-                  type="number"
-                  label={{ value: t("Sentiment score", "คะแนน Sentiment"), position: "insideBottom", offset: -15 }}
-                />
-                <YAxis
-                  dataKey="impact"
-                  tick={{ fontSize: 11, fill: "#6B7A99" }}
-                  type="number"
-                  ticks={[-1, 0, 1]}
-                  tickFormatter={(v) => (v === -1 ? "Negative" : v === 0 ? "Neutral" : "Positive")}
-                  label={{ value: t("Impact", "ผลกระทบ"), angle: -90, position: "insideLeft", offset: 5 }}
-                />
-                <ReTooltip
-                  content={({ payload }) => {
-                    if (!payload || !payload.length) return null
-                    const d = payload[0]?.payload
-
-                    return (
-                      <div className="bg-white border rounded shadow p-2 text-xs max-w-xs">
-                        <div className="font-semibold">{d?.headline}</div>
-                        <div>Sentiment: {Number(d?.sentiment || 0).toFixed(2)}</div>
-                        <div>Impact: {d?.impactLabel}</div>
-                        <div>Effect: {d?.effectLabel}</div>
-                      </div>
-                    )
-                  }}
-                />
-                <Scatter name={t("Short-term", "ระยะสั้น")} data={shortTermData} fill={EFFECT_COLORS["Short-term"]} opacity={0.6} />
-                <Scatter name={t("Long-term", "ระยะยาว")} data={longTermData} fill={EFFECT_COLORS["Long-term"]} opacity={0.6} />
-                <Legend verticalAlign="top" height={30} />
-              </ScatterChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* ── สรุปภาพรวมผลกระทบจากข่าว — clustered: Short-term vs Long-term ── */}
-      <div className="grid grid-cols-1 gap-6">
+        {/* ── สรุปภาพรวมผลกระทบจากข่าว — clustered: Short-term vs Long-term ── */}
         <Card>
           <CardHeader>
             <CardTitle>{t("Impact summary", "สรุปภาพรวมผลกระทบจากข่าว")}</CardTitle>
@@ -1865,7 +1831,7 @@ function AnalyticsPage({ t, lang, news = [] }) {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={380}>
+            <ResponsiveContainer width="100%" height={300}>
               <BarChart data={impactSummaryByEffect} margin={{ top: 5, right: 30, left: 10, bottom: 5 }}>
                 <CartesianGrid stroke={THEME.border} horizontal={true} vertical={false} strokeOpacity={0.6} />
                 <XAxis dataKey="impact" tick={{ fontSize: 13, fill: "#6B7A99", fontWeight: 600 }} />
