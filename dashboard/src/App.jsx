@@ -103,24 +103,24 @@ const ASPECT_EN = {
 
 // ── Wong colorblind-friendly palette for aspect topics ──
 const WONG = {
-  "Thai Economy":       "#009E73",
-  "Government Policy":  "#0072B2",
-  "Politics":           "#D55E00",
-  "Agricultural Prices":"#E69F00",
-  "Social/Security":    "#CC79A7",
-  "Global Economy":     "#56B4E9",
-  "Fuel Prices":        "#F0E442",
-  "Disaster/Epidemic":  "#000000",
+  "Thai Economy": "#009E73",
+  "Government Policy": "#0072B2",
+  "Politics": "#D55E00",
+  "Agricultural Prices": "#E69F00",
+  "Social/Security": "#CC79A7",
+  "Global Economy": "#56B4E9",
+  "Fuel Prices": "#F0E442",
+  "Disaster/Epidemic": "#000000",
 }
 
 const EFFECT_COLORS = {
   "Short-term": "#E69F00",
-  "Long-term":  "#0072B2",
+  "Long-term": "#0072B2",
 }
 
 const IMPACT_COLORS = {
   "Negative": "#D55E00",
-  "Neutral":  "#56B4E9",
+  "Neutral": "#56B4E9",
   "Positive": "#009E73",
 }
 
@@ -219,12 +219,19 @@ const CardHeader = ({ children, className = "" }) => (
 )
 
 const SectionHeader = ({ title, subtitle, icon: Icon }) => (
-  <div className="flex flex-col gap-1.5 mb-6 mt-4">
-    <div className="flex items-center gap-2">
-      {Icon && <Icon className="w-5 h-5 text-indigo-600" />}
-      <h2 className="text-xl font-bold text-slate-800">{title}</h2>
+  <div className="flex flex-col gap-1 mb-6 mt-4">
+    <div className="flex items-center gap-2.5">
+      {Icon && (
+        <div
+          className="flex items-center justify-center rounded-lg flex-shrink-0"
+          style={{ width: 28, height: 28, background: THEME.blueSoft }}
+        >
+          <Icon className="w-4 h-4" style={{ color: THEME.blue }} />
+        </div>
+      )}
+      <span className="text-lg font-medium" style={{ color: THEME.textPrimary }}>{title}</span>
     </div>
-    {subtitle && <p className="text-slate-500 text-sm">{subtitle}</p>}
+    {subtitle && <p className="text-xs" style={{ color: THEME.textMuted, paddingLeft: 38 }}>{subtitle}</p>}
   </div>
 )
 
@@ -321,6 +328,7 @@ function filterNewsLast12Months(items) {
 function stackCountByMonth(items, getGroupKey, groupsOverride = null) {
   const monthMap = {}
   const groupSet = new Set(groupsOverride || [])
+  const totals = {}
 
   items.forEach((n) => {
     const monthKey = n.date?.slice(0, 7)
@@ -330,9 +338,11 @@ function stackCountByMonth(items, getGroupKey, groupsOverride = null) {
     groupSet.add(group)
     if (!monthMap[monthKey]) monthMap[monthKey] = {}
     monthMap[monthKey][group] = (monthMap[monthKey][group] || 0) + 1
+    totals[group] = (totals[group] || 0) + 1
   })
 
-  const groups = groupsOverride ? [...groupsOverride] : [...groupSet].sort()
+  const groups = groupsOverride ? [...groupsOverride] : [...groupSet]
+  groups.sort((a, b) => (totals[b] || 0) - (totals[a] || 0))
   const months = Object.keys(monthMap).sort((a, b) => a.localeCompare(b))
 
   const data = months.map((month) => {
@@ -351,18 +361,24 @@ function toAgencyStack(rows) {
 
   const monthMap = {}
   const groupsSet = new Set()
+  const totals = {}
 
   rows.forEach((r) => {
     const month = r.month
     const agency = r.agency || "Unknown"
+
+    // กรอง Thai PBS ออกจากกราฟตามที่คุณจีนต้องการ
+    if (agency.toLowerCase().includes("thaipbs") || agency.includes("ไทยพีบีเอส")) return;
+
     const count = Number(r.count || 0)
 
     groupsSet.add(agency)
     if (!monthMap[month]) monthMap[month] = {}
     monthMap[month][agency] = (monthMap[month][agency] || 0) + count
+    totals[agency] = (totals[agency] || 0) + count
   })
 
-  const groups = [...groupsSet].sort()
+  const groups = [...groupsSet].sort((a, b) => totals[b] - totals[a])
   const months = Object.keys(monthMap).sort()
 
   const data = months.map((m) => {
@@ -1542,7 +1558,7 @@ function AnalyticsPage({ t, lang, news = [] }) {
     async function loadAgency() {
       setAgencyErr("")
       try {
-        const rows = await getAgencyVolumeFromCSV(news)
+        const rows = await getAgencyVolumeLastNMonths(120) // ดึงข้อมูล 10 ปี (120 เดือน) จาก Supabase ทันที
         if (!alive) return
         setAgencyStack(toAgencyStack(rows))
       } catch (e) {
@@ -1582,7 +1598,7 @@ function AnalyticsPage({ t, lang, news = [] }) {
       const m = n.date?.slice(0, 7)
       if (!m) return
       if (!monthMap[m]) monthMap[m] = { Positive: 0, Neutral: 0, Negative: 0, count: 0 }
-      
+
       const type = n.impactType === "Positive" ? "Positive" : n.impactType === "Negative" ? "Negative" : "Neutral"
       monthMap[m][type] += 1
       monthMap[m].count += 1
@@ -1599,6 +1615,25 @@ function AnalyticsPage({ t, lang, news = [] }) {
         total: d.count,
       }
     })
+  }, [news])
+
+  // ── สรุปภาพรวมผลกระทบ: แกน X = Neg/Neu/Pos, แท่ง = Short-term / Long-term ──
+  const impactSummaryByEffect = React.useMemo(() => {
+    const counts = {
+      Negative: { "Short-term": 0, "Long-term": 0 },
+      Neutral: { "Short-term": 0, "Long-term": 0 },
+      Positive: { "Short-term": 0, "Long-term": 0 },
+    }
+    news.forEach((n) => {
+      const impact = n.impactType === "Positive" ? "Positive" : n.impactType === "Negative" ? "Negative" : "Neutral"
+      const effect = n.effectType === "Long-term" ? "Long-term" : "Short-term"
+      counts[impact][effect] += 1
+    })
+    return [
+      { impact: "Negative", "Short-term": counts.Negative["Short-term"], "Long-term": counts.Negative["Long-term"] },
+      { impact: "Neutral", "Short-term": counts.Neutral["Short-term"], "Long-term": counts.Neutral["Long-term"] },
+      { impact: "Positive", "Short-term": counts.Positive["Short-term"], "Long-term": counts.Positive["Long-term"] },
+    ]
   }, [news])
 
   const { shortTermData, longTermData } = React.useMemo(() => {
@@ -1661,7 +1696,7 @@ function AnalyticsPage({ t, lang, news = [] }) {
             <CardTitle>{t("News volume by source", "ปริมาณข่าวตามสำนักข่าว")}</CardTitle>
             <CardDescription>
               {t("Drag the slider below the chart to explore different time periods",
-                 "ลากแถบด้านล่างกราฟเพื่อเลื่อนดูช่วงเวลาต่างๆ ย้อนหลังได้")}
+                "ลากแถบด้านล่างกราฟเพื่อเลื่อนดูช่วงเวลาต่างๆ ย้อนหลังได้")}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -1674,8 +1709,8 @@ function AnalyticsPage({ t, lang, news = [] }) {
             ) : (
               <ResponsiveContainer width="100%" height={380}>
                 <BarChart data={agencyStack.data} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#E8EDF5" />
-                  <XAxis dataKey="month" tick={{ fontSize: 11, fill: "#6B7A99" }} />
+                  <CartesianGrid stroke={THEME.border} horizontal={true} vertical={false} strokeOpacity={0.6} />
+                  <XAxis dataKey="month" tick={{ fontSize: 11, fill: "#6B7A99" }} tickFormatter={(v) => lang === "th" ? thaiMonthYear(v) : String(v).slice(0, 7)} />
                   <YAxis tick={{ fontSize: 11, fill: "#6B7A99" }} />
                   <ReTooltip
                     contentStyle={{ borderRadius: 10, border: "1px solid #DDE4EF", boxShadow: "0 4px 20px rgba(18,32,64,0.08)" }}
@@ -1699,7 +1734,7 @@ function AnalyticsPage({ t, lang, news = [] }) {
                     travellerWidth={10}
                     startIndex={agencyBrushStart}
                     endIndex={agencyStack.data.length - 1}
-                    tickFormatter={(v) => v}
+                    tickFormatter={(v) => lang === "th" ? thaiMonthYear(v) : String(v).slice(0, 7)}
                   />
                 </BarChart>
               </ResponsiveContainer>
@@ -1715,14 +1750,14 @@ function AnalyticsPage({ t, lang, news = [] }) {
             <CardTitle>{t("News volume by topic", "ปริมาณข่าวตามประเด็น")}</CardTitle>
             <CardDescription>
               {t("Drag the slider below to explore topics over time",
-                 "ลากแถบด้านล่างเพื่อสำรวจประเด็นข่าวตามช่วงเวลา")}
+                "ลากแถบด้านล่างเพื่อสำรวจประเด็นข่าวตามช่วงเวลา")}
             </CardDescription>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={380}>
               <BarChart data={aspectStackAll.data} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#E8EDF5" />
-                <XAxis dataKey="month" tick={{ fontSize: 11, fill: "#6B7A99" }} />
+                <CartesianGrid stroke={THEME.border} horizontal={true} vertical={false} strokeOpacity={0.6} />
+                <XAxis dataKey="month" tick={{ fontSize: 11, fill: "#6B7A99" }} tickFormatter={(v) => lang === "th" ? thaiMonthYear(v) : String(v).slice(0, 7)} />
                 <YAxis tick={{ fontSize: 11, fill: "#6B7A99" }} />
                 <ReTooltip
                   contentStyle={{ borderRadius: 10, border: "1px solid #DDE4EF", boxShadow: "0 4px 20px rgba(18,32,64,0.08)" }}
@@ -1745,7 +1780,7 @@ function AnalyticsPage({ t, lang, news = [] }) {
                   travellerWidth={10}
                   startIndex={aspectBrushStart}
                   endIndex={aspectStackAll.data.length - 1}
-                  tickFormatter={(v) => v}
+                  tickFormatter={(v) => lang === "th" ? thaiMonthYear(v) : String(v).slice(0, 7)}
                 />
               </BarChart>
             </ResponsiveContainer>
@@ -1756,12 +1791,12 @@ function AnalyticsPage({ t, lang, news = [] }) {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
-            <CardTitle>{t("Sentiment distribution", "การกระจาย Sentiment")}</CardTitle>
+            <CardTitle>{t("Sentiment distribution", "สรุปภาพรวมข่าวในแต่ละระดับ")}</CardTitle>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
               <BarChart data={sentimentHistogram}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#E8EDF5" />
+                <CartesianGrid stroke={THEME.border} horizontal={true} vertical={false} strokeOpacity={0.6} />
                 <XAxis dataKey="range" tick={{ fontSize: 10, fill: "#6B7A99" }} />
                 <YAxis tick={{ fontSize: 11, fill: "#6B7A99" }} />
                 <ReTooltip
@@ -1781,7 +1816,7 @@ function AnalyticsPage({ t, lang, news = [] }) {
           <CardContent>
             <ResponsiveContainer width="100%" height={320}>
               <ScatterChart margin={{ bottom: 25, left: 20, right: 10, top: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#E8EDF5" />
+                <CartesianGrid stroke={THEME.border} horizontal={true} vertical={false} strokeOpacity={0.6} />
                 <XAxis
                   dataKey="sentiment"
                   tick={{ fontSize: 11, fill: "#6B7A99" }}
@@ -1820,39 +1855,28 @@ function AnalyticsPage({ t, lang, news = [] }) {
         </Card>
       </div>
 
-      {/* ── Sentiment trend over time — monthly aggregated + Brush ── */}
+      {/* ── สรุปภาพรวมผลกระทบจากข่าว — clustered: Short-term vs Long-term ── */}
       <div className="grid grid-cols-1 gap-6">
         <Card>
           <CardHeader>
-            <CardTitle>{t("Impact volume over time", "สัดส่วนปริมาณข่าวตามผลกระทบ")}</CardTitle>
+            <CardTitle>{t("Impact summary", "สรุปภาพรวมผลกระทบจากข่าว")}</CardTitle>
             <CardDescription>
-              {t("News volume breakdown by positive, neutral, and negative impact",
-                 "สัดส่วนของข่าวบวก กลาง และลบ ในแต่ละเดือน")}
+              {t("Total news count by impact level, split by short-term and long-term effect",
+                "จำนวนข่าวรวมทุกเดือน แยกตามระดับผลกระทบและระยะเวลา")}
             </CardDescription>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={380}>
-              <BarChart data={impactMonthlyVolume} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#E8EDF5" />
-                <XAxis dataKey="month" tick={{ fontSize: 11, fill: "#6B7A99" }} />
-                <YAxis tick={{ fontSize: 11, fill: "#6B7A99" }} />
+              <BarChart data={impactSummaryByEffect} margin={{ top: 5, right: 30, left: 10, bottom: 5 }}>
+                <CartesianGrid stroke={THEME.border} horizontal={true} vertical={false} strokeOpacity={0.6} />
+                <XAxis dataKey="impact" tick={{ fontSize: 13, fill: "#6B7A99", fontWeight: 600 }} />
+                <YAxis tick={{ fontSize: 11, fill: "#6B7A99" }} tickFormatter={(v) => v >= 1000 ? v.toLocaleString() : v} />
                 <ReTooltip
                   contentStyle={{ borderRadius: 10, border: "1px solid #DDE4EF", boxShadow: "0 4px 20px rgba(18,32,64,0.08)" }}
                 />
                 <Legend />
-                <Bar dataKey="Positive" stackId="a" fill={IMPACT_COLORS.Positive} name={t("Positive", "บวก")} />
-                <Bar dataKey="Neutral" stackId="a" fill={IMPACT_COLORS.Neutral} name={t("Neutral", "กลาง")} />
-                <Bar dataKey="Negative" stackId="a" fill={IMPACT_COLORS.Negative} name={t("Negative", "ลบ")} radius={[3, 3, 0, 0]} />
-                <Brush
-                  dataKey="month"
-                  height={28}
-                  stroke={THEME.blue}
-                  fill={THEME.blueSoft}
-                  travellerWidth={10}
-                  startIndex={sentimentBrushStart}
-                  endIndex={impactMonthlyVolume.length - 1}
-                  tickFormatter={(v) => v}
-                />
+                <Bar dataKey="Short-term" fill={EFFECT_COLORS["Short-term"]} name={t("Short-term", "ระยะสั้น")} radius={[3, 3, 0, 0]} />
+                <Bar dataKey="Long-term" fill={EFFECT_COLORS["Long-term"]} name={t("Long-term", "ระยะยาว")} radius={[3, 3, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>
@@ -1863,7 +1887,7 @@ function AnalyticsPage({ t, lang, news = [] }) {
       <div className="grid grid-cols-1 gap-6">
         <Card>
           <CardHeader>
-            <CardTitle>{t("Frequently mentioned terms", "คำที่ปรากฏบ่อย")}</CardTitle>
+            <CardTitle>{t("Frequently mentioned terms", "แท็กคลาวด์")}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="w-full bg-white rounded-lg overflow-hidden">
@@ -2237,7 +2261,7 @@ export default function App() {
               className="flex items-center gap-0.5 rounded-lg p-[3px]"
               style={{ background: "rgba(255,255,255,0.08)" }}
             >
-              {[["en", "EN"], ["th", "ไทย"]].map(([code, label]) => (
+              {[["en", "EN"], ["th", "TH"]].map(([code, label]) => (
                 <button
                   key={code}
                   onClick={() => setLang(code)}
