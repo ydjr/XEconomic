@@ -7,5 +7,12 @@ darts
 pythainlp
 transformers
 
+xgboost
+statsmodels
+scikit-learn
+pytorch-lightning
+torch
+tqdm
+
 tiktoken
 datasets

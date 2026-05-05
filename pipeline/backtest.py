@@ -1,3 +1,6 @@
+import os
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+
 import json
 import shutil
 import warnings
@@ -6,11 +9,11 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 from darts import TimeSeries
-from darts.metrics import mape as darts_mape, rmse as darts_rmse
 from darts.models import XGBModel, BlockRNNModel, NHiTSModel
-from darts.dataprocessing.transformers import Scaler as DartsScaler
+from darts.dataprocessing.transformers import Scaler
 from statsmodels.tsa.statespace.sarimax import SARIMAX
 from sklearn.model_selection import ParameterGrid
+from pytorch_lightning.callbacks import EarlyStopping
 from tqdm import tqdm
 
 warnings.filterwarnings("ignore")
@@ -19,14 +22,15 @@ warnings.filterwarnings("ignore")
 # CONFIG
 # ==========================================
 
-DATA_CSV      = Path("data/2017-2025.csv")
-RESULTS_DIR   = Path("results_backtest_allpoints")
-ARTIFACTS_DIR = Path("artifacts_backtest_allpoints")
+DATA_CSV      = Path("2017-2025.csv")
+RESULTS_DIR   = Path("results_backtest")
+ARTIFACTS_DIR = Path("artifacts_backtest")
 CACHE_DIR     = Path(".gridsearch_cache_backtest")
 
 DATE_COL    = "date"
 TARGET_COL  = "cci"
 TRAIN_RATIO = 0.7
+VAL_RATIO   = 0.1
 STRIDE      = 1
 HORIZONS    = list(range(1, 7))
 
@@ -40,51 +44,89 @@ NEWS_COLS  = [
 ]
 
 FEATURE_SETS = {
-    "cci_only": [],
-    "macro": MACRO_COLS,
-    "news": NEWS_COLS,
+    "cci_only":        [],
+    "macro":           MACRO_COLS,
+    "news":            NEWS_COLS,
     "macro_plus_news": MACRO_COLS + NEWS_COLS,
 }
 
+# ==========================================
+# EARLY STOPPING CALLBACK (DL models only)
+# ==========================================
+_early_stop = EarlyStopping(
+    monitor="val_loss",
+    patience=5,
+    min_delta=0.001,
+    mode="min",
+)
+
 PARAM_GRIDS = {
     "ARIMAX": {
-        "p": list(range(1, 7)),
-        "d": [1],
-        "q": list(range(1, 7)),
+        "p": list(range(0, 13)),
+        "d": list(range(0, 3)),
+        "q": list(range(0, 13)),
     },
     "XGBModel": {
-        "lags": list(range(1, 7)),
-        "lags_past_covariates": list(range(1, 7)),
+        "lags":                 list(range(1, 13)),
+        "lags_past_covariates": list(range(1, 13)),
+        "n_estimators":         [100, 200],
+        "max_depth":            [3, 4],
+        "learning_rate":        [0.05, 0.1],
     },
     "BlockRNNModel": {
-        "model": ["LSTM", "GRU"],
-        "input_chunk_length": list(range(1, 13)),
-        "hidden_dim": [16, 32],
-        "n_rnn_layers": [1],
-        "n_epochs": [30, 50],
-        "dropout": [0.1],
+        "model":                        ["LSTM"],
+        "input_chunk_length":           list(range(1, 13)),
+        "hidden_dim":                   [32, 64],
+        "n_rnn_layers":                 [1],
+        "n_epochs":                     [200],
+        "dropout":                      [0.1],
         "use_reversible_instance_norm": [True],
-        "pl_trainer_kwargs": [{"enable_progress_bar": False, "enable_model_summary": False, "accelerator": "gpu", "devices": [0]}],
+        "pl_trainer_kwargs": [{
+            "accelerator":          "gpu",
+            "devices":              1,
+            "strategy":             "auto",
+            "enable_progress_bar":  False,
+            "enable_model_summary": False,
+            "logger":               False,
+            "enable_checkpointing": False,
+            "callbacks":            [_early_stop],
+        }],
         "random_state": [42],
     },
     "NHiTSModel": {
-        "input_chunk_length": list(range(1, 13)),
-        "layer_widths": [64, 128],
-        "n_epochs": [30, 50],
-        "dropout": [0.1],
+        "input_chunk_length":           list(range(1, 13)),
+        "layer_widths":                 [32, 64],
+        "n_epochs":                     [200],
+        "dropout":                      [0.1],
         "use_reversible_instance_norm": [True],
-        "pl_trainer_kwargs": [{"enable_progress_bar": False, "enable_model_summary": False, "accelerator": "gpu", "devices": [0]}],
+        "pl_trainer_kwargs": [{
+            "accelerator":          "gpu",
+            "devices":              1,
+            "strategy":             "auto",
+            "enable_progress_bar":  False,
+            "enable_model_summary": False,
+            "logger":               False,
+            "enable_checkpointing": False,
+            "callbacks":            [_early_stop],
+        }],
         "random_state": [42],
     },
 }
 
 DARTS_MODEL_CLASSES = {
-    "XGBModel": XGBModel,
+    "XGBModel":      XGBModel,
     "BlockRNNModel": BlockRNNModel,
-    "NHiTSModel": NHiTSModel,
+    "NHiTSModel":    NHiTSModel,
 }
 
 SKIP_KEYS = {"pl_trainer_kwargs", "n_jobs", "random_state"}
+
+CACHE_KEY_FIELDS = {
+    "ARIMAX":        {"p", "d", "q"},
+    "XGBModel":      {"lags", "lags_past_covariates", "n_estimators", "max_depth", "learning_rate"},
+    "BlockRNNModel": {"model", "input_chunk_length", "hidden_dim"},
+    "NHiTSModel":    {"input_chunk_length", "layer_widths"},
+}
 
 
 def get_param_grid(model_name: str, has_covariates: bool) -> dict:
@@ -111,12 +153,21 @@ def load_data() -> pd.DataFrame:
     use_cols = [c for c in all_cols if c in df.columns]
     df = df[use_cols].dropna().reset_index(drop=True)
 
+    # remove when all news col are 0
     news_in_df = [c for c in NEWS_COLS if c in df.columns]
     if news_in_df:
-        has_news = (df[news_in_df] != 0).any(axis=1)
-        df = df[has_news].reset_index(drop=True)
+        df = df[(df[news_in_df] != 0).any(axis=1)].reset_index(drop=True)
 
-    print(f"Data after filtering: {len(df)} rows | {df[DATE_COL].min().date()} -> {df[DATE_COL].max().date()}")
+    n = len(df)
+    n_train = int(n * TRAIN_RATIO)
+    n_val = int(n * VAL_RATIO)
+    n_test = n - n_train - n_val
+
+    print(f"Data : {n} rows | {df[DATE_COL].min().date()} -> {df[DATE_COL].max().date()}")
+    print(f"Train : {n_train + n_val} rows (80%) | non-DL train")
+    print(f"Train : {n_train} rows (70%) | DL train")
+    print(f"Val : {n_val} rows (10%)  | DL early stopping")
+    print(f"Test : {n_test} rows (20%) | {df[DATE_COL].iloc[n_train + n_val].date()}")
     return df
 
 
@@ -133,99 +184,88 @@ def make_series(df: pd.DataFrame, feature_cols: list) -> tuple:
 
 
 def make_numpy(df: pd.DataFrame, feature_cols: list):
-    y     = df[TARGET_COL].values.astype(float)
+    y = df[TARGET_COL].values.astype(float)
     dates = df[DATE_COL].values
-    exog  = df[feature_cols].values.astype(float) if feature_cols else None
+    exog = df[feature_cols].values.astype(float) if feature_cols else None
     return y, exog, dates
 
 
 # ==========================================
-# EVALUATE — Darts models (last point only)
+# EVALUATE : Darts models (XGB, LSTM, N-HITS)
 # ==========================================
-
-def _make_data_transformers(is_dl: bool, has_covariates: bool) -> dict | None:
-    if not is_dl:
-        return None
-    transformers = {"series": DartsScaler()}
-    if has_covariates:
-        transformers["past_covariates"] = DartsScaler()
-    return transformers
-
 
 def evaluate_darts(model_name, params, target, past_cov, horizon, is_dl=False):
     p = {k: v for k, v in params.items() if k not in SKIP_KEYS}
     p["output_chunk_length"] = horizon
 
-    model     = DARTS_MODEL_CLASSES[model_name](**p)
-    split_idx = int(len(target) * TRAIN_RATIO)
-    data_transformers = _make_data_transformers(is_dl, past_cov is not None)
+    model = DARTS_MODEL_CLASSES[model_name](**p)
+    n_total = len(target)
+    test_start_idx = int(n_total * (TRAIN_RATIO + VAL_RATIO))
 
     try:
-        # Returns a single TimeSeries of last-step predictions (one per window)
-        preds_series = model.historical_forecasts(
+        hfc_kwargs = dict(
             series=target,
             past_covariates=past_cov,
             forecast_horizon=horizon,
             stride=STRIDE,
-            start=target.time_index[split_idx],
+            start=target.time_index[test_start_idx],
             retrain=True,
-            last_points_only=True,              # ← only H-th step per window
-            data_transformers=data_transformers,
+            last_points_only=True,
             verbose=False,
             show_warnings=False,
         )
 
-        hfc_err = model.backtest(
-            series=target,
-            historical_forecasts=preds_series,
-            last_points_only=True,              # ← must match
-            metric=[darts_mape, darts_rmse],
-            reduction=np.nanmean,
-        )
+        if is_dl:
+            hfc_kwargs["val_length"] = int(n_total * VAL_RATIO)
+            hfc_kwargs["data_transformers"] = {"series": Scaler()}
+            if past_cov is not None:
+                hfc_kwargs["data_transformers"]["past_covariates"] = Scaler()
+
+        preds_series = model.historical_forecasts(**hfc_kwargs)
 
     except Exception as e:
         print(f"    [SKIP] {e}")
         return None
 
-    # preds_series is a single TimeSeries — iterate its time index directly
-    actual_slice = target.slice(preds_series.start_time(), preds_series.end_time())
-    actual_vals  = actual_slice.univariate_values()
-    pred_vals    = preds_series.univariate_values()
+    actual_ts = target.slice(preds_series.start_time(), preds_series.end_time()).univariate_values()
+    pred_ts = preds_series.univariate_values()
 
     all_rows = []
     for i, timestamp in enumerate(preds_series.time_index):
-        if i >= len(actual_vals):
+        if i >= len(actual_ts):
             continue
         all_rows.append({
-            "origin_date":    pd.Timestamp(timestamp - horizon * target.freq),  # last known date
+            "origin_date": pd.Timestamp(timestamp - horizon * target.freq),
             "predicted_date": pd.Timestamp(timestamp),
-            "horizon":        horizon,          # always == horizon (last point only)
-            "actual":         float(actual_vals[i]),
-            "predicted":      float(pred_vals[i]),
+            "horizon": horizon,
+            "actual": float(actual_ts[i]),
+            "predicted": float(pred_ts[i]),
         })
 
     if not all_rows:
-        print(f"    [WARN] pred_df is empty — check timestamp alignment")
+        print("    [WARN] pred_df is empty: check timestamp alignment")
+        return None
 
-    metrics = {
-        "mape": round(float(hfc_err[0]), 4),
-        "rmse": round(float(hfc_err[1]), 4),
-    }
     pred_df = pd.DataFrame(all_rows)
+    actual = pred_df["actual"].values
+    pred = pred_df["predicted"].values
+    metrics = {
+        "mape": round(float(np.nanmean(np.abs((actual - pred) / actual)) * 100), 4),
+        "rmse": round(float(np.sqrt(np.nanmean((actual - pred) ** 2))), 4),
+    }
     return metrics, pred_df
 
 
 # ==========================================
-# EVALUATE — ARIMAX (last point only, same logic)
+# EVALUATE : ARIMAX
 # ==========================================
 
 def evaluate_arimax(params, y, exog, dates, horizon):
     p, d, q = params["p"], params["d"], params["q"]
-    n_train = int(len(y) * TRAIN_RATIO)
+    test_start_idx = int(len(y) * (TRAIN_RATIO + VAL_RATIO))
 
-    window_mapes, window_rmses, all_rows = [], [], []
-
-    for t in range(n_train, len(y) - horizon + 1):
+    all_rows = []
+    for t in range(test_start_idx, len(y) - horizon + 1):
         try:
             fit = SARIMAX(
                 y[:t],
@@ -242,33 +282,30 @@ def evaluate_arimax(params, y, exog, dates, horizon):
         except Exception:
             continue
 
-        # Only score the H-th step (last point), matching Darts last_points_only=True
         idx = t + horizon - 1
         if idx >= len(y):
             continue
 
-        actual  = float(y[idx])
-        pred    = float(fc[horizon - 1])
-
+        actual = float(y[idx])
+        pred = float(fc[horizon - 1])
         all_rows.append({
-            "origin_date":    pd.to_datetime(dates[t - 1]),
+            "origin_date": pd.to_datetime(dates[t - 1]),
             "predicted_date": pd.to_datetime(dates[idx]),
-            "horizon":        horizon,
-            "actual":         actual,
-            "predicted":      pred,
+            "horizon": horizon,
+            "actual": actual,
+            "predicted": pred,
         })
 
-        window_mapes.append(abs((actual - pred) / actual) * 100)
-        window_rmses.append((actual - pred) ** 2)
-
-    if not window_mapes:
+    if not all_rows:
         return None, None
 
-    metrics = {
-        "mape": round(float(np.nanmean(window_mapes)), 4),
-        "rmse": round(float(np.sqrt(np.nanmean(window_rmses))), 4),  # ← proper RMSE
-    }
     pred_df = pd.DataFrame(all_rows)
+    actual_arr = pred_df["actual"].values
+    pred_arr = pred_df["predicted"].values
+    metrics = {
+        "mape": round(float(np.nanmean(np.abs((actual_arr - pred_arr) / actual_arr)) * 100), 4),
+        "rmse": round(float(np.sqrt(np.nanmean((actual_arr - pred_arr) ** 2))), 4),
+    }
     return metrics, pred_df
 
 
@@ -279,23 +316,31 @@ def evaluate_arimax(params, y, exog, dates, horizon):
 def run_gridsearch(df):
     output_rows = []
 
+    # looop over each feature sets
     for feature_set_name, feature_cols in tqdm(FEATURE_SETS.items(), desc="Feature sets"):
-        feature_cols   = [c for c in feature_cols if c in df.columns]
+        feature_cols = [c for c in feature_cols if c in df.columns]
         has_covariates = len(feature_cols) > 0
 
+        # loop over horizons and models
         for horizon in tqdm(HORIZONS, desc=f"{feature_set_name} horizons", leave=False):
             for model_name in tqdm(PARAM_GRIDS.keys(), desc=f"h{horizon} models", leave=False):
                 print(f"\n=== h{horizon} | {model_name} | {feature_set_name} ===")
 
                 param_grid = get_param_grid(model_name, has_covariates)
+                combinations = list(ParameterGrid(param_grid))
+                print(f"    Combinations: {len(combinations)}")
 
-                best_mape    = float("inf")
+                best_mape = float("inf")
                 best_metrics = None
-                best_params  = None
+                best_params = None
                 best_pred_df = None
 
-                for params in tqdm(list(ParameterGrid(param_grid)), desc="Params", leave=False):
-                    params_str = "_".join(f"{k}{v}" for k, v in params.items() if k not in SKIP_KEYS)
+                for params in tqdm(combinations, desc="Params", leave=False):
+                    params_str = "_".join(
+                        f"{k}{v}"
+                        for k, v in sorted(params.items())
+                        if k in CACHE_KEY_FIELDS[model_name]
+                    )
                     cache_file = CACHE_DIR / feature_set_name / f"h{horizon}" / model_name / f"{params_str}.json"
 
                     metrics = None
@@ -313,7 +358,7 @@ def run_gridsearch(df):
                             y, exog, dates = make_numpy(df, feature_cols)
                             result = evaluate_arimax(params, y, exog, dates, horizon)
                         else:
-                            is_dl  = model_name in DL_MODELS
+                            is_dl = model_name in DL_MODELS
                             target, past_cov = make_series(df, feature_cols)
                             result = evaluate_darts(model_name, params, target, past_cov, horizon, is_dl)
 
@@ -333,9 +378,9 @@ def run_gridsearch(df):
                                 cache_file.unlink()
 
                     if metrics["mape"] < best_mape:
-                        best_mape    = metrics["mape"]
+                        best_mape = metrics["mape"]
                         best_metrics = metrics
-                        best_params  = {k: v for k, v in params.items() if k not in SKIP_KEYS}
+                        best_params = {k: v for k, v in params.items() if k not in SKIP_KEYS}
 
                         if pred_df is not None:
                             best_pred_df = pred_df
@@ -359,13 +404,14 @@ def run_gridsearch(df):
 
                 with open(out_dir / "params.json", "w", encoding="utf-8") as f:
                     json.dump({
-                        "model":        model_name,
-                        "feature_set":  feature_set_name,
-                        "horizon":      horizon,
+                        "model": model_name,
+                        "feature_set": feature_set_name,
+                        "horizon": horizon,
                         "feature_cols": feature_cols,
-                        "best_params":  best_params,
-                        "mape":         best_metrics["mape"],
-                        "rmse":         best_metrics["rmse"],
+                        "best_params": best_params,
+                        "mape": best_metrics["mape"],
+                        "rmse": best_metrics["rmse"],
+                        "n_evaluated": len(combinations),
                     }, f, ensure_ascii=False, indent=2)
 
                 if best_pred_df is not None:
@@ -373,11 +419,11 @@ def run_gridsearch(df):
 
                 output_rows.append({
                     "feature_set": feature_set_name,
-                    "model":       model_name,
-                    "horizon":     horizon,
-                    "mape":        best_metrics["mape"],
-                    "rmse":        best_metrics["rmse"],
-                    "params":      json.dumps(best_params, ensure_ascii=False),
+                    "model": model_name,
+                    "horizon": horizon,
+                    "mape": best_metrics["mape"],
+                    "rmse": best_metrics["rmse"],
+                    "params": json.dumps(best_params, ensure_ascii=False),
                 })
 
     return output_rows

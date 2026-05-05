@@ -140,31 +140,6 @@ def load_sentiment_features(features_path):
     print(f"  Loaded {len(feat_cols)} features")
     return sentiment_ts
 
-def load_embedding_features(emb_path: Path):
-    """
-    Load PCA embedding features as multivariate TimeSeries.
-    Expects: CSV with 'date' (YYYY-MM) + pca_emb_0 ... pca_emb_N columns
-    """
-    print(f"Loading {emb_path.name}...")
-    df = pd.read_csv(emb_path, parse_dates=["date"])
-    df["date"] = pd.to_datetime(df["date"]).dt.to_period("M").dt.to_timestamp()
-    df = df.set_index("date")
-
-    emb_cols = [c for c in df.columns if c.startswith("pca_emb_")]
-    if not emb_cols:
-        raise ValueError(f"No pca_emb_* columns found in {emb_path}")
-
-    df[emb_cols] = df[emb_cols].apply(pd.to_numeric, errors="coerce")
-
-    emb_ts = TimeSeries.from_dataframe(
-        df[emb_cols],
-        freq="MS",
-        fill_missing_dates=True,
-    )
-
-    print(f"  Loaded {len(emb_cols)} embedding features")
-    return emb_ts
-
 def align_and_merge(cci_ts, indicators, sentiment_ts, emb_ts=None, mode="full"):
     print("\n=== Aligning Time Series (CCI as base timeline) ===")
 
@@ -278,13 +253,9 @@ def main():
     cci_ts, indicators = load_all_indicators(indicators_dir)
     sentiment_ts = load_sentiment_features(features_path)
 
-    emb_ts = None
-    if args.embeddings:
-        emb_ts = load_embedding_features(Path(args.embeddings))
-
     print("\n### Step 2: Aligning Data ###")
     cci_aligned, covariates_aligned = align_and_merge(
-        cci_ts, indicators, sentiment_ts, emb_ts=emb_ts, mode=args.mode
+        cci_ts, indicators, sentiment_ts, mode=args.mode
     )
 
     print("\n### Step 3: Handling Missing Values ###")
