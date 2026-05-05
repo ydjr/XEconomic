@@ -72,7 +72,7 @@ def main():
         past_covariates=past_cov,
         forecast_horizon=HORIZON,
         stride=1,
-        start=0.7,
+        start=0.8,
         last_points_only=True,
         metric=mape,
         verbose=True
