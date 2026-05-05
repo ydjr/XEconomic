@@ -48,38 +48,56 @@ npm run dev
 Open browser: http://localhost:5173
 
 
-## 📂 Project Structure (not the latest version)
+## 📂 Project Structure
 
 ```text
 XEconomic/
 │
-├─ pipeline/            # Prediction pipeline
-│  └─ predict_latest.py
-|  └─ backtest.py
-|  └─ utils.py
-│
-├─ api/                 # FastAPI backend
+├─ api/
 │  └─ main.py
 │
-├─ artifacts/           # GENERATED FILES (Internal use)
-│  ├─ latest_forecast.json
-│  ├─ latest_explain.json
-│  ├─ latest_explain.csv
-|  └─ latest_forecast.csv
+├─ artifacts/
+│  ├─ backtest/
+│  ├─ cci_dashboard_latest.csv
+│  ├─ predicted_latest.csv
+│  ├─ reasoning_2017-01_to_2025-08.csv
+│  ├─ shap_h1.csv
+│  └─ shap_predicted_month_rank.csv
 │
-├─ dashboard/           # React + Vite frontend
-│  ├─ vite.config.js
+├─ dashboard/
 │  ├─ index.html
-│  ├─ package.json
-│  └─ src/
-|     ├─ api.js
-|     ├─ app.jsx
-|     ├─ main.jsx
-|     ├─ style.css
-|     └─ components/
-|        ├─ ShapBar.jsx
-|        └─ TimeSeriesChart.jsx
+│  │
+│  ├─ src/
+│  │  ├─ assets/
+│  │  │  └─ cci-impact-wordcloud.png
+│  │  │
+│  │  ├─ api.js
+│  │  ├─ App.jsx
+│  │  ├─ index.css
+│  │  ├─ main.jsx
+│  │  ├─ newsFileApi.js
+│  │  ├─ newsSupabaseApi.js
+|  │  ├─ style.css
+|  │  └─ supabaseClient.js
+│  │
+│  └─ data/
+│     ├─ news_sentiment_summary_all.csv
+│     ├─ avg_sent_indi.csv
+│     └─ top_entities.json
 │
+├─ explainable/
+|
+├─ models/
+│  └─ backtest/   
+│
+├─ pipeline/
+│  ├─ news_prep/
+│  ├─ backtest.py
+│  ├─ train.py
+│  ├─ predict_latest.py
+│  ├─ extract_entities.py
+│  └─ generate_wordcloud.py
+│
+├─ _field_check.json
 ├─ requirements.txt
-├─ README.md
-└─ .gitignore
+└─ README.md

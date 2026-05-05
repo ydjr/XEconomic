@@ -22,7 +22,7 @@ warnings.filterwarnings("ignore")
 # CONFIG
 # ==========================================
 
-DATA_CSV      = Path("2017-2025.csv")
+DATA_CSV      = Path("data/2017-2025.csv")
 RESULTS_DIR   = Path("results_backtest")
 ARTIFACTS_DIR = Path("artifacts_backtest")
 CACHE_DIR     = Path(".gridsearch_cache_backtest")

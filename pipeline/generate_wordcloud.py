@@ -23,8 +23,8 @@ import matplotlib.pyplot as plt
 
 # --- paths ---
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-CSV_PATH = os.path.join(ROOT, "public", "data", "news_sentiment_summary_all.csv")
-OUTPUT_PATH = os.path.join(ROOT, "public", "data", "cci_impact_wordcloud.png")
+CSV_PATH = os.path.join(ROOT, "public", "data", "2017-2026.csv")
+OUTPUT_PATH = os.path.join(ROOT, "dashboard", "src", "assets", "cci_impact_wordcloud.png")
 
 # --- config ---
 MIN_WORD_LEN = 3        # ข้ามคำสั้นกว่า 3 ตัวอักษร
@@ -73,14 +73,12 @@ EXTRA_STOPS = {
     "ผลิต", "บริการ", "เตรียม", "เดิน", "หน้า", "เดินหน้า",
     "กระทบ", "กระตุ้น", "ขยายตัว", "คำ", "สั่ง", "ค่า",
     "ผ่อน", "ตลาด", "ประเทศ",
-    # --- time/date ---
+    # --- time/date/numbers generic ---
     "ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.",
     "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค.",
-    "ม.ค", "ก.พ", "มี.ค", "เม.ย", "พ.ค", "มิ.ย",
-    "ก.ค", "ส.ค", "ก.ย", "ต.ค", "พ.ย", "ธ.ค",
     "มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน",
     "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม",
-    "น.", "พ.ศ.", "พ.ศ", "ค.ศ.", "ค.ศ",
+    "น.", "พ.ศ.", "ค.ศ.", "วันนี้", "พรุ่งนี้", "เมื่อวาน", "ปีนี้", "ปีหน้า",
     # --- person names / titles ---
     "พิชัย", "เศรษฐา", "แพทองธาร", "ประยุทธ์", "ประวิตร",
     "อนุทิน", "สุริยะ", "จุลพันธ์", "เสี่ยตัน", "ทักษิณ",
@@ -96,6 +94,11 @@ EXTRA_STOPS = {
     "ส.อ.ท.", "ก.ล.ต.", "สคร.", "บสย.", "สสว.",
     # --- media ---
     "ไทยรัฐ", "ThaiPBS", "thaipbs", "ไทยพีบีเอส",
+    # --- highly generic stock/finance words we want to filter out to show pure impact topics ---
+    "บาท", "ไทย", "ล้าน", "จุด", "ราคา", "ดัชนี", "มูลค่า", "ขาย", "ซื้อ", "เงิน", "การซื้อขาย", 
+    "บริษัท", "รายได้", "บ่าย", "เช้า", "โครงการ", "ตลาดหุ้น", "หุ้น", "ธุรกิจ", "นักลงทุน", "กำไร", "ลงทุน", "ไตรมาส",
+    "หมื่น", "แสน", "พัน", "ร้อย", "เปอร์เซ็นต์", "ร้อยละ", "คาด", "เพิ่ม", "ลด", "ต่อ",
+    "อย่า", "ที่จะ", "จอง", "โชว์", "ยัน", "สาย"
 }
 
 # regex patterns ที่ต้องกรองออก
@@ -105,26 +108,23 @@ JUNK_RE = re.compile(
     r"|^[a-zA-Z]$"             # single English letter
     r"|^[ก-๙]$"                # single Thai char
     r"|^\W+$"                  # only punctuation
-    r"|^\d{1,4}$"              # 1-4 digit numbers
-    r"|^\d+%$"                 # percentages
-    r"|^[ก-ฮ]\.$"              # single Thai char + period
+    r"|^\d+.*"                 # starts with numbers and has stuff
+    r"|.*%$"                   # ends with percent
 )
 
 # ---------- color palette (mockup-style) ----------
 # สีหลากหลายเฉดเขียว + ม่วง + ส้ม เหมือน mockup
 COLOR_PALETTE = [
     "#22c55e", "#16a34a", "#15803d", "#059669",  # green shades
-    "#10b981", "#34d399", "#6ee7b7",              # emerald
-    "#a855f7", "#8b5cf6", "#7c3aed",              # purple
-    "#f59e0b", "#d97706", "#b45309",              # amber/orange
-    "#6366f1", "#4f46e5",                          # indigo
-    "#06b6d4", "#0891b2",                          # cyan
+    "#10b981", "#34d399", "#6ee7b7",             # emerald
+    "#a855f7", "#8b5cf6", "#7c3aed",             # purple
+    "#f59e0b", "#d97706", "#b45309",             # amber/orange
+    "#6366f1", "#4f46e5",                        # indigo
+    "#06b6d4", "#0891b2",                        # cyan
 ]
-
 
 def _random_color_func(word, **kwargs):
     return random.choice(COLOR_PALETTE)
-
 
 # ---------- functions ----------
 
@@ -134,7 +134,6 @@ def load_news(csv_path):
         for row in csv.DictReader(f):
             rows.append(row)
     return rows
-
 
 def compute_weight(sentiment_str, impact_type):
     """Weight = how far from neutral × impact direction boost"""
@@ -147,12 +146,14 @@ def compute_weight(sentiment_str, impact_type):
         w = 0.3
     return w
 
-
 def is_valid_token(w, stops):
     """Check if a token is valid for the word cloud"""
     if len(w) < MIN_WORD_LEN:
         return False
     if w in stops:
+        return False
+    # skip english short words
+    if w.isascii() and len(w) < 4:
         return False
     if w.isdigit():
         return False
