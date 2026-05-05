@@ -1,3 +1,9 @@
+# # without embeddings (same as before)
+# python pipeline/news_prep/5_consolidate.py --mode full
+
+# # with embeddings
+# python pipeline/news_prep/5_consolidate.py --mode full --embeddings pca_2017-2026.csv --output data/2011-2026_wemb.pkl
+
 import argparse
 import pandas as pd
 from darts import TimeSeries, concatenate
@@ -62,12 +68,12 @@ def load_all_indicators(indicators_dir: Path):
     #     freq="MS",
     # )
 
-    indicators["policy_rate"] = load_indicator(
-        indicators_dir / "policy_rate.csv",
-        value_col="value",
-        rename="policy_rate",
-        freq="MS",
-    )
+    # indicators["policy_rate"] = load_indicator(
+    #     indicators_dir / "policy_rate.csv",
+    #     value_col="value",
+    #     rename="policy_rate",
+    #     freq="MS",
+    # )
 
     # indicators["export_vol"] = load_indicator(
     #     indicators_dir / "export_vol.csv",
@@ -134,38 +140,50 @@ def load_sentiment_features(features_path):
     print(f"  Loaded {len(feat_cols)} features")
     return sentiment_ts
 
-
-def align_and_merge(cci_ts, indicators, sentiment_ts, mode="full"):
-    print("\n=== Aligning Time Series ===")
+def align_and_merge(cci_ts, indicators, sentiment_ts, emb_ts=None, mode="full"):
+    print("\n=== Aligning Time Series (CCI as base timeline) ===")
 
     indicator_list = list(indicators.values())
-    if mode == "sentiment_only":
-        all_series = [cci_ts, sentiment_ts]
-    else:
-        all_series = [cci_ts] + indicator_list + [sentiment_ts]
 
-    start_time = max(ts.start_time() for ts in all_series)
-    end_time = min(ts.end_time() for ts in all_series)
+    start_time = cci_ts.start_time()
+    end_time   = cci_ts.end_time()
+    full_idx   = pd.date_range(start_time, end_time, freq="MS")
 
-    print(f"Common time range: {start_time} to {end_time}")
-    print(f"Total months: {len(pd.date_range(start_time, end_time, freq='MS'))}")
+    print(f"Base time range (CCI): {start_time} to {end_time}")
 
     cci_aligned = cci_ts.slice(start_time, end_time)
-    sentiment_aligned = sentiment_ts.slice(start_time, end_time)
+
+    # Align sentiment
+    sent_df = sentiment_ts.slice(start_time, end_time).to_dataframe(copy=True)
+    sent_df = sent_df.reindex(full_idx).fillna(0)
+    sentiment_aligned = TimeSeries.from_dataframe(sent_df, freq="MS")
+
+    # Align embeddings (NaN before 2017 → 0)
+    emb_aligned = None
+    if emb_ts is not None:
+        emb_df = emb_ts.slice(start_time, end_time).to_dataframe(copy=True)
+        emb_df = emb_df.reindex(full_idx).fillna(0)
+        emb_aligned = TimeSeries.from_dataframe(emb_df, freq="MS")
 
     if mode == "sentiment_only":
-        covariates_aligned = sentiment_aligned
+        parts = [sentiment_aligned]
     else:
-        indicators_aligned = [ind.slice(start_time, end_time) for ind in indicator_list]
-        all_covariates = indicators_aligned + [sentiment_aligned]
-        covariates_aligned = concatenate(all_covariates, axis=1)
+        indicators_aligned = []
+        for ind in indicator_list:
+            ind_df = ind.to_dataframe(copy=True).reindex(full_idx).ffill().bfill()
+            indicators_aligned.append(TimeSeries.from_dataframe(ind_df, freq="MS"))
+        parts = indicators_aligned + [sentiment_aligned]
+
+    if emb_aligned is not None:
+        parts.append(emb_aligned)
+
+    covariates_aligned = concatenate(parts, axis=1)
 
     print(f"Target shape: {cci_aligned.values().shape}")
     print(f"Covariates shape: {covariates_aligned.values().shape}")
     print(f"  {covariates_aligned.n_components} total features")
 
     return cci_aligned, covariates_aligned
-
 
 def handle_missing_values(cci_ts, covariates_ts):
     print("\n=== Handling Missing Values ===")
@@ -206,7 +224,7 @@ def save_dataset(cci_ts, covariates_ts, output_path, save_csv=True):
         combined_df = pd.concat(
             [cci_ts.to_dataframe(copy=True), covariates_ts.to_dataframe(copy=True)], axis=1
         )
-        combined_df.to_csv(csv_path)
+        combined_df.to_csv(csv_path, index_label="date")
         print(f"Saved CSV for inspection: {csv_path}")
         print("\nDataset Summary:")
         print(f"  Time range: {combined_df.index[0]} to {combined_df.index[-1]}")
@@ -217,39 +235,28 @@ def save_dataset(cci_ts, covariates_ts, output_path, save_csv=True):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--mode",
-        choices=["sentiment_only", "full"],
-        default="sentiment_only",
-        help="sentiment_only = use sentiment features only; full = add other indicators too",
-    )
-    parser.add_argument(
-        "--features",
-        default="data/4_absa_features/aspect_monthly_features.csv",
-        help="Path to monthly sentiment feature CSV",
-    )
-    parser.add_argument(
-        "--output",
-        default="data/2024-2025.pkl",
-        help="Output pickle path",
-    )
+    parser.add_argument("--mode", choices=["sentiment_only", "full"], default="sentiment_only")
+    parser.add_argument("--input", default="data/4_absa_features/aspect_monthly_features_newpf.csv")
+    parser.add_argument("--output", default="data/2011-2025_all.pkl")
+    parser.add_argument("--embeddings", default=None, help="Path to pca_2017-2026.csv (optional)")  # ← new
     args = parser.parse_args()
 
     indicators_dir = Path("data/indicators")
-    features_path = Path(args.features)
-    output_path = Path(args.output)
+    features_path  = Path(args.input)
+    output_path    = Path(args.output)
 
     print("=" * 60)
     print("Creating Darts Dataset")
     print("=" * 60)
-    print(f"Mode: {args.mode}")
 
     print("\n### Step 1: Loading Data ###")
     cci_ts, indicators = load_all_indicators(indicators_dir)
     sentiment_ts = load_sentiment_features(features_path)
 
     print("\n### Step 2: Aligning Data ###")
-    cci_aligned, covariates_aligned = align_and_merge(cci_ts, indicators, sentiment_ts, mode=args.mode)
+    cci_aligned, covariates_aligned = align_and_merge(
+        cci_ts, indicators, sentiment_ts, mode=args.mode
+    )
 
     print("\n### Step 3: Handling Missing Values ###")
     cci_final, covariates_final = handle_missing_values(cci_aligned, covariates_aligned)

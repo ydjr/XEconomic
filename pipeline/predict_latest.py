@@ -1,75 +1,152 @@
+import warnings
+from pathlib import Path
+
 import pandas as pd
+import numpy as np
+
 from darts import TimeSeries
 from darts.models import XGBModel
-from darts.explainability.shap_explainer import ShapExplainer
+from darts.metrics import mape
+from darts.explainability import ShapExplainer
 
-# ======================
-# LOAD DATA
-# ======================
-df = pd.read_csv("data/avg_sent_indi.csv")
-df["date"] = pd.to_datetime(df["date"])
-df = df.sort_values("date")
+from backtest import make_series
 
-target = TimeSeries.from_dataframe(df, time_col="date", value_cols="cci_overall", freq="MS")
-cov_cols = [c for c in df.columns if c not in ["date", "cci_overall"]]
-past_cov = TimeSeries.from_dataframe(df, time_col="date", value_cols=cov_cols, freq="MS")
+warnings.filterwarnings("ignore")
 
-# ======================
-# LOAD MODEL + PREDICT
-# ======================
-model = XGBModel.load("models/backtest/xgb_weights.pkl")
 
-forecast = model.predict(
-    n=1,
-    series=target,
-    past_covariates=past_cov
-)
+DATA = Path('data/2017-2025.csv')
+DATE = "date"
+TARGET = "cci"
+HORIZON = 3
 
-pred_df = forecast.to_dataframe().reset_index()
-pred_df.columns = ["date", "cci_pred"]
-print(pred_df)
+MACRO_COLS = ["cpi", "gdp", "unemployment_rate", "impi", "expi"]
+NEWS_COLS  = [
+    "การเมือง", "ภัยพิบัติ/โรคระบาด", "มาตรการของรัฐ",
+    "ราคาน้ำมันเชื้อเพลิง", "ราคาสินค้าเกษตร", "สังคม/ความมั่นคง",
+    "เศรษฐกิจโลก", "เศรษฐกิจไทย"
+]
 
-pred_df.to_csv("artifacts/pred_latest.csv", index=False)
-print("Saved artifacts/pred_latest.csv")
+FEATURE_COLS = MACRO_COLS + NEWS_COLS
 
-# ======================
-# SHAP
-# ======================
-foreground_series = target[-12:]
-foreground_past_cov = past_cov.slice(
-    foreground_series.start_time(),
-    foreground_series.end_time()
-)
+PARAMS = {
+    "lags": list(range(1, 13)),
+    "lags_past_covariates": list(range(1, 13)),
+    "n_estimators": [100, 200],
+    "max_depth": [3, 4],
+    "learning_rate": [0.05, 0.1],
+    "output_chunk_length": [HORIZON]
+}
 
-explainer = ShapExplainer(model)
-explain_results = explainer.explain(
-    foreground_series=foreground_series,
-    foreground_past_covariates=foreground_past_cov,
-    horizons=1
-)
+def load_data() -> pd.DataFrame:
+    df = pd.read_csv(DATA)
+    df[DATE] = pd.to_datetime(df[DATE])
+    df = df.sort_values(DATE).reset_index(drop=True)
 
-shap_ts = explain_results.get_explanation(horizon=1)
-shap_df = shap_ts.to_dataframe()
+    for col in df.columns:
+        if col != DATE:
+            df[col] = pd.to_numeric(df[col], errors="coerce")
 
-# save full shap (with date column)
-shap_out = shap_df.copy()
-shap_out.insert(0, "date", shap_out.index.to_period("M").astype(str))
-shap_out.to_csv("artifacts/shap_h1.csv", index=False)
-print("Saved artifacts/shap_h1.csv")
+    all_cols = [DATE, TARGET] + MACRO_COLS + NEWS_COLS
+    use_cols = [c for c in all_cols if c in df.columns]
+    df = df[use_cols].dropna().reset_index(drop=True)
 
-# ======================
-# RANK LATEST
-# ======================
-last_shap = shap_df.iloc[-1]  # last row of shap values
+    news_in_df = [c for c in NEWS_COLS if c in df.columns]
+    if news_in_df:
+        has_news = (df[news_in_df] != 0).any(axis=1)
+        df = df[has_news].reset_index(drop=True)
 
-rank_df = (
-    last_shap.abs()
-    .sort_values(ascending=False)
-    .reset_index()
-)
-rank_df.columns = ["feature", "shap_importance"]
-rank_df["shap_value"] = last_shap[rank_df["feature"]].values
+    print(f"Data: {len(df)} rows | {df[DATE].min().date()} -> {df[DATE].max().date()}")
+    return df
 
-rank_df.to_csv("artifacts/shap_predicted_month_rank.csv", index=False)
-print("Saved artifacts/shap_predicted_month_rank.csv")
-print(rank_df.head(10))
+def main():
+    df = load_data()
+    feature_cols = [c for c in FEATURE_COLS if c in df.columns]
+    target, past_cov = make_series(df, feature_cols)
+
+    OUT_PATH = Path("predict_outputs_h3")
+    OUT_PATH.mkdir(exist_ok=True)
+
+    best_model, best_params, metrics = XGBModel.gridsearch(
+        parameters=PARAMS,
+        series=target,
+        past_covariates=past_cov,
+        forecast_horizon=HORIZON,
+        stride=1,
+        start=0.7,
+        last_points_only=True,
+        metric=mape,
+        verbose=True
+    )
+
+    print(f"\nBest params: {best_params}")
+    print(f"Best MAPE: {metrics:.4f}")
+
+    print("Train on full dataset")
+    model = XGBModel(**best_params)
+    model.fit(series=target, past_covariates=past_cov)
+
+    pred = model.predict(
+        n=HORIZON,
+        series=target,
+        past_covariates= past_cov
+    )
+
+    print(f"\nForecast for {HORIZON} months ahead:")
+    pred_df = pd.DataFrame({
+        "date": pred.time_index,
+        "horizon": HORIZON,
+        "cci_pred": pred.to_series().values,
+    })
+
+    print(pred_df.to_string(index=False))
+    pred_df.to_csv(OUT_PATH / "pred_latest.csv", index=False, encoding="utf-8-sig")
+    print("saved pred_latest.csv")
+
+    print("\n Shap Explainer")
+    explainer = ShapExplainer(
+        model=model,
+        background_series=target,
+        background_past_covariates=past_cov
+    )
+
+    explaination = explainer.explain(
+        foreground_series=target,
+        foreground_past_covariates=past_cov
+    )
+ 
+    all_importance = []
+    for h in range(1, HORIZON + 1):
+        shap_exp = explaination.get_shap_explanation_object(horizon=h)
+        shap_df = pd.DataFrame(
+            shap_exp.values,
+            columns=shap_exp.feature_names
+        )
+        imp = shap_df.abs().mean().reset_index()
+        imp.columns = ["feature", "mean_abs_shap"]
+        imp["horizon"] = h
+        all_importance.append(imp)
+
+    importance = pd.concat(all_importance, ignore_index=True)
+    importance = importance.sort_values(["horizon", "mean_abs_shap"], ascending=[True, False])
+    importance.to_csv(OUT_PATH / "shap_importance.csv", index=False, encoding="utf-8-sig")
+
+    print("\nTop features by SHAP importance (per horizon):")
+    print(importance.head(10).to_string(index=False))
+    print("Saved shap_importance.csv")
+
+    all_rows = []
+    for h in range(1, HORIZON + 1):
+        shap_exp = explaination.get_shap_explanation_object(horizon=h)
+        shap_df = pd.DataFrame(
+            shap_exp.values,
+            columns=shap_exp.feature_names
+        )
+        shap_df["horizon"] = h
+        all_rows.append(shap_df)
+
+    shap_all = pd.concat(all_rows, ignore_index=True)
+    shap_all.to_csv(OUT_PATH / "shap_values.csv", index=False, encoding="utf-8-sig")
+    print("Saved shap_values.csv")
+ 
+if __name__ == "__main__":
+    main()

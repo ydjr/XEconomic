@@ -9,7 +9,7 @@ from pythainlp.util import normalize
 # =====================
 # Config
 # =====================
-BASE_DIR = Path(__file__).resolve().parents[1]
+BASE_DIR = Path(__file__).resolve().parents[2]
 DATA_DIR = BASE_DIR / "data"
 INPUT_DIR = DATA_DIR / "news_sum"
 OUTPUT_DIR = DATA_DIR / "1_cleaned_news"
@@ -122,7 +122,8 @@ def main():
         print(f"Processing {path.name}")
         all_records.extend(process_file(path))
 
-    df = pd.DataFrame(all_records)
+    # df = pd.DataFrame(all_records)
+    df = pd.read_csv(INPUT_DIR / "Supabase Snippet Economics news.csv")
 
     df = df.drop_duplicates(subset=["url"], keep="first")
     
