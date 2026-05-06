@@ -1,4 +1,5 @@
 import argparse
+import sys
 import pandas as pd
 from darts import TimeSeries, concatenate
 from darts.dataprocessing.transformers import MissingValuesFiller
@@ -6,6 +7,11 @@ from pathlib import Path
 import pickle
 import warnings
 warnings.filterwarnings("ignore")
+
+# --- resolve project root & import config ---
+ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT))
+from config import Dirs, Files
 
 
 def load_indicator(filepath, value_col, rename, freq="MS", resample_method=None):
@@ -220,22 +226,22 @@ def main():
     parser.add_argument(
         "--mode",
         choices=["sentiment_only", "full"],
-        default="sentiment_only",
+        default="full",
         help="sentiment_only = use sentiment features only; full = add other indicators too",
     )
     parser.add_argument(
         "--features",
-        default="data/4_absa_features/aspect_monthly_features.csv",
+        default=str(Files.ASPECT_FEATURES),
         help="Path to monthly sentiment feature CSV",
     )
     parser.add_argument(
         "--output",
-        default="data/2024-2025.pkl",
-        help="Output pickle path",
+        default=str(Files.AVG_SENT_INDI).replace(".csv", ".pkl"),
+        help="Output pickle path (CSV will also be saved alongside)",
     )
     args = parser.parse_args()
 
-    indicators_dir = Path("data/indicators")
+    indicators_dir = Dirs.INDICATORS
     features_path = Path(args.features)
     output_path = Path(args.output)
 
@@ -256,6 +262,14 @@ def main():
 
     print("\n### Step 4: Saving ###")
     save_dataset(cci_final, covariates_final, output_path)
+
+    # Also save as avg_sent_indi.csv (the file that backtest.py reads)
+    csv_path = Files.AVG_SENT_INDI
+    combined_df = pd.concat(
+        [cci_final.to_dataframe(copy=True), covariates_final.to_dataframe(copy=True)], axis=1
+    )
+    combined_df.to_csv(csv_path)
+    print(f"Saved training dataset: {csv_path}")
 
     print("\n" + "=" * 60)
     print("Dataset Creation Complete")

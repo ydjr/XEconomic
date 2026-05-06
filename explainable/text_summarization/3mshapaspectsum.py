@@ -144,6 +144,7 @@
 
 
 # this pick top3 wo considreation of same evidence aspect. == can be same evidence aspect
+import sys
 import pandas as pd
 import os
 import requests
@@ -151,19 +152,25 @@ import time
 from tqdm import tqdm
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
+from pathlib import Path
+
+# ─── resolve project root & import config ───
+_ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(_ROOT))
+from config import Dirs, Ollama as OllamaCfg, Pipeline as PipelineCfg
 
 # ==========================================
 # CONFIGURATION
 # ==========================================
 CONFIG = {
-    "aspect_path": r"D:\ICT\senior_project\code\text_summarization\aspect_summaries\llama3.1-2025\aspect_summaries_2025.csv",
-    "shap_base_dir": r"D:\ICT\senior_project\code\shap\shap_result", 
-    "output_dir": r"D:\ICT\senior_project\code\text_summarization\3m_shap-aspect_summary\llama3.1",
-    "start_month": "2025-07", 
-    "end_month": "2025-08",
+    "aspect_path": str(Dirs.TEXT_SUM / "aspect_summaries.csv"),
+    "shap_base_dir": str(Dirs.SHAP_RESULT),
+    "output_dir": str(Dirs.TEXT_SUM / "3m_summary_output"),
+    "start_month": PipelineCfg.START_MONTH,
+    "end_month": PipelineCfg.END_MONTH,
     "top_k": 3,
-    "model_name": "llama3.1:8b",
-    "ollama_url": "http://localhost:11434/api/generate",
+    "model_name": OllamaCfg.SUMMARY_MODEL,
+    "ollama_url": OllamaCfg.URL,
 }
 
 # Mapping keywords for the new lagged feature names

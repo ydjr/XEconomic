@@ -1,4 +1,5 @@
 import json
+import sys
 import warnings
 from pathlib import Path
 
@@ -10,23 +11,27 @@ from darts.models import XGBModel, LightGBMModel, RandomForestModel
 
 warnings.filterwarnings("ignore")
 
+# ─── resolve project root & import config ───
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+from config import Dirs, Files, Pipeline as PipelineCfg
+
 # =========================
 # CONFIG
 # =========================
-BASE_DIR = Path(__file__).resolve().parents[1]
-DATA_CSV = BASE_DIR / "data" / "avg_sent_indi.csv"
+DATA_CSV = Files.AVG_SENT_INDI
 
-ART_DIR = BASE_DIR / "artifacts" / "backtest"
-MODELS_DIR = BASE_DIR / "models" / "backtest"
+ART_DIR = Dirs.BACKTEST_ART
+MODELS_DIR = Dirs.BACKTEST_MDL
 ART_DIR.mkdir(parents=True, exist_ok=True)
 MODELS_DIR.mkdir(parents=True, exist_ok=True)
 
-DATE_COL = "date"
-TARGET_COL = "cci_overall"
+DATE_COL = PipelineCfg.DATE_COL
+TARGET_COL = PipelineCfg.TARGET_COL
 
-FORECAST_HORIZON = 1
-STRIDE = 1
-START = 0.65
+FORECAST_HORIZON = PipelineCfg.FORECAST_HORIZON
+STRIDE = PipelineCfg.STRIDE
+START = PipelineCfg.BACKTEST_START
 SHOW_WARNINGS = False
 
 

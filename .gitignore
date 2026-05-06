@@ -34,3 +34,6 @@ THSarabun.ttf
 
 package-lock.json
 package.json
+
+# Pipeline logs
+logs/

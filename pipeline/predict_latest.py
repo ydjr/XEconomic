@@ -1,23 +1,35 @@
+import sys
+from pathlib import Path
+
 import pandas as pd
 from darts import TimeSeries
 from darts.models import XGBModel
 from darts.explainability.shap_explainer import ShapExplainer
 
+# ─── resolve project root & import config ───
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+from config import Dirs, Files, Pipeline
+
 # ======================
 # LOAD DATA
 # ======================
-df = pd.read_csv("data/avg_sent_indi.csv")
-df["date"] = pd.to_datetime(df["date"])
-df = df.sort_values("date")
+df = pd.read_csv(Files.AVG_SENT_INDI)
+df[Pipeline.DATE_COL] = pd.to_datetime(df[Pipeline.DATE_COL])
+df = df.sort_values(Pipeline.DATE_COL)
 
-target = TimeSeries.from_dataframe(df, time_col="date", value_cols="cci_overall", freq="MS")
-cov_cols = [c for c in df.columns if c not in ["date", "cci_overall"]]
-past_cov = TimeSeries.from_dataframe(df, time_col="date", value_cols=cov_cols, freq="MS")
+target = TimeSeries.from_dataframe(
+    df, time_col=Pipeline.DATE_COL, value_cols=Pipeline.TARGET_COL, freq="MS"
+)
+cov_cols = [c for c in df.columns if c not in [Pipeline.DATE_COL, Pipeline.TARGET_COL]]
+past_cov = TimeSeries.from_dataframe(
+    df, time_col=Pipeline.DATE_COL, value_cols=cov_cols, freq="MS"
+)
 
 # ======================
 # LOAD MODEL + PREDICT
 # ======================
-model = XGBModel.load("models/backtest/xgb_weights.pkl")
+model = XGBModel.load(str(Files.XGB_WEIGHTS))
 
 forecast = model.predict(
     n=1,
@@ -29,8 +41,9 @@ pred_df = forecast.to_dataframe().reset_index()
 pred_df.columns = ["date", "cci_pred"]
 print(pred_df)
 
-pred_df.to_csv("artifacts/pred_latest.csv", index=False)
-print("Saved artifacts/pred_latest.csv")
+Dirs.ARTIFACTS.mkdir(parents=True, exist_ok=True)
+pred_df.to_csv(Files.PRED_LATEST_CSV, index=False)
+print("Saved", Files.PRED_LATEST_CSV)
 
 # ======================
 # SHAP
@@ -54,8 +67,8 @@ shap_df = shap_ts.to_dataframe()
 # save full shap (with date column)
 shap_out = shap_df.copy()
 shap_out.insert(0, "date", shap_out.index.to_period("M").astype(str))
-shap_out.to_csv("artifacts/shap_h1.csv", index=False)
-print("Saved artifacts/shap_h1.csv")
+shap_out.to_csv(Files.SHAP_H1_CSV, index=False)
+print("Saved", Files.SHAP_H1_CSV)
 
 # ======================
 # RANK LATEST
@@ -70,6 +83,6 @@ rank_df = (
 rank_df.columns = ["feature", "shap_importance"]
 rank_df["shap_value"] = last_shap[rank_df["feature"]].values
 
-rank_df.to_csv("artifacts/shap_predicted_month_rank.csv", index=False)
-print("Saved artifacts/shap_predicted_month_rank.csv")
+rank_df.to_csv(Files.SHAP_RANK_CSV, index=False)
+print("Saved", Files.SHAP_RANK_CSV)
 print(rank_df.head(10))

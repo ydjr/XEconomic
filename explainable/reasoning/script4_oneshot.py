@@ -1,5 +1,6 @@
 
 import re
+import sys
 import time
 import requests
 import pandas as pd
@@ -7,28 +8,33 @@ from pathlib import Path
 from tqdm import tqdm
 from datetime import datetime
 
+# ─── resolve project root & import config ───
+_ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(_ROOT))
+from config import Dirs, Files, Ollama as OllamaCfg, Pipeline as PipelineCfg
+
 # ==========================================
 # CONFIG
 # ==========================================
 
-SUMMARY_3M_PATH = Path(r"/home/xecon/sp2025/SP2025-SeniorProject/text_summarization/3m_summary/gemma2_27b/3m_summary_2024-01_to_2025-08.csv")
-PRED_PATH       = Path(r"/home/xecon/sp2025/SP2025-SeniorProject/forecasted_value/pred_direction.csv")
-OUTPUT_DIR = Path(r"/home/xecon/sp2025/SP2025-SeniorProject/reasoning/reasoning/oneshot_results/gemma2_27b/bulletver")
+SUMMARY_3M_PATH = Dirs.TEXT_SUM / "3m_summary_output" / f"3m_summary_{PipelineCfg.START_MONTH}_to_{PipelineCfg.END_MONTH}.csv"
+PRED_PATH       = Files.PRED_DIRECTION
+OUTPUT_DIR      = Dirs.REASONING / "oneshot_results"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
-START_MONTH = "2024-01"
-END_MONTH   = "2025-08"
+START_MONTH = PipelineCfg.START_MONTH
+END_MONTH   = PipelineCfg.END_MONTH
 
 OUTPUT_CSV  = OUTPUT_DIR / f"reasoning_{START_MONTH}_to_{END_MONTH}.csv"
 OUTPUT_JSON = OUTPUT_DIR / f"reasoning_{START_MONTH}_to_{END_MONTH}.json"
 
 # Ollama
-OLLAMA_URL        = "http://localhost:11434/api/generate"
-MODEL_NAME        = "gemma2:27b"
-MAX_RETRIES       = 2
+OLLAMA_URL        = OllamaCfg.URL
+MODEL_NAME        = OllamaCfg.REASON_MODEL
+MAX_RETRIES       = OllamaCfg.MAX_RETRIES
 RETRY_SLEEP       = 6
 MAX_OUTPUT_TOKENS = 700
-OLLAMA_TIMEOUT    = 360
+OLLAMA_TIMEOUT    = OllamaCfg.TIMEOUT
 
 # ==========================================
 # INDICATOR DEFINITIONS

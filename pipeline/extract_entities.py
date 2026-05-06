@@ -207,11 +207,11 @@ def build_entity_freq(news_rows):
 
 
 def main():
-    print(f"📰 อ่านข่าวจาก {CSV_PATH}")
+    print(f"[*] Reading news from {CSV_PATH}")
     news = load_news(CSV_PATH)
-    print(f"   พบ {len(news)} ข่าว")
+    print(f"    Found {len(news)} news")
 
-    print("🔍 กำลังดึง บุคคล/กลุ่มคน/องค์กร...")
+    print("[*] Extracting People/Groups...")
     counts = build_entity_freq(news)
 
     # filter by min frequency
@@ -227,8 +227,8 @@ def main():
     with open(OUTPUT_PATH, "w", encoding="utf-8") as f:
         json.dump(result, f, ensure_ascii=False, indent=2)
 
-    print(f"✅ บันทึก {len(result)} entities ที่: {OUTPUT_PATH}")
-    print(f"\n📊 Top 20:")
+    print(f"[OK] Saved {len(result)} entities to: {OUTPUT_PATH}")
+    print(f"\n[*] Top 20:")
     for i, item in enumerate(result[:20], 1):
         print(f"   {i:2d}. {item['name']:25s}  count={item['count']}")
 

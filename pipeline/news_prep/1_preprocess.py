@@ -1,18 +1,21 @@
 import json
 import re
+import sys
 from pathlib import Path
 from datetime import datetime
 import pandas as pd
 from pythainlp.util import normalize
 
+# ─── resolve project root & import config ───
+ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT))
+from config import Dirs
 
 # =====================
 # Config
 # =====================
-BASE_DIR = Path(__file__).resolve().parents[1]
-DATA_DIR = BASE_DIR / "data"
-INPUT_DIR = DATA_DIR / "news_sum"
-OUTPUT_DIR = DATA_DIR / "1_cleaned_news"
+INPUT_DIR = Dirs.NEWS_SUM
+OUTPUT_DIR = Dirs.CLEANED_NEWS
 MIN_CHAR_LEN = 300
 
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)

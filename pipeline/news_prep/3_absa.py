@@ -2,23 +2,30 @@ import csv
 import json
 import os
 import re
+import sys
 import time
 from tqdm import tqdm
 from dataclasses import dataclass
 from typing import Dict, Any, Optional, List
 import requests
+from pathlib import Path
+
+# ─── resolve project root & import config ───
+ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT))
+from config import Dirs, Ollama as OllamaCfg
 
 # ========================================
 # CONFIGURATION
 # ========================================
-INPUT_CSV = r"D:\ICT\senior_project\code\sentiment\outputs_thai2\cci_2024.csv"
-OUTPUT_DIR = r"D:\ICT\senior_project\code\sentiment\outputs_thai2\cci_2024_results"
+INPUT_CSV = str(Dirs.PIPELINE_DATA / "2_news_cci_r.csv")
+OUTPUT_DIR = str(Dirs.PIPELINE_DATA / "3_absa_results")
 
 # Ollama Settings
-OLLAMA_URL = "http://localhost:11434/api/generate"
-MODEL_NAME = "llama3.1:8b"
-TEMPERATURE = 0.1
-MAX_RETRIES = 3
+OLLAMA_URL = OllamaCfg.URL
+MODEL_NAME = OllamaCfg.ABSA_MODEL
+TEMPERATURE = OllamaCfg.TEMPERATURE
+MAX_RETRIES = OllamaCfg.MAX_RETRIES
 
 # Processing Limits
 PROCESS_LIMIT = None  # Set to a number (e.g., 50) for testing

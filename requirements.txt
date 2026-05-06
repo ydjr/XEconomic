@@ -1,8 +1,31 @@
+# ─── Core ───
 fastapi
 uvicorn
+python-multipart
+
+# ─── Data ───
 pandas
 numpy
-python-multipart
+
+# ─── ML / Time Series ───
 darts
+xgboost
+lightgbm
+scikit-learn
+shap
+
+# ─── NLP ───
 pythainlp
 transformers
+torch
+
+# ─── Visualization ───
+matplotlib
+wordcloud
+
+# ─── HTTP / LLM ───
+requests
+tqdm
+
+# ─── Date utils ───
+python-dateutil

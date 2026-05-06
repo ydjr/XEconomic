@@ -1,3 +1,4 @@
+import sys
 import numpy as np
 import pandas as pd
 import torch
@@ -5,18 +6,33 @@ from pathlib import Path
 from tqdm import tqdm
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 
+# ─── resolve project root & import config ───
+ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT))
+from config import Dirs, Files, WangchanBERTa as WBCfg
+
 # =====================
 # CONFIG
 # =====================
-MODEL_DIR = "../wangchanberta_cls/best_model"
-BASE_DIR = Path(__file__).resolve().parents[1]
-DATA_DIR = BASE_DIR / "data"
-INPUT_CSV = DATA_DIR /  "1_cleaned_news/all_news.csv"
-OUTPUT_CSV = DATA_DIR / "2_news_cci_r.csv"
+# Resolve model directory: check primary -> legacy -> HuggingFace base
+def resolve_model_dir():
+    if WBCfg.MODEL_DIR.exists():
+        print(f"Using model: {WBCfg.MODEL_DIR}")
+        return str(WBCfg.MODEL_DIR)
+    if WBCfg.MODEL_DIR_LEGACY.exists():
+        print(f"Using legacy model: {WBCfg.MODEL_DIR_LEGACY}")
+        return str(WBCfg.MODEL_DIR_LEGACY)
+    print(f"[!] Fine-tuned model not found. Using HuggingFace base: {WBCfg.HF_BASE_MODEL}")
+    print(f"    (For best results, place fine-tuned model at: {WBCfg.MODEL_DIR})")
+    return WBCfg.HF_BASE_MODEL
 
-TEXT_COL = "summary"
-MAX_LENGTH = 512
-BATCH_SIZE = 16
+MODEL_DIR  = resolve_model_dir()
+INPUT_CSV  = Files.CLEANED_NEWS_CSV
+OUTPUT_CSV = Files.RELEVANCE_CSV
+
+TEXT_COL   = "summary"
+MAX_LENGTH = WBCfg.MAX_LENGTH
+BATCH_SIZE = WBCfg.BATCH_SIZE
 
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 

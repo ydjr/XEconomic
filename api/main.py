@@ -325,7 +325,7 @@ def dashboard_news(limit: int = Query(2000, ge=1, le=20000)):
         if c not in df.columns:
             return {"data": []}
 
-    df["date"] = pd.to_datetime(df["published_at"], errors="coerce")
+    df["date"] = pd.to_datetime(df["published_at"], dayfirst=True, errors="coerce")
     df = df.dropna(subset=["date"])
     df = df.sort_values("date")
 

@@ -1,0 +1,95 @@
+# XEconomic Monthly Pipeline
+# ===========================
+# Runs non-LLM steps: fetch -> preprocess -> train -> predict -> SHAP
+# Schedule: 5th of every month at 02:00 UTC
+# LLM steps (ABSA, reasoning) run on Kaggle GPU separately
+
+name: Monthly Pipeline
+
+on:
+  schedule:
+    - cron: '0 2 5 * *'  # 5th of every month at 02:00 UTC
+  workflow_dispatch:       # Allow manual trigger
+    inputs:
+      phase:
+        description: 'Pipeline phase to run'
+        required: false
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - fetch
+          - news
+          - train
+          - assets
+      force:
+        description: 'Force re-run (ignore existing outputs)'
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  pipeline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: Run environment check
+        run: python run_pipeline.py --check
+
+      - name: Run pipeline (scheduled)
+        if: github.event_name == 'schedule'
+        run: python run_pipeline.py --all --skip-llm --force
+
+      - name: Run pipeline (manual)
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          PHASE="${{ github.event.inputs.phase }}"
+          FORCE="${{ github.event.inputs.force }}"
+
+          ARGS=""
+          if [ "$PHASE" = "all" ]; then
+            ARGS="--all --skip-llm"
+          else
+            ARGS="--phase $PHASE"
+          fi
+
+          if [ "$FORCE" = "true" ]; then
+            ARGS="$ARGS --force"
+          fi
+
+          python run_pipeline.py $ARGS
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pipeline-artifacts-${{ github.run_number }}
+          path: |
+            artifacts/
+            data/avg_sent_indi.csv
+            models/
+            logs/
+          retention-days: 30
+
+      - name: Commit updated data
+        if: success()
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add artifacts/ data/avg_sent_indi.csv models/ logs/
+          git diff --staged --quiet || git commit -m "chore: monthly pipeline update $(date +%Y-%m)"
+          git push

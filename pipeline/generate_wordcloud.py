@@ -201,28 +201,28 @@ def _find_thai_font():
     for p in candidates:
         if os.path.exists(p):
             return p
-    print("⚠️  ไม่พบ Thai font")
+    print("[!] No Thai font found")
     return None
 
 
 def generate(csv_path=CSV_PATH, output_path=OUTPUT_PATH):
-    print(f"📰 อ่านข่าวจาก {csv_path}")
+    print(f"[*] Reading news from {csv_path}")
     news = load_news(csv_path)
-    print(f"   พบ {len(news)} ข่าว")
+    print(f"    Found {len(news)} news")
 
     stops = thai_stopwords() | EXTRA_STOPS
 
-    print("🔤 ตัดคำ + คำนวณ weight...")
+    print("[*] Tokenizing & calculating weight...")
     scores = build_freq(news, stops)
 
     # top N
     top = dict(sorted(scores.items(), key=lambda x: x[1], reverse=True)[:TOP_N_WORDS])
 
     if not top:
-        print("❌ ไม่พบคำ")
+        print("[!] No words found")
         return
 
-    print(f"☁️  สร้าง word cloud ({len(top)} คำ)...")
+    print(f"[*] Generating word cloud ({len(top)} words)...")
 
     wc = WordCloud(
         font_path=_find_thai_font(),
@@ -249,9 +249,9 @@ def generate(csv_path=CSV_PATH, output_path=OUTPUT_PATH):
                 facecolor="white", pad_inches=0.05)
     plt.close(fig)
 
-    print(f"✅ บันทึกที่: {output_path}")
+    print(f"[OK] Saved to: {output_path}")
     # print top 20 for debugging
-    print("\n📊 Top 20 คำ:")
+    print("\n[*] Top 20 words:")
     for i, (w, s) in enumerate(sorted(top.items(), key=lambda x: -x[1])[:20], 1):
         print(f"   {i:2d}. {w:20s}  score={s:.2f}")
 

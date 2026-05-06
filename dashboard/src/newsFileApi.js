@@ -26,7 +26,15 @@ function inferSourceFromUrl(url) {
 }
 
 function mapNewsRow(r) {
-  const date = r.published_at ? String(r.published_at).slice(0, 10) : (r.date ? String(r.date).slice(0, 10) : "")
+  let dateRaw = String(r.published_at || r.date || "");
+  let date = dateRaw.slice(0, 10);
+  if (dateRaw.includes("/")) {
+    const parts = dateRaw.split(" ")[0].split("/");
+    if (parts.length === 3 && parts[2].length === 4) {
+      date = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+    }
+  }
+
   const impactType = String(r.impact_type || r.impactType || "Neutral").trim()
   const effectType = String(r.effect_type || r.effectType || "").trim()
   const aspect = String(r.Aspect || r.aspect || "Other").trim()

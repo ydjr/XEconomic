@@ -1,14 +1,17 @@
+import sys
 import pandas as pd
 from pathlib import Path
 
-BASE_DIR = Path(__file__).resolve().parents[2]
-DATA_DIR = BASE_DIR / "data"
+# ─── resolve project root & import config ───
+ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT))
+from config import Dirs, Files
 
-IN_ABSA = DATA_DIR / "absa_2024-2025.csv"
+IN_ABSA = Dirs.PIPELINE_DATA / "3_absa_results"   # directory of monthly CSVs from step 3
 
-OUT_DIR = DATA_DIR / "4_absa_features"
+OUT_DIR = Dirs.ABSA_FEAT
 OUT_DIR.mkdir(parents=True, exist_ok=True)
-OUT_CSV = OUT_DIR / "aspect_monthly_features.csv"
+OUT_CSV = Files.ASPECT_FEATURES
 
 DATE_COL = "published_at"
 ASPECT_COL = "Aspect"
@@ -20,12 +23,21 @@ def month_start(s):
 
 
 def main():
-    df = pd.read_csv(IN_ABSA)
+    # IN_ABSA can be a directory (of monthly CSVs from step 3) or a single CSV
+    if IN_ABSA.is_dir():
+        csv_files = sorted(IN_ABSA.glob("*.csv"))
+        if not csv_files:
+            raise FileNotFoundError(f"No CSV files found in {IN_ABSA}")
+        df = pd.concat([pd.read_csv(f) for f in csv_files], ignore_index=True)
+        print(f"Loaded {len(csv_files)} CSV files from {IN_ABSA}")
+    else:
+        df = pd.read_csv(IN_ABSA)
+        print(f"Loaded {IN_ABSA}")
 
     # Validate required columns
     for c in [DATE_COL, ASPECT_COL, SENTIMENT_SCORE_COL]:
         if c not in df.columns:
-            raise ValueError(f"Missing column '{c}' in {IN_ABSA}. Found: {df.columns.tolist()}")
+            raise ValueError(f"Missing column '{c}'. Found: {df.columns.tolist()}")
 
     # Clean
     df = df.copy()
