@@ -7,6 +7,9 @@
 name: Monthly Pipeline
 
 on:
+  # push:
+  #   branches:
+  #     - jeans/auto-pipeline
   schedule:
     - cron: '0 2 5 * *'  # 5th of every month at 02:00 UTC
   workflow_dispatch:       # Allow manual trigger
