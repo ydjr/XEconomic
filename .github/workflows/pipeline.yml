@@ -53,8 +53,8 @@ jobs:
       - name: Run environment check
         run: python run_pipeline.py --check
 
-      - name: Run pipeline (scheduled)
-        if: github.event_name == 'schedule'
+      - name: Run pipeline (scheduled or push)
+        if: github.event_name == 'schedule' || github.event_name == 'push'
         run: python run_pipeline.py --all --skip-llm --force
 
       - name: Run pipeline (manual)
