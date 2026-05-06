@@ -7,9 +7,6 @@
 name: Monthly Pipeline
 
 on:
-  push:
-    branches:
-      - jeans/auto-pipeline
   schedule:
     - cron: '0 2 5 * *'  # 5th of every month at 02:00 UTC
   workflow_dispatch:       # Allow manual trigger
@@ -36,6 +33,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 60
 
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -53,8 +54,8 @@ jobs:
       - name: Run environment check
         run: python run_pipeline.py --check
 
-      - name: Run pipeline (scheduled or push)
-        if: github.event_name == 'schedule' || github.event_name == 'push'
+      - name: Run pipeline (scheduled)
+        if: github.event_name == 'schedule'
         run: python run_pipeline.py --all --skip-llm --force
 
       - name: Run pipeline (manual)
