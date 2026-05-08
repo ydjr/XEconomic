@@ -44,15 +44,15 @@ def fetch_page(offset: int, limit: int, start_date: str, end_date: str) -> tuple
         "order": "published_at.asc",
         "offset": offset,
         "limit": limit,
-        "published_at": f"gte.{start_date}",
     }
-    if end_date:
+    
+    if start_date and end_date:
+        # Use PostgREST 'and' syntax for multiple conditions on the same column
+        params["and"] = f"(published_at.gte.{start_date},published_at.lte.{end_date})"
+    elif start_date:
         params["published_at"] = f"gte.{start_date}"
-        # Supabase allows multiple filters with same key via and syntax
-        url = f"{BASE_URL}?select={params['select']}&order={params['order']}&offset={offset}&limit={limit}&published_at=gte.{start_date}&published_at=lte.{end_date}"
-        resp = requests.get(url, headers=HEADERS, timeout=30)
-    else:
-        resp = requests.get(BASE_URL, params=params, headers=HEADERS, timeout=30)
+
+    resp = requests.get(BASE_URL, params=params, headers=HEADERS, timeout=30)
 
     resp.raise_for_status()
 
