@@ -107,12 +107,14 @@ class Ollama:
     TIMEOUT       = 360
 
 
+import os
+
 # ─────────────────────────────────────────────
 # SUPABASE (News Database)
 # ─────────────────────────────────────────────
 class Supabase:
-    URL      = "https://ahsnxgiqznzcjppzgctg.supabase.co"
-    ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFoc254Z2lxem56Y2pwcHpnY3RnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc3MDQ0NzksImV4cCI6MjA4MzI4MDQ3OX0.i2rXE_neXNw_8BfR-XYaf8k-4HaE8a62MqB97x8KWZ0"
+    URL      = os.getenv("SUPABASE_URL", "https://ahsnxgiqznzcjppzgctg.supabase.co")
+    ANON_KEY = os.getenv("SUPABASE_KEY", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFoc254Z2lxem56Y2pwcHpnY3RnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc3MDQ0NzksImV4cCI6MjA4MzI4MDQ3OX0.i2rXE_neXNw_8BfR-XYaf8k-4HaE8a62MqB97x8KWZ0")
     TABLE    = "articles"
     PAGE_SIZE = 1000  # rows per API call (Supabase limit)
 
