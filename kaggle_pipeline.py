@@ -31,9 +31,11 @@ import time
 # ===========================================
 # CONFIGURATION
 # ===========================================
-REPO_URL = "https://github.com/YOUR_USERNAME/XEconomic.git"  # UPDATE THIS
+# For private repos, use a GitHub Token in Kaggle Secrets
+# Example: "https://${GITHUB_TOKEN}@github.com/Jean-ktn/XEconomic-Auto.git"
+REPO_URL = "https://github.com/Jean-ktn/XEconomic-Auto.git"
 BRANCH = "main"
-WORK_DIR = "/kaggle/working/XEconomic"
+WORK_DIR = "/kaggle/working/XEconomic-Auto"
 
 # Which phases to run on Kaggle
 # Option A: LLM steps only (ABSA, summarization, reasoning)
@@ -83,7 +85,8 @@ if not SKIP_LLM:
     
     # Start Ollama server in background
     subprocess.Popen(
-        ["ollama", "serve"],
+        "ollama serve",
+        shell=True,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
     )
