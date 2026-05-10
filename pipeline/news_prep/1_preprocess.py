@@ -110,8 +110,6 @@ def process_file(path):
 
 
 def main():
-    # for debug
-    print("Script base dir:", BASE_DIR)
     print("CWD:", Path.cwd())
     print("INPUT_DIR exists:", INPUT_DIR.exists())
     print("Files:", list(INPUT_DIR.glob("*")))
