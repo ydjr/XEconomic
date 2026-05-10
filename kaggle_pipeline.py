@@ -38,8 +38,8 @@ BRANCH = "main"
 WORK_DIR = "/kaggle/working/XEconomic-Auto"
 
 # Which phases to run on Kaggle
-# Option A: Fetch raw data, then LLM steps (ABSA, summarization, reasoning)
-PHASES = ["fetch", "news", "explain"]
+# Option A: LLM steps only (ABSA, summarization, reasoning)
+PHASES = ["news", "explain"]
 SKIP_LLM = False
 
 # Option B: GPU steps only (WangchanBERTa relevance filter)
