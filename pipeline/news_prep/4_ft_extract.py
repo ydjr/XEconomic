@@ -74,6 +74,7 @@ def main():
         try:
             old_wide = pd.read_csv(OUT_CSV)
             old_wide["date"] = pd.to_datetime(old_wide["date"])
+            wide["date"] = pd.to_datetime(wide["date"])
             
             # Combine, keeping the new data for any overlapping dates
             combined = pd.concat([old_wide[~old_wide["date"].isin(wide["date"])], wide], ignore_index=True)
@@ -81,6 +82,8 @@ def main():
         except Exception as e:
             print(f"Warning: Could not merge with existing {OUT_CSV}: {e}")
 
+    # Format date back to string YYYY-MM for saving
+    wide["date"] = wide["date"].dt.strftime("%Y-%m")
     wide.to_csv(OUT_CSV, index=False, encoding="utf-8-sig")
 
     print("Saved:", OUT_CSV)

@@ -69,7 +69,7 @@ print("=" * 60)
 if not os.path.exists(WORK_DIR):
     run(f"git clone --depth 1 -b {BRANCH} {REPO_URL} {WORK_DIR}")
 else:
-    run(f"git pull", cwd=WORK_DIR)
+    run(f"git reset --hard HEAD && git pull", cwd=WORK_DIR)
 
 # Step 2: Install dependencies
 print("\nInstalling Python dependencies...")
