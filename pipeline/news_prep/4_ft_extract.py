@@ -69,6 +69,18 @@ def main():
 
     wide = wide.reset_index().sort_values("date")
 
+    # MERGE with existing historical features to prevent overwriting
+    if OUT_CSV.exists():
+        try:
+            old_wide = pd.read_csv(OUT_CSV)
+            old_wide["date"] = pd.to_datetime(old_wide["date"])
+            
+            # Combine, keeping the new data for any overlapping dates
+            combined = pd.concat([old_wide[~old_wide["date"].isin(wide["date"])], wide], ignore_index=True)
+            wide = combined.sort_values("date")
+        except Exception as e:
+            print(f"Warning: Could not merge with existing {OUT_CSV}: {e}")
+
     wide.to_csv(OUT_CSV, index=False, encoding="utf-8-sig")
 
     print("Saved:", OUT_CSV)
