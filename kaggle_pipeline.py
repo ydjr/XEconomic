@@ -82,7 +82,7 @@ if not SKIP_LLM:
     print("=" * 60)
     
     # Install zstd which is required by new Ollama installer
-    run("apt-get update && apt-get install -y zstd")
+    run("sudo apt-get update && sudo apt-get install -y zstd")
     run("curl -fsSL https://ollama.com/install.sh | sh")
     
     # Start Ollama server in background
