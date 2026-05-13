@@ -143,9 +143,10 @@ for src in [
             shutil.copy2(src, dst)
         print(f"  Saved: {dst}")
 
-# Optional: Push results back to GitHub
-# run(f"git add -A && git commit -m 'kaggle: monthly update' && git push", cwd=WORK_DIR)
-
+# Push results back to GitHub (Acts as our DB)
+run("git config user.email 'kaggle-bot@example.com'", cwd=WORK_DIR)
+run("git config user.name 'Kaggle Bot'", cwd=WORK_DIR)
+run("git add -A && git commit -m 'kaggle: automated monthly update' && git push", cwd=WORK_DIR)
 print("\n" + "=" * 60)
 print("DONE!")
 print("=" * 60)

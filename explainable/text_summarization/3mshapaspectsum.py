@@ -163,7 +163,7 @@ from config import Dirs, Ollama as OllamaCfg, Pipeline as PipelineCfg
 # CONFIGURATION
 # ==========================================
 CONFIG = {
-    "aspect_path": str(Dirs.TEXT_SUM / "aspect_summaries.csv"),
+    "aspect_path": str(Dirs.PUBLIC_DATA / "news_sentiment_summary_all.csv"),
     "shap_base_dir": str(Dirs.SHAP_RESULT),
     "output_dir": str(Dirs.TEXT_SUM / "3m_summary_output"),
     "start_month": PipelineCfg.START_MONTH,
@@ -250,7 +250,7 @@ def generate_prompt(feature, shap_value, target_aspect, combined_texts):
 
 def main():
     df_aspect = pd.read_csv(CONFIG["aspect_path"])
-    df_aspect['Month'] = pd.to_datetime(df_aspect['Month'])
+    df_aspect['Month'] = pd.to_datetime(df_aspect['published_at']).dt.tz_localize(None)
     
     start_dt = datetime.strptime(f"{CONFIG['start_month']}-01", "%Y-%m-%d")
     end_dt = datetime.strptime(f"{CONFIG['end_month']}-01", "%Y-%m-%d")
@@ -278,13 +278,13 @@ def main():
             print(f"  > Feature: {feature} | Aspect: {target_aspect}")
             
             start_window = current_month - relativedelta(months=2)
-            mask = (df_aspect['Month'] >= start_window) & (df_aspect['Month'] <= current_month) & (df_aspect['Aspect'] == target_aspect)
+            mask = (df_aspect['Month'] >= start_window) & (df_aspect['Month'] <= current_month) & (df_aspect['aspects'] == target_aspect)
             window_data = df_aspect.loc[mask].sort_values('Month')
 
             if len(window_data) == 0:
                 summary_3m = f"ไม่พบข้อมูลข่าวสารที่เกี่ยวข้องกับ {target_aspect} ในช่วง 3 เดือนที่ผ่านมา"
             else:
-                combined_texts = "\n\n".join(window_data['Aspect_Summary_TH'].fillna('').tolist())
+                combined_texts = "\n\n".join(window_data['summary'].fillna('').tolist())
                 prompt = generate_prompt(feature, row['shap_value'], target_aspect, combined_texts)
                 summary_3m = call_ollama_with_retry(prompt)
                 
