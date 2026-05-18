@@ -3,7 +3,6 @@ import pandas as pd
 from darts import TimeSeries, concatenate
 from darts.dataprocessing.transformers import MissingValuesFiller
 from pathlib import Path
-import pickle
 import warnings
 warnings.filterwarnings("ignore")
 
@@ -216,8 +215,8 @@ def save_dataset(cci_ts, covariates_ts, output_path, save_csv=True):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--input", default="data/4_absa_features/aspect_monthly_features_newpf.csv")
-    parser.add_argument("--output", default="data/2011-2025_all.pkl")
+    parser.add_argument("--input", default="data/4_absa_features/aspect_monthly_features.csv")
+    parser.add_argument("--output", default="data/2017-2025.csv")
     args = parser.parse_args()
 
     indicators_dir = Path("data/indicators")
