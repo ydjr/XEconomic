@@ -1,9 +1,3 @@
-# # without embeddings (same as before)
-# python pipeline/news_prep/5_consolidate.py --mode full
-
-# # with embeddings
-# python pipeline/news_prep/5_consolidate.py --mode full --embeddings pca_2017-2026.csv --output data/2011-2026_wemb.pkl
-
 import argparse
 import pandas as pd
 from darts import TimeSeries, concatenate
@@ -158,26 +152,13 @@ def align_and_merge(cci_ts, indicators, sentiment_ts, emb_ts=None, mode="full"):
     sent_df = sent_df.reindex(full_idx).fillna(0)
     sentiment_aligned = TimeSeries.from_dataframe(sent_df, freq="MS")
 
-    # Align embeddings (NaN before 2017 → 0)
-    emb_aligned = None
-    if emb_ts is not None:
-        emb_df = emb_ts.slice(start_time, end_time).to_dataframe(copy=True)
-        emb_df = emb_df.reindex(full_idx).fillna(0)
-        emb_aligned = TimeSeries.from_dataframe(emb_df, freq="MS")
-
-    if mode == "sentiment_only":
-        parts = [sentiment_aligned]
-    else:
-        indicators_aligned = []
+    # Align indicators
+    indicators_aligned = []
         for ind in indicator_list:
             ind_df = ind.to_dataframe(copy=True).reindex(full_idx).ffill().bfill()
             indicators_aligned.append(TimeSeries.from_dataframe(ind_df, freq="MS"))
-        parts = indicators_aligned + [sentiment_aligned]
-
-    if emb_aligned is not None:
-        parts.append(emb_aligned)
-
-    covariates_aligned = concatenate(parts, axis=1)
+        
+    covariates_aligned = concatenate(indicators_aligned + [sentiment_aligned], axis=1)
 
     print(f"Target shape: {cci_aligned.values().shape}")
     print(f"Covariates shape: {covariates_aligned.values().shape}")
@@ -235,10 +216,8 @@ def save_dataset(cci_ts, covariates_ts, output_path, save_csv=True):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--mode", choices=["sentiment_only", "full"], default="sentiment_only")
     parser.add_argument("--input", default="data/4_absa_features/aspect_monthly_features_newpf.csv")
     parser.add_argument("--output", default="data/2011-2025_all.pkl")
-    parser.add_argument("--embeddings", default=None, help="Path to pca_2017-2026.csv (optional)")  # ← new
     args = parser.parse_args()
 
     indicators_dir = Path("data/indicators")
