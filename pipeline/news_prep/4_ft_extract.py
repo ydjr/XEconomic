@@ -10,7 +10,7 @@ IN_ABSA = DATA_DIR / "2017-2026.csv"
 # Output folder and file
 OUT_DIR = DATA_DIR / "4_absa_features"
 OUT_DIR.mkdir(parents=True, exist_ok=True)
-OUT_CSV = OUT_DIR / "aspect_monthly_features_pcafilter.csv"
+OUT_CSV = OUT_DIR / "aspect_monthly_features.csv"
 
 def analyze_and_pivot_sentiment(file_path, output_path):
     try:
