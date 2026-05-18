@@ -49,8 +49,8 @@ Open browser: http://localhost:5173
 
 
 ## 📂 Project Structure
-
-```text
+ 
+```
 XEconomic/
 │
 ├─ api/
@@ -70,28 +70,42 @@ XEconomic/
 │  ├─ src/
 │  │  ├─ assets/
 │  │  │  └─ cci-impact-wordcloud.png
-│  │  │
 │  │  ├─ api.js
 │  │  ├─ App.jsx
 │  │  ├─ index.css
 │  │  ├─ main.jsx
 │  │  ├─ newsFileApi.js
 │  │  ├─ newsSupabaseApi.js
-|  │  ├─ style.css
-|  │  └─ supabaseClient.js
+│  │  ├─ style.css
+│  │  └─ supabaseClient.js
 │  │
 │  └─ data/
 │     ├─ news_sentiment_summary_all.csv
 │     ├─ avg_sent_indi.csv
 │     └─ top_entities.json
 │
-├─ explainable/
-|
 ├─ models/
-│  └─ backtest/   
+│  └─ backtest/
 │
 ├─ pipeline/
-│  ├─ news_prep/
+│  ├─ 1_news_analysis/
+│  │  ├─ 1.preprocess_news.py
+│  │  ├─ 2.eachnews_StelleX.py
+│  │  ├─ 3.absa.py
+│  │  ├─ 4.ft_extract.py
+│  │  └─ 5.consolidate.py
+│  │
+│  ├─ 2_forecasting/
+│  │  ├─ 6.predict_latest.py
+│  │  └─ backtest.py
+│  │
+│  ├─ 3_explainable_ai/
+│  │  ├─ 7.monthly_summary_v2.py
+│  │  ├─ 8.3m_shap_aspect_summary_v3.py
+│  │  ├─ 9.script4_oneshot.py
+│  │  ├─ extract_entities.py
+│  │  └─ generate_wordcloud.py
+│  │
 │  ├─ backtest.py
 │  ├─ train.py
 │  ├─ predict_latest.py
@@ -100,4 +114,18 @@ XEconomic/
 │
 ├─ _field_check.json
 ├─ requirements.txt
-└─ README.md
+├─ README.md
+└─ PIPELINE.md
+```
+ 
+---
+ 
+## 🛠 Tech Stack
+ 
+| Layer | Technology |
+|---|---|
+| Frontend | React + Vite |
+| Backend | FastAPI |
+| Database | Supabase |
+| ML / Forecasting | Python (scikit-learn, XGBoost, Darts) |
+| Explainability | SHAP |
