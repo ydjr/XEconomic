@@ -15,7 +15,7 @@ INPUT_CSV = r"/home/xecon/sp2025/SP2025-SeniorProject/datapreprocessing/All3econ
 OUTPUT_DIR = r"/home/xecon/sp2025/SP2025-SeniorProject/sentiment/outputs_thai2/All3econnews2017_2026_full_sum_results/llama3.1_70b"
 OUTPUT_FILENAME = "2017-2026.csv"
 OLLAMA_URL = "http://localhost:11434/api/generate"
-MODEL_NAME = "llama3.1:70b"
+MODEL_NAME = "gemma2:27b"
 TEMPERATURE = 0.1
 MAX_RETRIES = 3
 

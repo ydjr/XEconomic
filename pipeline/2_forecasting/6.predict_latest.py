@@ -9,7 +9,7 @@ from darts.models import XGBModel
 from darts.metrics import mape
 from darts.explainability import ShapExplainer
 
-from backtest import make_series
+from pipeline.forecasting.backtest import make_series
 
 warnings.filterwarnings("ignore")
 
