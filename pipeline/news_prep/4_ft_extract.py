@@ -5,10 +5,7 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parents[2]
 DATA_DIR = BASE_DIR / "data"
 
-# Input file
-# IN_ABSA = DATA_DIR / "filter_pca1.csv"
-
-IN_ABSA = "filter_pca1.csv"
+IN_ABSA = DATA_DIR / "2017-2026.csv"
 
 # Output folder and file
 OUT_DIR = DATA_DIR / "4_absa_features"
@@ -27,11 +24,7 @@ def analyze_and_pivot_sentiment(file_path, output_path):
 
         # 3. Clean Aspects & FILTER OUT OTHERS
         df['Aspect'] = df['Aspect'].astype(str).str.strip()
-        
-        # --- ADDED FILTER LINE HERE ---
-        # This removes rows where aspect is 'Others' OR 'Other'
         df = df[~df['Aspect'].isin(['Others', 'Other'])]
-        # ------------------------------
 
         # 4. Create Wide Format (Pivot Table)
         pivot_df = df.pivot_table(
