@@ -1,5 +1,7 @@
+const BASE_URL = import.meta.env.VITE_API_URL || "";
+
 async function getJSON(url) {
-  const res = await fetch(url);
+  const res = await fetch(`${BASE_URL}${url}`);
   if (!res.ok) {
     const text = await res.text().catch(() => "");
     throw new Error(`${url} failed: ${res.status} ${text}`);
@@ -27,11 +29,15 @@ export async function getShap() {
   return getJSON(`/dashboard/shap`);
 }
 
+export function getWordcloud(limit = 120) {
+  return getJSON(`/dashboard/wordcloud?limit=${limit}`);
+}
+
 export function getAllExplain() {
   return getJSON("/dashboard/explain/all");
 }
 
 export async function getAllExplainEN() {
-  const res = await fetch("/dashboard/explain/all/en")
+  const res = await fetch(`${BASE_URL}/dashboard/explain/all/en`)
   return res.json()
 }

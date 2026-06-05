@@ -1,0 +1,618 @@
+[
+  {
+    "date": "2024-01",
+    "predicted": 57.03,
+    "direction": "Decreased from the previous month",
+    "top3_shap": [
+      "export_pastcov_lag-1",
+      "unemployment_rate_pastcov_lag-2",
+      "import_pastcov_lag-2"
+    ],
+    "intro": "The Consumer Confidence Index for January 2024 stood at 57.03 and is projected to decline from the previous month. This trend is attributed to several contributing factors, such as:",
+    "factors": [
+      {
+        "tag": "export_pastcov_lag-1",
+        "text": "The upward adjustment of the ex-factory price of sugar by 4 Baht per kilogram has necessitated a corresponding increase in domestic retail prices, causing significant hardship for the general public. Furthermore, this may adversely affect global demand for Thai agricultural products, as international consumers may shift toward more competitively priced alternatives, potentially leading to a decline in export revenues and overall economic confidence."
+      },
+      {
+        "tag": "unemployment_rate_pastcov_lag-2",
+        "text": "The illicit import of pork poses significant risks to consumers due to potential chemical residues and adversely affects swine producers. Furthermore, the prevalence of African Swine Fever (ASF), which has resulted in high livestock mortality, has driven an increase in pork prices. These shortages and rising costs exert pressure on consumer purchasing power and reduce spending capacity, potentially impacting aggregate household income—a critical factor influencing adjustments in the unemployment rate."
+      },
+      {
+        "tag": "import_pastcov_lag-2",
+        "text": "The conflict between Israel and Hamas has led to a surge in global oil prices due to concerns over fuel shortages. This price increase will result in higher production costs for Thai businesses and directly impact the value of imports and foreign costs (import), as Thailand relies heavily on fuel for production and logistics."
+      }
+    ],
+    "conclusion": "The upward adjustment of ex-mill sugar prices and the Israel-Hamas conflict have led to higher production costs and a decline in consumer purchasing power, resulting in a decrease in the Consumer Confidence Index from the previous month.",
+    "parse_ok": true,
+    "raw_reasoning": "[FACTOR1]การปรับขึ้นราคาหน้าโรงงานน้ำตาลทราย กก.ละ 4 บาท ส่งผลให้ราคาขายปลีกในประเทศต้องปรับขึ้นตาม ทำให้ประชาชนเดือดร้อนหนัก และอาจส่งผลกระทบต่อความต้องการสินค้าเกษตรไทยจากตลาดโลก เนื่องจากผู้บริโภคต่างประเทศอาจหันไปเลือกซื้อสินค้าจากคู่แข่งที่มีราคาถูกกว่า ซึ่งจะนำไปสู่การลดลงของรายได้จากการส่งออกและความเชื่อมั่นในเศรษฐกิจโดยรวม[/FACTOR1] [FACTOR2]การลักลอบนำหมูเถื่อนเข้ามาในประเทศส่งผลให้ผู้บริโภคเสี่ยงต่อสารตกค้างในเนื้อหมู และยังกระทบต่อเกษตรกรผู้เลี้ยงหมูเนื่องจากโรค ASF ทำให้หมูล้มตายจำนวนมาก ส่งผลให้เนื้อหมูปรับตัวสูงขึ้น การขาดแคลนและราคาเนื้อหมูที่เพิ่มสูงขึ้นจะกดดันกำลังซื้อของประชาชน ลดความสามารถในการใช้จ่าย และอาจส่งผลต่อรายได้ครัวเรือนโดยรวม ซึ่งเป็นปัจจัยสำคัญที่นำไปสู่การปรับตัวของอัตราการว่างงาน[/FACTOR2] [FACTOR3]สงครามระหว่างอิสราเอลและฮามาสส่งผลให้ราคาน้ำมันในตลาดโลกพุ่งสูงขึ้น เนื่องจากความกังวลต่อการขาดแคลนเชื้อเพลิง ราคาที่เพิ่มสูงขึ้นนี้จะนำไปสู่ต้นทุนการผลิตที่สูงขึ้นสำหรับธุรกิจไทย และส่งผลกระทบโดยตรงต่อมูลค่าการนำเข้าสินค้าและต้นทุนจากต่างประเทศ (import) เนื่องจากประเทศไทยต้องพึ่งพาน้ำมันเชื้อเพลิงในการผลิตและขนส่งสินค้า[/FACTOR3] [CONCLUSION]การปรับขึ้นราคาหน้าโรงงานน้ำตาลทราย และสงครามระหว่างอิสราเอลและฮามาส ส่งผลให้ต้นทุนการผลิตสูงขึ้น และกำลังซื้อของประชาชนลดลง ทำให้ดัชนีความเชื่อมั่นผู้บริโภค ลดลงจากเดือนก่อนหน้า[/CONCLUSION]"
+  },
+  {
+    "date": "2024-02",
+    "predicted": 57.82,
+    "direction": "Declined from the previous month",
+    "top3_shap": [
+      "export_pastcov_lag-1",
+      "import_pastcov_lag-2",
+      "unemployment_rate_pastcov_lag-2"
+    ],
+    "intro": "The Consumer Confidence Index for February 2024 stood at 57.82 and is projected to decline from the previous month. This trend is driven by several contributing factors, such as:",
+    "factors": [
+      {
+        "tag": "export_pastcov_lag-1",
+        "text": "Geopolitical tensions have led to trade fragmentation between countries with diverging political alignments, resulting in a slowdown in the growth of inter-bloc trade. This will impact global demand for Thai agricultural products and ultimately affect Thailand's export value, leading to a decline in the CCI."
+      },
+      {
+        "tag": "import_pastcov_lag-2",
+        "text": "Geopolitical tensions have led to trade fragmentation between countries with diverging political alignments. The deceleration of trade among these groups has resulted in higher import costs for goods and raw materials. Consequently, global supply chain uncertainty has led to a decline in the CCI."
+      },
+      {
+        "tag": "unemployment_rate_pastcov_lag-2",
+        "text": "The decline in the number of gas stations and private schools, driven by stagnant revenue growth, has resulted in unemployment among employees in these sectors. Business closures lead to job losses, and as the number of unemployed individuals increases, the unemployment_rate rises accordingly, leading to a decrease in the CCI."
+      }
+    ],
+    "conclusion": "Geopolitical tensions have impacted export values and import costs, resulting in a decline in the CCI from the previous month.",
+    "parse_ok": true,
+    "raw_reasoning": "[FACTOR1]ความตึงเครียดทางภูมิรัฐศาสตร์ส่งผลให้เกิดการแบ่งแยกการค้าระหว่างกลุ่มประเทศที่มีจุดยืนทางการเมืองต่างกัน ทำให้มูลค่าการค้าระหว่างกลุ่มขยายตัวช้าลง ซึ่งจะส่งผลต่อความต้องการสินค้าเกษตรไทยจากตลาดโลก และในที่สุดก็กระทบต่อมูลค่า export ของไทย ส่งผลให้ CCI ลดลง [FACTOR2]ความตึงเครียดทางภูมิรัฐศาสตร์ส่งผลให้เกิดการแบ่งแยกการค้าระหว่างกลุ่มประเทศที่มีจุดยืนทางการเมืองต่างกัน การค้าระหว่างกลุ่มประเทศดังกล่าวขยายตัวช้าลง ส่งผลให้ต้นทุนนำเข้าสินค้าและวัตถุดิบจากต่างประเทศสูงขึ้น เนื่องจากความไม่แน่นอนในห่วงโซ่อุปทานโลก ทำให้ CCI ลดลง [FACTOR3]การลดจำนวนธุรกิจปั๊มน้ำมันและโรงเรียนเอกชนเนื่องจากรายได้ที่ไม่เติบโตส่งผลให้เกิดการว่างงานในกลุ่มพนักงานของธุรกิจเหล่านี้ การปิดตัวลงของธุรกิจจะนำไปสู่การสูญเสียตำแหน่งงาน และเมื่อจำนวนผู้ว่างงานเพิ่มขึ้น อัตราการว่างงาน (unemployment_rate) ก็จะสูงขึ้นตามไปด้วย ทำให้ CCI ลดลง [CONCLUSION]ความตึงเครียดทางภูมิรัฐศาสตร์ส่งผลกระทบต่อมูลค่า export และต้นทุนนำเข้าสินค้า ส่งผลให้ CCI ลดลงจากเดือนก่อนหน้า"
+  },
+  {
+    "date": "2024-03",
+    "predicted": 59.79,
+    "direction": "Declined from the previous month",
+    "top3_shap": [
+      "export_pastcov_lag-1",
+      "import_pastcov_lag-2",
+      "cpi_pastcov_lag-2"
+    ],
+    "intro": "The Consumer Confidence Index for 2024-03 stood at 59.79 and is projected to decline from the previous month. This trend is attributed to several contributing factors, including:",
+    "factors": [
+      {
+        "tag": "export_pastcov_lag-1",
+        "text": "Geopolitical tensions have led to trade fragmentation and may precipitate the phenomenon of deglobalization, wherein trade growth between countries with divergent political alignments lags behind that of intra-group trade. This adversely impacts the demand for Thai exports as global markets contract and purchasing power diminishes, subsequently leading to a decline in domestic consumer confidence."
+      },
+      {
+        "tag": "import_pastcov_lag-2",
+        "text": "Geopolitical tensions have led to trade fragmentation among nations with diverging political alignments, resulting in inter-bloc trade expanding at a slower pace than intra-bloc trade. This situation is expected to exert upward pressure on the cost of imported goods and raw materials, given Thailand's significant reliance on global imports of raw materials and finished products, thereby eroding consumer purchasing power."
+      },
+      {
+        "tag": "cpi_pastcov_lag-2",
+        "text": "Declining consumer confidence, driven by concerns over the domestic political situation, energy prices, and the high cost of living, has led to a reduction in purchasing power, which will directly impact the Consumer Price Index (CPI)."
+      }
+    ],
+    "conclusion": "Geopolitical tensions have impacted exports and imports, leading to a decline in consumer purchasing power and a subsequent decrease in the Consumer Confidence Index from the previous month.",
+    "parse_ok": true,
+    "raw_reasoning": "[FACTOR1]ความตึงเครียดทางภูมิรัฐศาสตร์ส่งผลให้เกิดการแบ่งแยกการค้าและอาจนำไปสู่ปรากฏการณ์ Deglobalization ซึ่งมูลค่าการค้าระหว่างกลุ่มประเทศที่มีจุดยืนทางการเมืองต่างกัน ขยายตัวช้ากว่ามูลค่าการค้าภายในกลุ่ม ส่งผลกระทบต่อความต้องการสินค้าส่งออกจากไทย เนื่องจากตลาดโลกหดตัวลงและผู้บริโภคมีกำลังซื้อลดลง ทำให้ความเชื่อมั่นของผู้บริโภคในประเทศลดลง[/FACTOR1] [FACTOR2]ความตึงเครียดทางภูมิรัฐศาสตร์ส่งผลให้เกิดการแบ่งแยกการค้าระหว่างกลุ่มประเทศที่มีจุดยืนทางการเมืองต่างกัน ส่งผลให้มูลค่าการค้าระหว่างกลุ่มขยายตัวช้ากว่ามูลค่าการค้าภายในกลุ่ม สถานการณ์นี้จะกดดันต้นทุนการนำเข้าสินค้าและวัตถุดิบจากต่างประเทศ เนื่องจากไทยต้องพึ่งพาการนำเข้าวัตถุดิบและสินค้าสำเร็จรูปจำนวนมากจากทั่วโลก ทำให้กำลังซื้อของผู้บริโภคลดลง[/FACTOR2] [FACTOR3]ความเชื่อมั่นของผู้บริโภคที่ต่ำลงเนื่องจากกังวลต่อสถานการณ์การเมืองในประเทศ ราคาพลังงาน และค่าครองชีพที่สูง ส่งผลให้กำลังซื้อของประชาชนลดลง ซึ่งจะส่งผลโดยตรงต่อดัชนีราคาผู้บริโภค (CPI)[/FACTOR3] [CONCLUSION]ความตึงเครียดทางภูมิรัฐศาสตร์ส่งผลกระทบต่อการส่งออกและนำเข้า ทำให้กำลังซื้อของผู้บริโภคลดลง ส่งผลให้ดัชนีความเชื่อมั่นผู้บริโภค ลดลงจากเดือนก่อนหน้า[/CONCLUSION]"
+  },
+  {
+    "date": "2024-04",
+    "predicted": 61.35,
+    "direction": "Declined from the previous month",
+    "top3_shap": [
+      "export_pastcov_lag-1",
+      "cpi_pastcov_lag-2",
+      "import_pastcov_lag-2"
+    ],
+    "intro": "The Consumer Confidence Index for April 2024 stood at 61.35 and is projected to decline from the previous month. This trend is attributed to several contributing factors, such as:",
+    "factors": [
+      {
+        "tag": "export_pastcov_lag-1",
+        "text": "Geopolitical tensions have resulted in trade fragmentation and may lead to the phenomenon of deglobalization, wherein trade value between countries with divergent political alignments expands more slowly than intra-group trade. This leads to a decline in global demand, which directly impacts Thailand's export value and results in a decrease in the Consumer Confidence Index."
+      },
+      {
+        "tag": "cpi_pastcov_lag-2",
+        "text": "Thai rice exports in 2024 are projected to decline to 7.5 million tonnes, as rice production is forecasted to decrease by 5.87% year-on-year, coupled with intensified competition from other exporting nations. This is expected to reduce the income of rice farmers, thereby adversely affecting purchasing power and contributing to a rise in the Consumer Price Index (CPI), which will subsequently lead to a decline in the Consumer Confidence Index (CCI)."
+      },
+      {
+        "tag": "import_pastcov_lag-2",
+        "text": "The risk of a US debt crisis, driven by government debt reaching record highs, has adversely affected national purchasing power and investment. This has led to an increase in the production costs of goods imported from the US, which directly impacts Thailand's import value and results in a decline in the Consumer Confidence Index."
+      }
+    ],
+    "conclusion": "Geopolitical tensions impacting exports and the risk of a US debt crisis, which has driven up import costs, have led to a decline in purchasing power and consumer confidence.",
+    "parse_ok": true,
+    "raw_reasoning": "[FACTOR1]ความตึงเครียดทางภูมิรัฐศาสตร์ส่งผลให้เกิดการแบ่งแยกการค้าและอาจนำไปสู่ปรากฏการณ์ Deglobalization ซึ่งมูลค่าการค้าระหว่างกลุ่มประเทศที่มีจุดยืนทางการเมืองต่างกัน ขยายตัวช้ากว่ามูลค่าการค้าภายในกลุ่ม นำไปสู่ความต้องการสินค้าจากตลาดโลกที่ลดลง ส่งผลกระทบต่อมูลค่า export ของไทยโดยตรง ทำให้ดัชนีความเชื่อมั่นผู้บริโภค ลดลง [FACTOR2]การส่งออกข้าวไทยปี 2567 คาดว่าจะลดลงเหลือเพียง 7.5 ล้านตัน เนื่องจากผลผลิตข้าวไทยคาดการณ์ว่าจะลดลง 5.87% จากปีก่อนหน้า และอาจเผชิญกับการแข่งขันจากข้าวของประเทศอื่นที่เพิ่มขึ้น ส่งผลให้รายได้ของเกษตรกรผู้ปลูกข้าวลดลง ซึ่งจะส่งผลต่อกำลังซื้อและทำให้ดัชนีราคาผู้บริโภค (CPI) เพิ่มสูงขึ้น ทำให้ดัชนีความเชื่อมั่นผู้บริโภค ลดลง [FACTOR3]ความเสี่ยงของวิกฤติหนี้ในสหรัฐฯ เนื่องจากภาระหนี้ของรัฐบาลพุ่งขึ้นสูงสุดเป็นประวัติการณ์ ส่งผลกระทบต่อกำลังซื้อและการลงทุนของประเทศ ทำให้ต้นทุนการผลิตสินค้าที่นำเข้าจากสหรัฐฯ เพิ่มสูงขึ้น ซึ่งส่งผลโดยตรงต่อมูลค่า import ของไทย ทำให้ดัชนีความเชื่อมั่นผู้บริโภค ลดลง [CONCLUSION]ความตึงเครียดทางภูมิรัฐศาสตร์ที่ส่งผลกระทบต่อการส่งออก และความเสี่ยงวิกฤติหนี้ในสหรัฐฯ ที่ทำให้ต้นทุนนำเข้าเพิ่มสูงขึ้น ทำให้กำลังซื้อและความเชื่อมั่นผู้บริโภคลดลง"
+  },
+  {
+    "date": "2024-05",
+    "predicted": 63.61,
+    "direction": "Increased from the previous month",
+    "top3_shap": [
+      "export_pastcov_lag-1",
+      "cpi_pastcov_lag-2",
+      "import_pastcov_lag-2"
+    ],
+    "intro": "The Consumer Confidence Index for May 2024 stood at 63.61 and is projected to increase from the previous month. This upward trend is attributed to several supporting factors, such as:",
+    "factors": [
+      {
+        "tag": "export_pastcov_lag-1",
+        "text": "Thai rice exports are projected to increase following a government-to-government (G2G) trade agreement between the Thai and Indonesian governments for an initial shipment of 55,000 tonnes, with deliveries scheduled to commence from April 2024 onwards. Furthermore, Thai rice exports for this year are anticipated to surpass the established target of 7.5 million tonnes, leading to an increase in export revenues, which will strengthen the economy and bolster consumer confidence in spending."
+      },
+      {
+        "tag": "cpi_pastcov_lag-2",
+        "text": "The continuous reduction in gasoline and gasohol prices has lowered the overall cost of living for consumers, which will lead to a deceleration of the Consumer Price Index (CPI) and subsequently enhance consumer purchasing power."
+      },
+      {
+        "tag": "import_pastcov_lag-2",
+        "text": "The reduction in gasoline and gasohol prices has led to a decrease in domestic production costs, which is expected to positively impact import values. This improvement in cost management enables operators to expand production or increase the volume of raw material imports to better satisfy market demand."
+      }
+    ],
+    "conclusion": "The increase in Thai rice exports has strengthened the economy and bolstered consumer spending confidence. Coupled with a decline in oil prices, which reduced both the cost of living and production costs, the Consumer Confidence Index (CCI) rose from the previous month.",
+    "parse_ok": true,
+    "raw_reasoning": "[FACTOR1]การส่งออกข้าวไทยมีแนวโน้มเพิ่มขึ้นเนื่องจากรัฐบาลไทยและอินโดนีเซียได้บรรลุข้อตกลงซื้อขายข้าวจีทูจี ลอตแรก ปริมาณ 55,000 ตัน ซึ่งจะเริ่มส่งมอบตั้งแต่เดือนเมษายน 2567 เป็นต้นไป และคาดว่าการส่งออกข้าวไทยปีนี้จะเกินเป้าหมายที่ตั้งไว้ 7.5 ล้านตัน ทำให้รายได้จากการส่งออกเพิ่มขึ้น ส่งผลให้เศรษฐกิจแข็งแกร่งและผู้บริโภคมีความเชื่อมั่นในการใช้จ่ายมากขึ้น [FACTOR2]การปรับลดราคาน้ำมันกลุ่มเบนซินและแก๊สโซฮอล์อย่างต่อเนื่องส่งผลให้ค่าครองชีพของผู้บริโภคโดยรวมลดลง ซึ่งจะนำไปสู่การชะลอตัวของดัชนีราคาผู้บริโภค (CPI) ทำให้ผู้บริโภคมีกำลังซื้อเพิ่มขึ้น [FACTOR3]การปรับลดราคาน้ำมันกลุ่มเบนซินและแก๊ssโซฮอล์ ส่งผลให้ต้นทุนการผลิตในประเทศลดลง ซึ่งจะส่งผลดีต่อมูลค่าการนำเข้าสินค้า เนื่องจากผู้ประกอบการสามารถควบคุมต้นทุนได้ดีขึ้น และมีโอกาสที่จะขยายการผลิตหรือเพิ่มปริมาณการนำเข้าวัตถุดิบเพื่อสนองความต้องการของตลาดได้มากขึ้น [CONCLUSION] การส่งออกข้าวไทยที่เพิ่มขึ้น ส่งผลให้เศรษฐกิจแข็งแกร่งและผู้บริโภคมีความเชื่อมั่นในการใช้จ่ายมากขึ้น ร่วมกับการลดราคาน้ำมันที่ช่วยลดค่าครองชีพและต้นทุนการผลิต ทำให้ดัชนีความเชื่อมั่นผู้บริโภคเพิ่มขึ้นจากเดือนก่อนหน้า"
+  },
+  {
+    "date": "2024-06",
+    "predicted": 62.24,
+    "direction": "Increased from the previous month",
+    "top3_shap": [
+      "export_pastcov_lag-1",
+      "import_pastcov_lag-2",
+      "cpi_pastcov_lag-2"
+    ],
+    "intro": "The Consumer Confidence Index for June 2024 stood at 62.24 and is projected to increase from the previous month. This upward trend is driven by several supporting factors, including:",
+    "factors": [
+      {
+        "tag": "export_pastcov_lag-1",
+        "text": "Global demand for Thai rice has increased, positively impacting Thailand's rice exports. The government has concluded government-to-government (G2G) trade agreements with Indonesia and is expected to export an additional 280,000 tons of rice to China pursuant to contractual agreements. Furthermore, the auction of 15,000 tons of high-quality Jasmine rice from government stocks, coupled with the strong preference for Thai rice in export markets, has led to an increase in both the volume and value of rice exports compared to the same period last year. This has enhanced national revenue and strengthened the economy, subsequently driving an upward adjustment in the Consumer Confidence Index (CCI)."
+      },
+      {
+        "tag": "import_pastcov_lag-2",
+        "text": "The sustained decline in oil prices has led to a reduction in domestic production costs, which is expected to result in lower prices for goods and services. This may subsequently decrease the value of imports, as enhanced consumer purchasing power potentially reduces the demand for foreign goods. Consequently, the Consumer Confidence Index (CCI) is likely to increase."
+      },
+      {
+        "tag": "cpi_pastcov_lag-2",
+        "text": "The sustained reduction in gasoline and gasohol prices throughout March, April, and May has led to a decrease in transport costs for goods and services, which is expected to result in a decline in the Consumer Price Index (CPI). This trend reassures consumers that their purchasing power will not be eroded in the near term, consequently driving an increase in the Consumer Confidence Index (CCI)."
+      }
+    ],
+    "conclusion": "Increased global demand for Thai rice has positively impacted national income and the overall economy, bolstering consumer spending confidence. This, coupled with declining oil prices that reduced production costs and the cost of living, resulted in an increase in the Consumer Confidence Index (CCI) from the previous month.",
+    "parse_ok": true,
+    "raw_reasoning": "[FACTOR1]ความต้องการข้าวไทยในตลาดโลกเพิ่มสูงขึ้น ส่งผลดีต่อการส่งออกข้าวของประเทศไทย โดยรัฐบาลได้บรรลุข้อตกลงซื้อขายข้าวจีทูจีกับอินโดนีเซีย และคาดว่าจะสามารถส่งออกข้าวให้จีนได้ตามสัญญาอีก 280,000 ตัน นอกจากนี้ การเปิดประมูลข้าวสารหอมมะลิในสต๊อกรัฐบาลจำนวน 15,000 ตัน ซึ่งมีคุณภาพดี และความนิยมของข้าวไทยในตลาดส่งออก ทำให้ปริมาณและมูลค่าการส่งออกข้าวเพิ่มขึ้นเมื่อเทียบกับช่วงเดียวกันของปีที่แล้ว ส่งผลให้รายได้ประเทศเพิ่มขึ้นและเศรษฐกิจแข็งแกร่งขึ้น ทำให้ดัชนีความเชื่อมั่นผู้บริโภคปรับตัวสูงขึ้น[/FACTOR1] [FACTOR2]การปรับลดราคาน้ำมันอย่างต่อเนื่องส่งผลให้ต้นทุนการผลิตในประเทศลดลง ซึ่งจะนำไปสู่การลดราคาสินค้าและบริการ ทำให้มูลค่าการนำเข้าสินค้าจากต่างประเทศลดลง เนื่องจากผู้บริโภคมีกำลังซื้อเพิ่มขึ้น และความต้องการสินค้าจากต่างประเทศอาจลดลงตามมา ส่งผลให้ดัชนีความเชื่อมั่นผู้บริโภคปรับตัวสูงขึ้น[/FACTOR2] [FACTOR3]การปรับลดราคาน้ำมันเบนซินและแก๊สโซฮอล์อย่างต่อเนื่องในเดือนมีนาคม เมษายน และพฤษภาคม ส่งผลให้ค่าใช้จ่ายในการขนส่งสินค้าและบริการของผู้บริโภคลดลง ซึ่งจะนำไปสู่การลดลงของดัชนีราคาผู้บริโภค (CPI) ทำให้ผู้บริโภคมีความมั่นใจว่ากำลังซื้อจะไม่ถูกกัดกร่อนในระยะใกล้ ส่งผลให้ดัชนีความเชื่อมั่นผู้บริโภคปรับตัวสูงขึ้น[/FACTOR3] [CONCLUSION]ความต้องการข้าวไทยที่เพิ่มขึ้นในตลาดโลกส่งผลดีต่อรายได้ประเทศและเศรษฐกิจโดยรวม ทำให้ผู้บริโภคมีความเชื่อมั่นในการใช้จ่ายมากขึ้น ร่วมกับการลดราคาน้ำมันที่ช่วยลดต้นทุนการผลิตและค่าครองชีพ ส่งผลให้ดัชนีความเชื่อมั่นผู้บริโภคปรับตัวเพิ่มขึ้นจากเดือนก่อนหน้า[/CONCLUSION]"
+  },
+  {
+    "date": "2024-07",
+    "predicted": 61.51,
+    "direction": "Increased from the previous month",
+    "top3_shap": [
+      "export_pastcov_lag-2",
+      "import_pastcov_lag-2",
+      "unemployment_rate_pastcov_lag-2"
+    ],
+    "intro": "The Consumer Confidence Index for 2024-07 stood at 61.51 and is projected to increase from the previous month. This upward trend is driven by several supporting factors, including:",
+    "factors": [
+      {
+        "tag": "export_pastcov_lag-2",
+        "text": "Global demand for Thai rice has increased, positively impacting export performance. The Department of Internal Trade is preparing to auction 15,000 tonnes of high-quality, contaminant-free jasmine rice from government reserves. Furthermore, Thailand exported 716,619 tonnes of rice in March 2024, valued at 17,329 million baht, representing an increase in both volume and value on a year-on-year basis. This growth in export earnings has contributed positively to the aggregate economy and bolstered consumer confidence."
+      },
+      {
+        "tag": "import_pastcov_lag-2",
+        "text": "Gold prices rose steadily throughout April and May, leading to an increase in the value of imports. This was driven by the upward trend in raw material prices used for domestic production, which tracked global gold prices, thereby increasing production costs for the business sector."
+      },
+      {
+        "tag": "unemployment_rate_pastcov_lag-2",
+        "text": "The provision of financial literacy and personal financial management tools—such as strategies to avoid informal debt, the selection of appropriate health insurance, and the \"Loud Budgeting\" trend emphasizing frugality and savings—has enhanced the public's proficiency in managing personal income. This, in turn, strengthens household financial stability, which serves as a critical factor in bolstering the future confidence of the labor force."
+      }
+    ],
+    "conclusion": "Rising global demand for Thai rice has led to an increase in export revenues, positively impacting the overall economy and bolstering consumer confidence. Despite the rise in imported raw material prices, the improvement in personal financial management knowledge and skills among the population has enhanced household financial stability and further supported consumer confidence.",
+    "parse_ok": true,
+    "raw_reasoning": "[FACTOR1]ความต้องการข้าวไทยจากตลาดโลกเพิ่มสูงขึ้น ส่งผลดีต่อการส่งออกข้าวไทย โดยกรมการค้าภายในเตรียมเปิดประมูลข้าวสารหอมมะลิในสต๊อกรัฐบาลจำนวน 15,000 ตัน ซึ่งมีคุณภาพดีและไม่มีสารพิษตกค้าง นอกจากนี้ ไทยยังสามารถส่งออกข้าวได้ 716,619 ตัน มูลค่า 17,329 ล้านบาท ในเดือนมีนาคม 2567 เพิ่มขึ้นทั้งปริมาณและมูลค่าเมื่อเทียบกับช่วงเดียวกันของปีที่แล้ว ทำให้รายได้จากการส่งออกข้าวเพิ่มขึ้น ส่งผลดีต่อเศรษฐกิจโดยรวม และสนับสนุนความเชื่อมั่นผู้บริโภค [FACTOR2]ราคาทองคำปรับตัวขึ้นอย่างต่อเนื่องในเดือนเมษายนและพฤษภาคม ส่งผลให้มูลค่าการนำเข้าสินค้าจากต่างประเทศเพิ่มสูงขึ้น เนื่องจากราคาวัตถุดิบที่ใช้ในการผลิตสินค้าภายในประเทศมีแนวโน้มสูงขึ้นตามราคาทองคำโลก ทำให้ต้นทุนการผลิตของภาคธุรกิจปรับตัวสูงขึ้น [FACTOR3]การให้ความรู้และเครื่องมือในการบริหารจัดการเงินส่วนบุคคล เช่น วิธีการจัดการเงินไม่ให้เป็นหนี้นอกระบบ การเลือกประกันสุขภาพที่เหมาะสม และเทรนด์ \"Loud Budgeting\" ที่เน้นการอวดความประหยัดและการเก็บเงิน ส่งผลให้ประชาชนมีความรู้และทักษะในการบริหารจัดการรายได้ของตนเองมากขึ้น ส่งผลต่อความมั่นคงทางการเงินของครัวเรือน ซึ่งเป็นปัจจัยสำคัญที่สนับสนุนความเชื่อมั่นในอนาคตของแรงงาน [CONCLUSION]ความต้องการข้าวไทยจากตลาดโลกที่เพิ่มสูงขึ้น ทำให้รายได้จากการส่งออกข้าวไทยเพิ่มขึ้น ส่งผลดีต่อเศรษฐกิจโดยรวม และสนับสนุนความเชื่อมั่นผู้บริโภค แม้ว่าราคาวัตถุดิบนำเข้าจะปรับตัวสูงขึ้น แต่ความรู้และทักษะในการบริหารจัดการเงินส่วนบุคคลของประชาชนที่เพิ่มขึ้น ช่วยให้ครัวเรือนมีความมั่นคงทางการเงินมากขึ้น และสนับสนุนความเชื่อมั่นผู้บริโภค"
+  },
+  {
+    "date": "2024-08",
+    "predicted": 60.77,
+    "direction": "Increased from the previous month",
+    "top3_shap": [
+      "export_pastcov_lag-2",
+      "import_pastcov_lag-2",
+      "unemployment_rate_pastcov_lag-2"
+    ],
+    "intro": "The Consumer Confidence Index for August 2024 stood at 60.77 and is projected to increase from the previous month. This upward trend is driven by several supporting factors, including:",
+    "factors": [
+      {
+        "tag": "export_pastcov_lag-2",
+        "text": "ความต้องการข้าวไทยในตลาดโลกเพิ่มสูงขึ้นเนื่องจากราคาข้าวของไทยอยู่ในระดับที่สูงกว่าประเทศคู่แข่ง ส่งผลให้ไทยคาดว่าจะส่งออกข้าวได้ประมาณ 800,000 ตัน ในเดือนกรกฎาคม ความต้องการส่งออกข้าวที่เพิ่มขึ้นทำให้รายได้จากการส่งออกข้าวของไทยเพิ่มขึ้น ซึ่งเป็นปัจจัยบวกต่อเศรษฐกิจโดยรวม และส่งผลให้ความเชื่อมั่นผู้บริโภคปรับตัวสูงขึ้น"
+      },
+      {
+        "tag": "import_pastcov_lag-2",
+        "text": "The sustained reduction in gasoline and gasohol prices has led to a decrease in domestic production costs, which will subsequently reduce import expenditures and enhance consumer purchasing power."
+      },
+      {
+        "tag": "unemployment_rate_pastcov_lag-2",
+        "text": "The collaboration between the Tourism Authority of Thailand (TAT) and Royal Temples in exhibiting precious antiquities to the public and tourists stimulates the tourism economy, leading to the expansion of the service sector and an increase in employment, thereby reducing the unemployment rate."
+      }
+    ],
+    "conclusion": "Rising global demand for Thai rice has led to an increase in rice export revenues, serving as a primary driver for the upward adjustment of the Consumer Confidence Index. Additionally, the reduction in fuel prices and tourism economic stimulus measures have acted as supporting factors that enhance purchasing power and consumer confidence.",
+    "parse_ok": true,
+    "raw_reasoning": "[FACTOR1]ความต้องการข้าวไทยในตลาดโลกเพิ่มสูงขึ้นเนื่องจากราคาข้าวของไทยอยู่ในระดับที่สูงกว่าประเทศคู่แข่ง ส่งผลให้ไทยคาดว่าจะส่งออกข้าวได้ประมาณ 800,000 ตัน ในเดือนกรกฎาคม ความต้องการส่งออกข้าวที่เพิ่มขึ้นทำให้รายได้จากการส่งออกข้าวของไทยเพิ่มขึ้น ซึ่งเป็นปัจจัยบวกต่อเศรษฐกิจโดยรวม และส่งผลให้ความเชื่อมั่นผู้บริโภคปรับตัวสูงขึ้น[/FACTOR1] [FACTOR2]การปรับลดราคาน้ำมันเบนซินและแก๊สโซฮอล์อย่างต่อเนื่องส่งผลให้ต้นทุนการผลิตในประเทศลดลง ซึ่งจะนำไปสู่การลดค่าใช้จ่ายในการนำเข้าสินค้าจากต่างประเทศ และช่วยเพิ่มกำลังซื้อของผู้บริโภค[/FACTOR2] [FACTOR3]การที่ ททท. ร่วมกับพระอารามหลวงจัดแสดงวัตถุโบราณล้ำค่าให้ประชาชนและนักท่องเที่ยวได้เข้าชม ส่งผลให้เกิดการกระตุ้นเศรษฐกิจการท่องเที่ยว ซึ่งจะนำไปสู่การขยายตัวของภาคบริการ และการจ้างงานเพิ่มขึ้น ส่งผลต่ออัตราการว่างงานลดลง[/FACTOR3] [CONCLUSION]ความต้องการข้าวไทยในตลาดโลกที่เพิ่มสูงขึ้น ทำให้รายได้จากการส่งออกข้าวของไทยเพิ่มขึ้น และเป็นปัจจัยหลักที่ทำให้ดัชนีความเชื่อมั่นผู้บริโภคปรับตัวสูงขึ้น การลดราคาน้ำมันและการกระตุ้นเศรฐกิจการท่องเที่ยว เป็นปัจจัยสนับสนุนที่ช่วยเพิ่มกำลังซื้อและความมั่นใจของผู้บริโภค[/CONCLUSION]"
+  },
+  {
+    "date": "2024-09",
+    "predicted": 59.57,
+    "direction": "Increased from the previous month",
+    "top3_shap": [
+      "export_pastcov_lag-2",
+      "import_pastcov_lag-2",
+      "cpi_pastcov_lag-1"
+    ],
+    "intro": "The Consumer Confidence Index for September 2024 stood at 59.57 and is projected to increase from the previous month. The supporting factors driving this upward trend include several elements, such as:",
+    "factors": [
+      {
+        "tag": "export_pastcov_lag-2",
+        "text": "Global demand for Thai rice remains sustained, prompting the association to upwardly revise this year's export target to 8.2 million tonnes, from the previous 7.5 million tonnes. The depreciation of the Thai Baht, coupled with India's continued export ban on non-basmati white rice, serves as a key driver for the increase in both export value and global demand. Consequently, this has led to an increase in consumer confidence in the Thai economy."
+      },
+      {
+        "tag": "import_pastcov_lag-2",
+        "text": "The continuous reduction in gasoline and gasohol prices has led to a decrease in domestic production costs, which is expected to increase the value of exports of goods and services and enhance consumer purchasing power."
+      },
+      {
+        "tag": "cpi_pastcov_lag-1",
+        "text": "The continuous reduction in gasoline and gasohol prices throughout July and August has led to a decrease in production costs for goods and services. This is expected to result in a subsequent decline in the prices of goods and services, directly impacting the Consumer Price Index (CPI) downward, thereby enhancing consumer spending confidence."
+      }
+    ],
+    "conclusion": "Increased global demand for Thai rice and the sustained reduction in gasoline and gasohol prices have enhanced consumer purchasing power and spending confidence, resulting in an increase in the Consumer Confidence Index (CCI) from the previous month.",
+    "parse_ok": true,
+    "raw_reasoning": "[FACTOR1]ความต้องการข้าวไทยในตลาดโลกยังคงมีเข้ามาอย่างต่อเนื่อง ส่งผลให้สมาคมปรับเพิ่มเป้าหมายการส่งออกข้าวไทยปีนี้เป็น 8.2 ล้านตัน จากเดิม 7.5 ล้านตัน ค่าเงินบาทอ่อนค่า และอินเดียยังคงนโยบายห้ามส่งออกข้าวขาวที่ไม่ใช่ข้าวบาสมาตี จึงเป็นปัจจัยสนับสนุนการเพิ่มขึ้นของมูลค่าการส่งออกและความต้องการจากตลาดโลก ส่งผลให้ผู้บริโภคมีความเชื่อมั่นในเศรษฐกิจไทยเพิ่มขึ้น[/FACTOR1] [FACTOR2]การปรับลดราคาน้ำมันเบนซินและแก๊สโซฮอล์อย่างต่อเนื่อง ส่งผลให้ต้นทุนการผลิตในประเทศลดลง ซึ่งจะนำไปสู่การเพิ่มขึ้นของมูลค่าการส่งออกสินค้า และบริการ ทำให้ผู้บริโภคมีกำลังซื้อมากขึ้น[/FACTOR2] [FACTOR3]การปรับลดราคาน้ำมันเบนซินและแก๊สโซฮอล์อย่างต่อเนื่องในเดือนกรกฎาคม และ สิงหาคม ส่งผลให้ต้นทุนการผลิตสินค้าและบริการของผู้ประกอบการลดลง ซึ่งจะนำไปสู่การปรับลดราคาสินค้าและบริการลงตามมา ส่งผลโดยตรงต่อดัชนีราคาผู้บริโภค (CPI) ที่จะลดลงด้วย ทำให้ผู้บริโภคมีความมั่นใจในการใช้จ่ายมากขึ้น[/FACTOR3] [CONCLUSION]ความต้องการข้าวไทยในตลาดโลกที่เพิ่มขึ้น และการปรับลดราคาน้ำมันเบนซินและแก๊สโซฮอล์อย่างต่อเนื่อง ส่งผลให้ผู้บริโภคมีกำลังซื้อและความเชื่อมั่นในการใช้จ่ายมากขึ้น ทำให้ดัชนีความเชื่อมั่นผู้บริโภค เพิ่มขึ้นจากเดือนก่อนหน้า[/CONCLUSION]"
+  },
+  {
+    "date": "2024-10",
+    "predicted": 58.75,
+    "direction": "Increased from the previous month",
+    "top3_shap": [
+      "export_pastcov_lag-1",
+      "import_pastcov_lag-2",
+      "cpi_pastcov_lag-1"
+    ],
+    "intro": "The Consumer Confidence Index for October 2024 stood at 58.75 and is expected to increase from the previous month. This upward trend is driven by several supporting factors, including:",
+    "factors": [
+      {
+        "tag": "export_pastcov_lag-1",
+        "text": "Global demand for rice has risen due to India's continued export restrictions and a declining trend in global rice stocks. Consequently, Thailand's rice exports increased by 48% during the first half of 2024, boosting national income and strengthening the economy, which directly contributed to the rise in the Consumer Confidence Index."
+      },
+      {
+        "tag": "import_pastcov_lag-2",
+        "text": "Gasoline and gasohol prices have steadily declined over the past several months, resulting in a reduction in domestic industrial production costs. This trend is expected to lead to lower product prices and enhance the competitiveness of Thai exporters, thereby bolstering consumer confidence in spending."
+      },
+      {
+        "tag": "cpi_pastcov_lag-1",
+        "text": "The sustained decline in gasoline and gasohol prices throughout July, August, and September has reduced production costs for goods and services. This is expected to lead to a reduction in retail prices for consumers, directly exerting downward pressure on the Consumer Price Index (CPI) and subsequently enhancing consumer confidence in spending."
+      }
+    ],
+    "conclusion": "Rising global demand for rice has increased national income and strengthened the economy, directly contributing to a rise in the Consumer Confidence Index. Additionally, the continuous decline in gasoline and gasohol prices has lowered the production costs of goods and services, thereby enhancing consumer spending confidence.",
+    "parse_ok": true,
+    "raw_reasoning": "[FACTOR1]ความต้องการข้าวในตลาดโลกสูงขึ้นเนื่องจากอินเดียยังคงควบคุมปริมาณการส่งออกข้าวและสต็อกข้าวทั่วโลกมีแนวโน้มลดลง ส่งผลให้ไทยสามารถส่งออกข้าวได้เพิ่มขึ้น 48% ในช่วง 6 เดือนแรกของปี 2567 ทำให้รายได้ประเทศเพิ่มขึ้น และเศรษฐกิจแข็งแกร่ง ส่งผลโดยตรงต่อการเพิ่มขึ้นของดัชนีความเชื่อมั่นผู้บริโภค[/FACTOR1] [FACTOR2]ราคาน้ำมันเบนซินและแก๊สโซฮอล์ปรับลดลงอย่างต่อเนื่องในทุกเดือนที่ผ่านมา ส่งผลให้ต้นทุนการผลิตของภาคอุตสาหกรรมในประเทศลดลง ซึ่งจะนำไปสู่การลดราคาสินค้า และเพิ่มความสามารถในการแข่งขันของผู้ส่งออกไทย ทำให้ผู้บริโภคมีความเชื่อมั่นในการใช้จ่ายมากขึ้น[/FACTOR2] [FACTOR3]การปรับลดราคาน้ำมันเบนซินและแก๊สโซฮอล์อย่างต่อเนื่องในเดือนกรกฎาคม สิงหาคม และกันยายน ส่งผลให้ต้นทุนการผลิตสินค้าและบริการของผู้ประกอบการลดลง ซึ่งจะนำไปสู่การปรับลดราคาสินค้าและบริการสำหรับผู้บริโภค ส่งผลโดยตรงต่อดัชนีราคาผู้บริโภค (CPI) ที่มีแนวโน้มลดลง ทำให้ผู้บริโภคมีความมั่นใจในการใช้จ่ายมากขึ้น[/FACTOR3] [CONCLUSION]ความต้องการข้าวในตลาดโลกที่เพิ่มขึ้นส่งผลให้รายได้ประเทศเพิ่มขึ้น และเศรษฐกิจแข็งแกร่ง ส่งผลโดยตรงต่อการเพิ่มขึ้นของดัชนีความเชื่อมั่นผู้บริโภค ราคาน้ำมันเบนซินและแก๊สโซฮอล์ที่ปรับลดลงอย่างต่อเนื่อง ทำให้ต้นทุนการผลิตสินค้าและบริการลดลง และผู้บริโภคมีความมั่นใจในการใช้จ่ายมากขึ้น[/CONCLUSION]"
+  },
+  {
+    "date": "2024-11",
+    "predicted": 60.14,
+    "direction": "Increased from the previous month",
+    "top3_shap": [
+      "export_pastcov_lag-1",
+      "unemployment_rate_pastcov_lag-2",
+      "import_pastcov_lag-2"
+    ],
+    "intro": "The Consumer Confidence Index for November 2024 stood at 60.14 and is projected to increase from the previous month. This upward trend is driven by several supporting factors, including:",
+    "factors": [
+      {
+        "tag": "export_pastcov_lag-1",
+        "text": "Global demand for rice has increased as India continues to maintain export restrictions and global rice stocks exhibit a downward trend. Consequently, Thailand's rice exports rose by 48% during the first half of 2024. The rise in global demand, driven by external factors such as Indian policy and declining global inventories, has enabled Thailand, as a major rice exporter, to expand its export volume. This has positively impacted export value and national revenue, which is expected to lead to an increase in consumer confidence."
+      },
+      {
+        "tag": "unemployment_rate_pastcov_lag-2",
+        "text": "The development of \"Pao Tang\" as a Healthcare Ecosystems platform by Krungthai Bank has facilitated greater access to medical services for holders of the Universal Coverage Scheme (Gold Card). This advancement enhances the efficiency of the public health system and positively impacts household income stability, as it enables citizens to recover their health and return to the workforce more promptly."
+      },
+      {
+        "tag": "import_pastcov_lag-2",
+        "text": "The consecutive declines in gasoline and gasohol prices throughout August, September, and October have resulted in lower production costs for the domestic industrial sector. This is expected to lead to a reduction in the prices of goods and services, subsequently decreasing the value of imports as the demand for foreign goods declines accordingly."
+      }
+    ],
+    "conclusion": "Rising global demand for rice has positively impacted export values and national revenue. Concurrently, the development of Healthcare Ecosystems platforms and the reduction in gasoline prices have lowered industrial production costs, subsequently reducing the domestic prices of goods and services. These factors have served as catalysts for the increase in the Consumer Confidence Index (CCI) compared to the previous month.",
+    "parse_ok": true,
+    "raw_reasoning": "[FACTOR1]ความต้องการข้าวในตลาดโลกสูงขึ้นเนื่องจากอินเดียยังคงควบคุมปริมาณการส่งออกข้าวและสต็อกข้าวทั่วโลกมีแนวโน้มลดลง ทำให้ไทยสามารถส่งออกข้าวได้เพิ่มขึ้น 48% ในช่วง 6 เดือนแรกของปี 2567 การที่ความต้องการข้าวในตลาดโลกสูงขึ้นเนื่องจากปัจจัยภายนอก เช่น นโยบายอินเดีย และสต็อกข้าวทั่วโลกมีแนวโน้มลดลง ทำให้ไทยซึ่งเป็นผู้ส่งออกข้าวรายใหญ่ สามารถส่งออกข้าวได้เพิ่มขึ้น ส่งผลดีต่อมูลค่าการส่งออกและรายได้เข้าประเทศ ซึ่งจะนำไปสู่ความเชื่อมั่นของผู้บริโภคที่สูงขึ้น[/FACTOR1] [FACTOR2]การพัฒนา \"เป๋าตัง\" เป็นแพลตฟอร์ม Healthcare Ecosystems โดยธนาคารกรุงไทย ช่วยให้ผู้ถือบัตรทองสามารถเข้าถึงบริการทางการแพทย์ได้สะดวกยิ่งขึ้น นำไปสู่การเพิ่มประสิทธิภาพของระบบสาธารณสุข และส่งผลดีต่อความมั่นคงของรายได้ครัวเรือน เนื่องจากประชาชนสามารถรักษาสุขภาพและกลับมาทำงานได้อย่างรวดเร็ว[/FACTOR2] [FACTOR3]การปรับลดราคาน้ำมันเบนซินและแก๊สโซฮอล์อย่างต่อเนื่องในเดือนสิงหาคม กันยายน และตุลาคม ส่งผลให้ต้นทุนการผลิตของภาคอุตสาหกรรมในประเทศลดลง ซึ่งจะนำไปสู่การลดราคาสินค้าและบริการ ทำให้มูลค่าการนำเข้าสินค้าจากต่างประเทศลดลง เนื่องจากความต้องการสินค้าจากต่างประเทศลดลงตาม[/FACTOR3] [CONCLUSION]ความต้องการข้าวในตลาดโลกที่เพิ่มขึ้น ส่งผลดีต่อมูลค่าการส่งออกและรายได้เข้าประเทศ ขณะเดียวกัน การพัฒนาแพลตฟอร์ม Healthcare Ecosystems และการปรับลดราคาน้ำมันเบนซิน ทำให้ต้นทุนการผลิตของภาคอุตสาหกรรมลดลง ส่งผลให้ราคาสินค้าและบริการในประเทศลดลง ซึ่งเป็นปัจจัยสนับสนุนที่ทำให้ดัชนีความเชื่อมั่นผู้บริโภคเพิ่มขึ้นจากเดือนก่อนหน้า[/CONCLUSION]"
+  },
+  {
+    "date": "2024-12",
+    "predicted": 59.91,
+    "direction": "Increased from the previous month",
+    "top3_shap": [
+      "มาตรการของรัฐ_pastcov_lag-2",
+      "export_pastcov_lag-1",
+      "cpi_pastcov_lag-1"
+    ],
+    "intro": "The Consumer Confidence Index for December 2024 stood at 59.91 and is projected to increase from the previous month. This upward trend is driven by several supporting factors, including:",
+    "factors": [
+      {
+        "tag": "มาตรการของรัฐ_pastcov_lag-2",
+        "text": "The government's interest payment moratoriums for housing, automotive, and SME loans have reduced the financial burden on households and businesses, thereby enhancing consumer purchasing power and improving economic confidence."
+      },
+      {
+        "tag": "export_pastcov_lag-1",
+        "text": "Global demand for rice has increased as India continues to maintain export restrictions, enabling Thailand to expand its rice exports by 48% during the first half of 2024. This growth has resulted in an increase in national income and strengthened the overall economy."
+      },
+      {
+        "tag": "cpi_pastcov_lag-1",
+        "text": "The continuous decline in gasoline and gasohol prices has reduced production costs for goods and services, which will lead to a reduction in market prices and directly result in a decrease in the Consumer Price Index (CPI)."
+      }
+    ],
+    "conclusion": "Government debt moratorium measures and increased demand for rice have bolstered purchasing power and consumer confidence, despite a decline in the Consumer Price Index.",
+    "parse_ok": true,
+    "raw_reasoning": "[FACTOR1]มาตรการพักชำระดอกเบี้ยสินเชื่อบ้าน รถยนต์ และ SME ของรัฐบาล ทำให้ประชาชนและธุรกิจมีภาระค่าใช้จ่ายลดลง ส่งผลให้ผู้บริโภคมีกำลังซื้อเพิ่มขึ้นและความเชื่อมั่นในเศรษฐกิจดีขึ้น [FACTOR2]ความต้องการข้าวในตลาดโลกสูงขึ้นเนื่องจากอินเดียยังคงควบคุมปริมาณการส่งออกข้าว ทำให้ไทยสามารถส่งออกข้าวได้เพิ่มขึ้น 48% ในช่วง 6 เดือนแรกของปี 2567 ส่งผลให้รายได้ประเทศเพิ่มขึ้นและเศรษฐกิจแข็งแกร่ง [FACTOR3]การปรับลดราคาน้ำมันเบนซินและแก๊สโซฮอล์อย่างต่อเนื่องส่งผลให้ต้นทุนการผลิตสินค้าและบริการของผู้ประกอบการลดลง ซึ่งจะนำไปสู่การปรับลดราคาสินค้าและบริการในตลาด ส่งผลโดยตรงต่อดัชนีราคาผู้บริโภค (CPI) ลดลง [CONCLUSION]มาตรการพักชำระหนี้ของรัฐบาล และความต้องการข้าวที่เพิ่มขึ้น ทำให้กำลังซื้อและความเชื่อมั่นผู้บริโภคปรับตัวสูงขึ้น แม้ว่าดัชนีราคาผู้บริโภคจะลดลงก็ตาม"
+  },
+  {
+    "date": "2025-01",
+    "predicted": 59.27,
+    "direction": "Increased from the previous month",
+    "top3_shap": [
+      "gdp_pastcov_lag-1",
+      "export_pastcov_lag-1",
+      "import_pastcov_lag-2"
+    ],
+    "intro": "The Consumer Confidence Index for 2025-01 stood at 59.27 and is projected to increase from the previous month. This upward trend is driven by several supporting factors, including:",
+    "factors": [
+      {
+        "tag": "gdp_pastcov_lag-1",
+        "text": "The robust recovery of the Chinese equity market in October 2024 resulted in the SZSE Component Index increasing by 10.67%, or 1,014.90 points, to reach 10,529.76 points. This recovery was driven by the Chinese government's economic stimulus measures, including the easing of residential property purchase restrictions in major cities and the reduction of mortgage interest rates. Consequently, demand for Thai agricultural products in the Chinese market is projected to increase, positively impacting export value and national revenue, which serves as a supporting factor for consumer confidence."
+      },
+      {
+        "tag": "export_pastcov_lag-1",
+        "text": "The continuous decline in gasoline and gasohol prices has led to a reduction in domestic production costs, which is expected to positively impact import values. This is attributed to the improved ability of producers to manage costs, thereby enabling the expansion of production to meet market demand."
+      },
+      {
+        "tag": "import_pastcov_lag-2",
+        "text": "The recovery of the tourism sector has led to an increase in national income, which serves as a key factor supporting GDP growth."
+      }
+    ],
+    "conclusion": "The robust recovery of the Chinese stock market and the reduction in gasoline and gasohol prices led to an increase in national income and a decrease in domestic production costs, resulting in a month-on-month increase in the Consumer Confidence Index.",
+    "parse_ok": true,
+    "raw_reasoning": "[FACTOR1]การฟื้นตัวอย่างร้อนแรงของตลาดหุ้นจีนในเดือนตุลาคม 2024 ส่งผลให้ดัชนี SZSE Component ปรับตัวเพิ่มขึ้น 10.67% หรือ 1,014.90 จุด อยู่ที่ 10,529.76 จุด การฟื้นตัวนี้เกิดจากมาตรการกระตุ้นเศรษฐกิจของรัฐบาลจีน ซึ่งรวมถึงการผ่อนคลายข้อจำกัดในการซื้อที่อยู่อาศัยในเมืองใหญ่ และการลดอัตราดอกเบี้ยสินเชื่อที่อยู่อาศัย ทำให้ความต้องการสินค้าเกษตรไทยจากตลาดจีนมีแนวโน้มเพิ่มขึ้น ส่งผลดีต่อมูลค่าการส่งออกและรายได้เข้าประเทศ ซึ่งเป็นปัจจัยสนับสนุนความเชื่อมั่นผู้บริโภค [FACTOR2]การปรับลดราคาน้ำมันเบนซินและแก๊สโซฮอล์อย่างต่อเนื่อง ส่งผลให้ต้นทุนการผลิตในประเทศลดลง ซึ่งจะส่งผลดีต่อมูลค่าการนำเข้าสินค้า เนื่องจากผู้ประกอบการสามารถควบคุมต้นทุนได้ดีขึ้น และมีโอกาสที่จะขยายการผลิตเพื่อตอบสนองความต้องการของตลาด [FACTOR3]การฟื้นตัวของภาคท่องเที่ยวส่งผลให้รายได้ประชาชาติเพิ่มขึ้น ซึ่งเป็นปัจจัยสำคัญที่สนับุนการเติบโตของ GDP. [CONCLUSION]การฟื้นตัวอย่างร้อนแรงของตลาดหุ้นจีน และการปรับลดราคาน้ำมันเบนซินและแก๊สโซฮอล์ ส่งผลให้รายได้ประชาชาติเพิ่มขึ้น และต้นทุนการผลิตในประเทศลดลง ทำให้ดัชนีความเชื่อมั่นผู้บริโภค เพิ่มขึ้นจากเดือนก่อนหน้า."
+  },
+  {
+    "date": "2025-02",
+    "predicted": 61.7,
+    "direction": "Increased from the previous month",
+    "top3_shap": [
+      "unemployment_rate_pastcov_lag-2",
+      "export_pastcov_lag-1",
+      "import_pastcov_lag-2"
+    ],
+    "intro": "The Consumer Confidence Index for 2025-02 stood at 61.70 and is expected to increase from the previous month. This upward trend is driven by several supporting factors, including:",
+    "factors": [
+      {
+        "tag": "unemployment_rate_pastcov_lag-2",
+        "text": "Investment in the \"Naya Residence by Livwell\" senior living project by the Muang Thai Group reflects the growing demand within the elderly demographic, a segment characterized by significant purchasing power and the capacity to generate economic revenue. The implementation of such projects facilitates job creation in the service sector—particularly in elderly care and residential facility management—thereby directly reducing the unemployment rate and bolstering consumer confidence in spending."
+      },
+      {
+        "tag": "export_pastcov_lag-1",
+        "text": "The U.S. election is likely to impact a new round of the US-China trade war, potentially prompting the relocation of production bases to other countries, such as Thailand, to circumvent tariffs. This development is expected to stimulate global demand for Thai products, leading to an increase in Thailand's export value and bolstering consumer confidence in spending."
+      },
+      {
+        "tag": "import_pastcov_lag-2",
+        "text": "The continuous decline in gasoline and gasohol prices has led to a reduction in domestic production costs, which is expected to lower import expenditures and positively impact the overall import value, thereby bolstering consumer confidence in spending."
+      }
+    ],
+    "conclusion": "Investment in the \"Naya Residence by Livwell\" senior living project has contributed to a reduction in the unemployment rate. Furthermore, the US elections have stimulated demand for Thai products, resulting in an increase in the Consumer Confidence Index compared to the previous month.",
+    "parse_ok": true,
+    "raw_reasoning": "[FACTOR1]การลงทุนในโครงการ Senior Living \"นายา เรสซิเดนซ์ บาย ลิฟเวล\" โดยกลุ่มเมืองไทย สะท้อนถึงความต้องการที่เพิ่มขึ้นของผู้สูงอายุ ซึ่งเป็นกลุ่มที่มีศักยภาพในการใช้จ่ายและสร้างรายได้ให้แก่เศรษฐกิจ การมีโครงการดังกล่าวจะช่วยสร้างงานในภาคบริการ เช่น การดูแลผู้สูงอายุ และการบริหารจัดการอาคารพักอาศัย ส่งผลต่อการลดอัตราการว่างงานโดยตรง ทำให้ผู้บริโภคมีความมั่นใจในการใช้จ่ายมากขึ้น[/FACTOR1] [FACTOR2]การเลือกตั้งสหรัฐฯ มีแนวโน้มที่จะส่งผลต่อสงครามการค้าระหว่างจีนและสหรัฐฯ รอบใหม่ ซึ่งอาจทำให้เกิดการโยกย้ายฐานการผลิตไปยังประเทศอื่นๆ เช่น ไทย เพื่อหลีกเลี่ยงภาษี เหตุการณ์นี้จะเพิ่มความต้องการสินค้าไทยในตลาดโลก ส่งผลให้มูลค่าการส่งออกของไทยเพิ่มขึ้น และผู้บริโภคมีความเชื่อมั่นในการใช้จ่ายมากขึ้น[/FACTOR2] [FACTOR3]การปรับลดราคาน้ำมันเบนซินและแก๊สโซฮอล์อย่างต่อเนื่องส่งผลให้ต้นทุนการผลิตในประเทศลดลง ซึ่งจะนำไปสู่การลดค่าใช้จ่ายในการนำเข้าสินค้าจากต่างประเทศ และส่งผลดีต่อมูลค่าการนำเข้าโดยรวม ทำให้ผู้บริโภคมีความเชื่อมั่นในการใช้จ่ายมากขึ้น[/FACTOR3] [CONCLUSION]การลงทุนในโครงการ Senior Living \"นายา เรสซิเดนซ์ บาย ลิฟเวล\" ช่วยลดอัตราการว่างงาน และการเลือกตั้งสหรัฐฯ ส่งผลให้ความต้องการสินค้าไทยเพิ่มขึ้น ทำให้ดัชนีความเชื่อมั่นผู้บริโภค เพิ่มขึ้นจากเดือนก่อนหน้า[/CONCLUSION]"
+  },
+  {
+    "date": "2025-03",
+    "predicted": 58.69,
+    "direction": "Increased from the previous month",
+    "top3_shap": [
+      "import_pastcov_lag-2",
+      "การเมือง_pastcov_lag-2",
+      "export_pastcov_lag-1"
+    ],
+    "intro": "The Consumer Confidence Index for 2025-03 stood at 58.69 and is expected to increase from the previous month. This upward trend is attributed to several supporting factors, such as:",
+    "factors": [
+      {
+        "tag": "import_pastcov_lag-2",
+        "text": "The continuous decline in gasoline and gasohol prices has led to a reduction in domestic production costs, which is expected to positively impact the value of imports. This is because operators can more effectively manage costs, thereby creating opportunities to expand production or increase the volume of raw material imports to meet market demand (import_pastcov_lag-2)."
+      },
+      {
+        "tag": "การเมือง_pastcov_lag-2",
+        "text": "The proposal to establish a working group to monitor \"Trump 2.0\" policies reflects the private sector's efforts to bolster confidence and mitigate uncertainty surrounding the government's economic policies. Such confidence will influence investment and consumption, which serve as critical indicators of the cost of living and consumer confidence (การเมือง_pastcov_lag-2)."
+      },
+      {
+        "tag": "export_pastcov_lag-1",
+        "text": "Global demand for agricultural commodities has risen, driven by the continuous surge in \"Virginia-Burley\" tobacco leaf prices resulting from supply shortages caused by volatile weather conditions. Consequently, Thailand's export value reached a historic high, exceeding 52 billion USD, or more than 1.84 trillion THB (export_pastcov_lag-1)."
+      }
+    ],
+    "conclusion": "Declining oil prices led to a reduction in domestic production costs, while increased private sector confidence resulting from economic policies drove an increase in the Consumer Confidence Index from the previous month.",
+    "parse_ok": true,
+    "raw_reasoning": "[FACTOR1]ราคาน้ำมันเบนซินและแก๊สโซฮอล์ปรับลดลงอย่างต่อเนื่อง ส่งผลให้ต้นทุนการผลิตในประเทศลดลง ซึ่งจะส่งผลดีต่อมูลค่าการนำเข้าสินค้า เนื่องจากผู้ประกอบการสามารถควบคุมต้นทุนได้ดีขึ้น และมีโอกาสที่จะขยายการผลิตหรือเพิ่มปริมาณการนำเข้าวัตถุดิบเพื่อสนองความต้องการของตลาด (import_pastcov_lag-2) [FACTOR2]การเสนอให้ตั้งคณะทำงานเพื่อติดตามนโยบายทรัมป์ 2.0 แสดงถึงความพยายามของภาคเอกชนในการสร้างความมั่นใจและลดความไม่แน่นอนในนโยบายเศรษฐกิจของรัฐบาล ความมั่นใจดังกล่าวจะส่งผลต่อการลงทุนและการบริโภค ซึ่งเป็นตัวชี้วัดสำคัญของค่าครองชีพและความเชื่อมั่นของผู้บริโภค (การเมือง_pastcov_lag-2) [FACTOR3]ความต้องการสินค้าเกษตรจากตลาดโลกเพิ่มสูงขึ้นเนื่องจากราคาใบยา “เวอร์ยิเนีย–เบอร์เลย์” พุ่งไม่หยุด จากการขาดแคลนใบยาที่เกิดจากสภาพอากาศที่แปรปรวน ส่งผลให้มูลค่าการส่งออกของไทยเพิ่มสูงขึ้นเป็นประวัติการณ์ ทะลุ 5.2 หมื่นล้านเหรียญสหรัฐ หรือกว่า 1.84 ล้านล้านบาท (export_pastcov_lag-1) [CONCLUSION]ราคาน้ำมันที่ลดลง ส่งผลให้ต้นทุนการผลิตในประเทศลดลง และความมั่นใจของภาคเอกชนที่เพิ่มขึ้นจากนโยบายเศรษฐกิจ ทำให้ดัชนีความเชื่อมั่นผู้บริโภค เพิ่มขึ้นจากเดือนก่อนหน้า"
+  },
+  {
+    "date": "2025-04",
+    "predicted": 59.43,
+    "direction": "Increased from the previous month",
+    "top3_shap": [
+      "unemployment_rate_pastcov_lag-2",
+      "import_pastcov_lag-2",
+      "export_pastcov_lag-1"
+    ],
+    "intro": "The Consumer Confidence Index for 2025-04 stood at 59.43 and is projected to increase from the previous month. This upward trend is driven by several supporting factors, including:",
+    "factors": [
+      {
+        "tag": "unemployment_rate_pastcov_lag-2",
+        "text": "The implementation of the “Homes for Thais” project will generate employment in the construction and related sectors, leading to an increase in household income and improved financial stability. This will bolster spending confidence among the workforce, ultimately contributing to a reduction in the unemployment rate."
+      },
+      {
+        "tag": "import_pastcov_lag-2",
+        "text": "The sustained decline in gasoline and gasohol prices has reduced domestic production costs, which in turn lowers import expenditures for energy-related raw materials, directly resulting in a decrease in the value of import."
+      },
+      {
+        "tag": "export_pastcov_lag-1",
+        "text": "Thai agricultural exports exhibit a positive outlook, driven by rising demand for durian in the Chinese market. The Department of International Trade Promotion is actively enhancing the brand image of Thai durian through four strategic initiatives aimed at penetrating the Chinese market, focusing on bolstering consumer confidence, leveraging digital platforms, and implementing consumption-stimulating activities. Consequently, these efforts have led to a direct increase in agricultural export revenues."
+      }
+    ],
+    "conclusion": "The “Baan Puea Kon Thai” project contributed to a reduction in the unemployment rate, thereby enhancing spending confidence among the workforce. Furthermore, the surge in demand for durians in the Chinese market led to a direct increase in agricultural export revenues. Consequently, the Consumer Confidence Index (CCI) rose relative to the previous month.",
+    "parse_ok": true,
+    "raw_reasoning": "[FACTOR1]การดำเนินโครงการ “บ้านเพื่อคนไทย” จะสร้างงานในภาคก่อสร้างและที่เกี่ยวข้อง ส่งผลให้รายได้ของครัวเรือนเพิ่มขึ้น และความมั่นคงทางการเงินดีขึ้น ทำให้แรงงานมีความเชื่อมั่นในการใช้จ่ายมากขึ้น ซึ่งจะส่งผลต่อการลดอัตราการว่างงานลง [FACTOR2]การปรับลดราคาน้ำมันเบนซินและแก๊สโซฮอล์อย่างต่อเนื่องส่งผลให้ต้นทุนการผลิตในประเทศลดลง ซึ่งจะนำไปสู่การลดค่าใช้จ่ายในการนำเข้าวัตถุดิบที่เกี่ยวข้องกับพลังงาน ส่งผลโดยตรงต่อการลดมูลค่า import [FACTOR3]การส่งออกสินค้าเกษตรของไทยมีแนวโน้มดีขึ้นเนื่องจากความต้องการทุเรียนในตลาดจีนเพิ่มสูงขึ้น กรมส่งเสริมการค้าระหว่างประเทศเร่งปั้นภาพลักษณ์ทุเรียนไทยผ่าน 4 กลยุทธ์เพื่อเจาะตลาดจีน โดยมุ่งเน้นสร้างความเชื่อมั่นให้กับผู้บริโภค, ดึงดิจิทัลแพลตฟอร์มเข้ามาช่วย และจัดกิจกรรมกระตุ้นการบริโภค ส่งผลให้รายได้จากการส่งออกสินค้าเกษตรเพิ่มขึ้นโดยตรง [CONCLUSION]โครงการ “บ้านเพื่อคนไทย” ช่วยลดอัตราการว่างงานลง ทำให้แรงงานมีความมั่นใจในการใช้จ่ายมากขึ้น และความต้องการทุเรียนในตลาดจีนที่เพิ่มสูงขึ้น ส่งผลให้รายได้จากการส่งออกสินค้าเกษตรเพิ่มขึ้นโดยตรง ดังนั้น ดัชนีความเชื่อมั่นผู้บริโภค จึงปรับตัวเพิ่มขึ้นจากเดือนก่อนหน้า"
+  },
+  {
+    "date": "2025-05",
+    "predicted": 58.88,
+    "direction": "Increased from the previous month",
+    "top3_shap": [
+      "import_pastcov_lag-2",
+      "export_pastcov_lag-1",
+      "การเมือง_pastcov_lag-1"
+    ],
+    "intro": "The Consumer Confidence Index for May 2025 stood at 58.88 and is projected to increase from the previous month. This upward trend is driven by several supporting factors, including:",
+    "factors": [
+      {
+        "tag": "import_pastcov_lag-2",
+        "text": "The continuous decline in gasoline and gasohol prices has led to a reduction in domestic production costs, which in turn reduces expenditures on imported raw materials. This directly impacts the value of import, which may subsequently decrease."
+      },
+      {
+        "tag": "export_pastcov_lag-1",
+        "text": "Thai agricultural exports exhibit a positive outlook, driven by rising demand for durians in the Chinese market. The Department of International Trade Promotion is actively enhancing the brand image of Thai durians through four strategic initiatives aimed at market penetration in China, focusing on bolstering consumer confidence and leveraging digital platforms. These efforts have directly contributed to an increase in agricultural export revenues."
+      },
+      {
+        "tag": "การเมือง_pastcov_lag-1",
+        "text": "The proposal by the private sector for the government to establish a task force to monitor \"Trump 2.0\" policies reflects an effort to foster confidence and collaboration with the public sector in managing economic policies that impact the cost of living and consumer confidence. Bilateral engagement will facilitate the implementation of appropriate and sustainable measures, which will lead to economic recovery and strengthen confidence in the public sector."
+      }
+    ],
+    "conclusion": "The reduction in gasoline and gasohol prices has led to a decrease in domestic production costs. Additionally, the outlook for Thai agricultural exports has improved due to rising demand for durians in the Chinese market, resulting in an increase in the Consumer Confidence Index from the previous month.",
+    "parse_ok": true,
+    "raw_reasoning": "[FACTOR1]การปรับลดราคาน้ำมันเบนซินและแก๊สโซฮอล์อย่างต่อเนื่องส่งผลให้ต้นทุนการผลิตในประเทศลดลง ซึ่งจะนำไปสู่การลดค่าใช้จ่ายในการนำเข้าวัตถุดิบจากต่างประเทศ ส่งผลโดยตรงต่อมูลค่าของ import ที่อาจลดลงตามมา[/FACTOR1] [FACTOR2]การส่งออกสินค้าเกษตรของไทยมีแนวโน้มดีขึ้นเนื่องจากความต้องการทุเรียนในตลาดจีนเพิ่มสูงขึ้น กรมส่งเสริมการค้าระหว่างประเทศเร่งปั้นภาพลักษณ์ทุเรียนไทยผ่าน 4 กลยุทธ์เพื่อเจาะตลาดจีน โดยมุ่งเน้นสร้างความเชื่อมั่นให้กับผู้บริโภค และดึงดิจิทัลแพลตฟอร์มเข้ามาช่วย ส่งผลให้รายได้จากการส่งออกสินค้าเกษตรเพิ่มขึ้นโดยตรง[/FACTOR2] [FACTOR3]การที่ภาคเอกชนเสนอให้รัฐบาลจัดตั้งคณะทำงานเพื่อติดตามนโยบายทรัมป์ 2.0 แสดงถึงความพยายามของภาคเอกชนในการสร้างความมั่นใจและความร่วมมือกับภาครัฐในการดำเนินนโยบายเศรษฐกิจที่ส่งผลต่อค่าครองชีพและความเชื่อมั่นของผู้บริโภค การมีส่วนร่วมจากทั้งสองฝ่ายจะช่วยให้เกิดมาตรการที่เหมาะสมและยั่งยืน ซึ่งจะนำไปสู่การฟื้นตัวทางเศรษฐกิจและเสริมสร้างความเชื่อมั่นในภาครัฐ[/FACTOR3] [CONCLUSION]การปรับลดราคาน้ำมันเบนซินและแก๊สโซฮอล์ ส่งผลให้ต้นทุนการผลิตในประเทศลดลง และการส่งออกสินค้าเกษตรของไทยมีแนวโน้มดีขึ้นเนื่องจากความต้องการทุเรียนในตลาดจีนเพิ่มสูงขึ้น ทำให้ดัชนีความเชื่อมั่นผู้บริโภค เพิ่มขึ้นจากเดือนก่อนหน้า[/CONCLUSION]"
+  },
+  {
+    "date": "2025-06",
+    "predicted": 58.51,
+    "direction": "Increased from the previous month",
+    "top3_shap": [
+      "ราคาน้ำมันเชื้อเพลิง_pastcov_lag-2",
+      "import_pastcov_lag-2",
+      "cpi_pastcov_lag-2"
+    ],
+    "intro": "The Consumer Confidence Index for June 2025 stood at 58.51 and is projected to increase from the previous month. This upward trend is driven by several supporting factors, including:",
+    "factors": [
+      {
+        "tag": "ราคาน้ำมันเชื้อเพลิง_pastcov_lag-2",
+        "text": "The continuous decline in gasoline and gasohol prices has led to a reduction in the cost of living. As fuel prices are a key determinant of the prices of other goods and services within the economy, these price reductions have bolstered consumer confidence in spending."
+      },
+      {
+        "tag": "import_pastcov_lag-2",
+        "text": "The reduction in gasoline and gasohol prices has led to a decrease in domestic production costs, which is expected to positively impact import values. This is attributed to the improved ability of producers to manage costs, thereby creating opportunities for the expansion of production and distribution."
+      },
+      {
+        "tag": "cpi_pastcov_lag-2",
+        "text": "The consecutive declines in gasoline and gasohol prices during March, April, and May have reduced transportation and production costs for businesses. This is expected to lead to a reduction in the prices of consumer goods, subsequently resulting in a decrease in the Consumer Price Index (CPI)."
+      }
+    ],
+    "conclusion": "The sustained reduction in gasoline and gasohol prices has led to a decrease in the cost of living, lower domestic production costs, and a decline in consumer goods prices, resulting in an increase in the Consumer Confidence Index from the previous month.",
+    "parse_ok": true,
+    "raw_reasoning": "[FACTOR1]การปรับลดราคาน้ำมันเบนซินและแก๊สโซฮอล์อย่างต่อเนื่อง ส่งผลให้ค่าครองชีพของประชาชนลดลง เนื่องจากราคาน้ำมันเชื้อเพลิงเป็นปัจจัยสำคัญที่ส่งผลต่อราคาสินค้าและบริการอื่นๆ ในระบบเศรษฐกิจ การปรับลดราคาน้ำมันจึงช่วยเพิ่มความเชื่อมั่นของผู้บริโภคในการใช้จ่าย[/FACTOR1] [FACTOR2]การลดราคาน้ำมันเบนซินและแก๊สโซฮอล์ ส่งผลให้ต้นทุนการผลิตในประเทศลดลง ซึ่งจะส่งผลดีต่อมูลค่าการนำเข้าสินค้า เนื่องจากผู้ประกอบการสามารถควบคุมต้นทุนได้ดีขึ้น และมีโอกาสที่จะขยายการผลิตและจำหน่ายสินค้ามากขึ้น[/FACTOR2] [FACTOR3]การปรับลดราคาน้ำมันเบนซินและแก๊สโซฮอล์อย่างต่อเนื่องในเดือนมีนาคม เมษายน และ พฤษภาคม ส่งผลให้ต้นทุนการขนส่งสินค้าและการผลิตของผู้ประกอบการลดลง ซึ่งจะนำไปสู่การปรับลดราคาสินค้าอุปโภคบริโภค ทำให้ดัชนีราคาผู้บริโภค (CPI) ลดลงตามมา[/FACTOR3] [CONCLUSION]การปรับลดราคาน้ำมันเบนซินและแก๊สโซฮอล์อย่างต่อเนื่อง ส่งผลให้ค่าครองชีพของประชาชนลดลง ต้นทุนการผลิตในประเทศลดลง และราคาสินค้าอุปโภคบริโภคปรับลดลง ทำให้ดัชนีความเชื่อมั่นผู้บริโภค เพิ่มขึ้นจากเดือนก่อนหน้า[/CONCLUSION]"
+  },
+  {
+    "date": "2025-07",
+    "predicted": 57.9,
+    "direction": "Increased from the previous month",
+    "top3_shap": [
+      "import_pastcov_lag-2",
+      "เศรษฐกิจโลก_pastcov_lag-2",
+      "unemployment_rate_pastcov_lag-2"
+    ],
+    "intro": "The Consumer Confidence Index for 2025-07 stood at 57.90 and is projected to increase from the previous month. This upward trend is driven by several supporting factors, including:",
+    "factors": [
+      {
+        "tag": "import_pastcov_lag-2",
+        "text": "The reduction in gasoline and gasohol prices by PTT Station and Bangchak has lowered domestic production costs, which positively impacts the value of imports and foreign costs (import). As enterprises are better able to manage their costs, this subsequently leads to an increase in the Consumer Confidence Index."
+      },
+      {
+        "tag": "เศรษฐกิจโลก_pastcov_lag-2",
+        "text": "The suspension of tariff measures imposed by President Donald Trump by the US Court of International Trade, on the grounds that such actions exceeded his authority, resulted in the immediate cancellation of these tariffs. This development serves as a positive catalyst in mitigating trade tensions between the United States and its trading partners. The reduction in trade tensions is expected to bolster consumer and business confidence—critical indicators of global economic health—thereby leading to an increase in the Consumer Confidence Index (CCI)."
+      },
+      {
+        "tag": "unemployment_rate_pastcov_lag-2",
+        "text": "The emphasis placed by the Thai population on financial security, debt repayment, and retirement planning reflects a heightened awareness of economic risks and uncertainties. The \"debt vaccine\" concept—which focuses on distinguishing between productive and non-productive debt, maintaining appropriate debt service levels, and fostering financial discipline to ensure robust financial health—serves to mitigate the risk of unemployment. This is attributed to the fact that individuals with greater financial stability are better equipped to adapt to volatile labor market conditions, ultimately leading to an increase in the Consumer Confidence Index (CCI)."
+      }
+    ],
+    "conclusion": "The reduction in fuel prices, the suspension of US tariffs, and the \"debt vaccine\" concept led to a decrease in domestic production costs, a reduction in trade tensions, and an improvement in consumer financial stability, resulting in an increase in the Consumer Confidence Index from the previous month.",
+    "parse_ok": true,
+    "raw_reasoning": "[FACTOR1]การปรับลดราคาน้ำมันกลุ่มเบนซิน-แก๊สโซฮอล์ โดย \"พีทีที สเตชั่น\" และ \"บางจาก\" ทำให้ต้นทุนการผลิตในประเทศลดลง ซึ่งจะส่งผลดีต่อมูลค่าการนำเข้าสินค้าและต้นทุนจากต่างประเทศ (import) เนื่องจากผู้ประกอบการสามารถควบคุมต้นทุนได้ดีขึ้น ส่งผลให้ดัชนีความเชื่อมั่นผู้บริโภคเพิ่มขึ้น[/FACTOR1] [FACTOR2]การที่ศาลการค้าระหว่างประเทศสหรัฐฯ สั่งระงับมาตรการภาษีของประธานาธิบดีโดนัลด์ ทรัมป์ เนื่องจากเป็นการใช้อำนาจเกินขอบเขต ส่งผลให้ภาษีถูกยกเลิกทันที เป็นปัจจัยบวกที่ช่วยลดความตึงเครียดทางการค้าระหว่างสหรัฐฯ และประเทศคู่ค้า การลดความตึงเครียดทางการค้าจะส่งผลดีต่อความมั่นใจของผู้บริโภคและภาคธุรกิจ ซึ่งเป็นตัวชี้วัดสำคัญของเศรษฐกิจโลก ส่งผลให้ดัชนีความเชื่อมั่นผู้บริโภคเพิ่มขึ้น[/FACTOR2] [FACTOR3]การให้ความสำคัญกับความมั่นคงทางการเงิน การชำระหนี้สิน และการเตรียมตัวสำหรับวัยเกษียณของคนไทยสะท้อนถึงความตระหนักในความเสี่ยงและความไม่แน่นอนทางเศรษฐกิจ แนวคิด \"วัคซีนหนี้\" ที่เน้นการแยกแยะหนี้ดี-ร้าย ควบคุมภาระผ่อนให้เหมาะสม และสร้างวินัยเพื่อสุขภาพการเงินที่แข็งแรง จะช่วยลดความเสี่ยงของการตกงาน เนื่องจากผู้ที่มีฐานะการเงินมั่นคงจะมีความสามารถในการปรับตัวต่อสภาวะตลาดแรงงานที่เปลี่ยนแปลงได้ดีกว่า ส่งผลให้ดัชนีความเชื่อมั่นผู้บริโภคเพิ่มขึ้น[/FACTOR3] [CONCLUSION] การลดราคาน้ำมันเชื้อเพลิง การระงับมาตรการภาษีของสหรัฐฯ และแนวคิด \"วัacซีนหนี้\" ทำให้ต้นทุนการผลิตในประเทศลดลง ความตึงเครียดทางการค้าลดลง และความมั่นคงทางการเงินของผู้บริโภคเพิ่มขึ้น ส่งผลให้ดัชนีความเชื่อมั่นผู้บริโภคเพิ่มขึ้นจากเดือนก่อนหน้า[/CONCLUSION]"
+  },
+  {
+    "date": "2025-08",
+    "predicted": 52.21,
+    "direction": "Increased from the previous month",
+    "top3_shap": [
+      "import_pastcov_lag-2",
+      "unemployment_rate_pastcov_lag-2",
+      "export_pastcov_lag-1"
+    ],
+    "intro": "The Consumer Confidence Index for August 2025 stood at 52.21 and is projected to increase from the previous month. This upward trend is driven by several supporting factors, including:",
+    "factors": [
+      {
+        "tag": "import_pastcov_lag-2",
+        "text": "The reduction in gasoline and gasohol prices by 30 satang in May and 50 satang in June by PTT Station and Bangchak has lowered domestic production costs. This is expected to have a positive impact on import values and foreign costs, thereby increasing consumer confidence."
+      },
+      {
+        "tag": "unemployment_rate_pastcov_lag-2",
+        "text": "Prioritizing financial discipline and financial planning among the population contributes to a reduction in the unemployment rate. When individuals focus on income and expenditure management, savings, and future preparedness—such as efficient debt servicing, retirement planning, and the development of financial resilience—household income stability and spending capacity are enhanced. These are critical factors in reducing the unemployment rate, as improved purchasing power and heightened confidence in the future bolster economic stability."
+      },
+      {
+        "tag": "export_pastcov_lag-1",
+        "text": "Tariff negotiations between the United States and India have shown significant progress, with India proposing a \"win-win\" framework to reduce tariff rates to below 10%. This development is expected to positively impact global market demand and expand opportunities for Thai agricultural exports, as the reduction in tariffs will enhance the price competitiveness of Thai products within the Indian market."
+      }
+    ],
+    "conclusion": "The reduction in oil prices, which lowered production costs, coupled with enhanced household income stability resulting from improved financial planning, has bolstered consumer spending confidence, leading to an increase in the Consumer Confidence Index from the previous month.",
+    "parse_ok": true,
+    "raw_reasoning": "[FACTOR1]การปรับลดราคาน้ำมันกลุ่มเบนซิน-แก๊สโซฮอล์ ลง 30 สตางค์ (เดือนพฤษภาคม) และ 50 สตางค์ (เดือนมิถุนายน) โดย \"พีทีที สเตชั่น\" และ \"บางจาก\" ทำให้ต้นทุนการผลิตในประเทศลดลง ซึ่งจะส่งผลดีต่อมูลค่าการนำเข้าสินค้าและต้นทุนจากต่างประเทศ ส่งผลให้ความเชื่อมั่นผู้บริโภคเพิ่มขึ้น[/FACTOR1] [FACTOR2]การให้ความสำคัญกับวินัยทางการเงินและการวางแผนการเงินของประชาชน ส่งผลต่อการลดอัตราการว่างงาน เมื่อคนไทยหันมาใส่ใจเรื่องการบริหารจัดการรายรับ-รายจ่าย การออม และการเตรียมตัวสำหรับอนาคต เช่น การชำระหนี้สินอย่างมีประสิทธิภาพ การวางแผนเกษียณ และการสร้างภูมิคุ้มกันทางการเงิน จะช่วยเพิ่มความมั่นคงของรายได้ครัวเรือนและความสามารถในการใช้จ่าย ซึ่งเป็นปัจจัยสำคัญที่ส่งผลต่อการลดอัตราการว่างงาน เนื่องจากผู้คนมีกำลังซื้อที่ดีขึ้นและมีความมั่นใจในอนาคตมากขึ้น[/FACTOR2] [FACTOR3]การเจรจาภาษีระหว่างสหรัฐฯ และอินเดียเป็นไปอย่างคืบหน้า โดยอินเดียเสนอรูปแบบ \"Win - Win\" เพื่อลดอัตราภาษีให้เหลือต่ำกว่า 10% ซึ่งจะส่งผลดีต่อความต้องการสินค้าจากตลาดโลกและเพิ่มโอกาสการส่งออกสินค้าเกษตรของไทย เนื่องจากอัตราภาษีที่ลดลงจะทำให้สินค้าไทยมีราคาแข่งขันได้ดีขึ้นในตลาดอินเดีย[/FACTOR3] [CONCLUSION]การปรับลดราคาน้ำมันที่ส่งผลต่อต้นทุนการผลิต และความมั่นคงของรายได้ครัวเรือนจากการวางแผนการเงินที่ดีขึ้น ส่งผลให้ผู้บริโภคมีความเชื่อมั่นในการใช้จ่ายมากขึ้น ทำให้ดัชนีความเชื่อมั่นผู้บริโภคเพิ่มขึ้นจากเดือนก่อนหน้า[/CONCLUSION]"
+  },
+  {
+    "date": "2025-09",
+    "predicted": 52.52,
+    "direction": "Increased from the previous month",
+    "top3_shap": [
+      "import_pastcov_lag-2",
+      "cpi_pastcov_lag-2",
+      "export_pastcov_lag-1"
+    ],
+    "intro": "The Consumer Confidence Index for September 2025 stood at 52.52 and is projected to increase from the previous month. This upward trend is driven by several supporting factors, such as:",
+    "factors": [
+      {
+        "tag": "import_pastcov_lag-2",
+        "text": "Foreign investment has increased significantly, as President Trump visited Qatar and the UAE to secure substantial economic agreements. These developments are expected to stimulate market growth within the region and may lead to an increase in demand for Thai goods and raw materials, thereby driving an increase in the CCI."
+      },
+      {
+        "tag": "cpi_pastcov_lag-2",
+        "text": "The Thai economy exhibits resilience, characterized by sustained growth in the export sector despite US tariff measures. Concurrently, the government has implemented policies to revitalize the Chinese tourism market, such as the launch of the \"Sawasdee Ni Hao\" campaign. Furthermore, support provided to the business sector has contributed to an increase in the CCI."
+      },
+      {
+        "tag": "export_pastcov_lag-1",
+        "text": "The stability of import prices in recent periods indicates that production costs for the business sector have not accelerated. Consequently, domestic prices of goods and services have not risen to a level that pressures consumer purchasing power, leading to an increase in the CCI."
+      }
+    ],
+    "conclusion": "Foreign investment has increased significantly, and the Thai economy has demonstrated strength, leading to an improvement in consumer confidence.",
+    "parse_ok": true,
+    "raw_reasoning": "[FACTOR1]การลงทุนจากต่างประเทศเพิ่มขึ้นอย่างมีนัยสำคัญ โดยประธานาธิบดีทรัมป์ได้เดินทางไปยังกาตาร์และ UAE เพื่อทำข้อตกลงทางเศรษฐกิจมูลค่ามหาศาล ซึ่งจะส่งผลต่อการเติบโตของตลาดในภูมิภาคนี้และอาจนำมาซึ่งความต้องการสินค้าและวัตถุดิบจากไทยเพิ่มขึ้น ทำให้ CCI เพิ่มขึ้น [FACTOR2]เศรษฐกิจไทยแสดงท่าทีแข็งแกร่ง โดยภาคส่งออกขยายตัวอย่างต่อเนื่อง สวนทางมาตรการภาษีของสหรัฐอเมริกา และรัฐบาลได้ดำเนินนโยบายเพื่อฟื้นฟูตลาดนักท่องเที่ยวจีน เช่น การเปิดแคมเปญ สวัสดี หนีห่าว นอกจากนี้ ยังมีการสนับสนุนภาคธุรกิจ ทำให้ CCI เพิ่มขึ้น [FACTOR3]ราคานำเข้าที่ทรงตัวในช่วงที่ผ่านมา สะท้อนว่าต้นทุนการผลิตของภาคธุรกิจยังไม่เร่งตัว ทำให้ราคาสินค้าและบริการในประเทศไม่ปรับสูงขึ้นจนกดดันกำลังซื้อของผู้บริโภค ส่งผลให้ CCI เพิ่มขึ้น [CONCLUSION]การลงทุนจากต่างประเทศเพิ่มขึ้นอย่างมีนัยสำคัญ และเศรษฐกิจไทยแสดงท่าทีแข็งแกร่ง ทำให้ความเชื่อมั่นผู้บริโภคปรับตัวเพิ่มขึ้น"
+  },
+  {
+    "date": "2025-10",
+    "predicted": 55.07,
+    "direction": "Increased from the previous month",
+    "top3_shap": [
+      "export_pastcov_lag-1",
+      "unemployment_rate_pastcov_lag-2",
+      "import_pastcov_lag-2"
+    ],
+    "intro": "The Consumer Confidence Index for October 2025 stood at 55.07 and is projected to increase from the previous month. This upward trend is driven by several supporting factors, including:",
+    "factors": [
+      {
+        "tag": "export_pastcov_lag-1",
+        "text": "Vietnam possesses significant potential and robust purchasing power, presenting a strategic opportunity for Thai investors to expand exports to the country. Furthermore, the appreciation of the Chinese Yuan and India's ascent to become the world's fourth-largest economy indicate rising global demand, which serves as a positive signal for Thai exports and is expected to bolster both corporate and consumer income."
+      },
+      {
+        "tag": "unemployment_rate_pastcov_lag-2",
+        "text": "Thai citizens place a high priority on financial security, debt servicing, and retirement planning. This is evidenced by the \"Debt Vaccine\" concept aimed at enhancing financial resilience, alongside various public financial literacy campaigns. Furthermore, there are developments promoting equality and diversity, such as the provision of joint loan facilities for LGBTQIAN+ couples and the \"Long-term Care\" campaign by Muang Thai Life Assurance during Pride Month. Domestic donations have grown steadily at an annual rate of 2%, totaling 150 billion baht, reflecting the Thai people's commitment to altruism. Additionally, the younger generation, specifically Generation Z, is increasingly focusing on financial planning, prioritizing stability and frugality over conspicuous consumption."
+      },
+      {
+        "tag": "import_pastcov_lag-2",
+        "text": "Foreign direct investment has increased steadily, driving expansion in the business sector and employment, which in turn has raised personal incomes and strengthened overall purchasing power."
+      }
+    ],
+    "conclusion": "Robust exports and enhanced financial stability resulting from foreign investment have led to an increase in the Consumer Confidence Index from the previous month.",
+    "parse_ok": true,
+    "raw_reasoning": "[FACTOR1]เวียดนามมีศักยภาพและกำลังซื้อสูง ทำให้เป็นโอกาสที่ดีสำหรับนักลงทุนไทยในการส่งออกสินค้าไปยังประเทศนี้ การที่จีนแข็งค่าหยวนขึ้น และอินเดียก้าวขึ้นเป็นเศรษฐกิจอันดับ 4 ของโลก แสดงถึงความต้องการสินค้าจากตลาดโลกเพิ่มมากขึ้น ซึ่งเป็นสัญญาณบวกต่อการส่งออกของไทย ส่งผลให้รายได้ของภาคธุรกิจและผู้บริโภคเพิ่มขึ้น [FACTOR2]คนไทยให้ความสำคัญกับความมั่นคงทางการเงิน การชำระหนี้สิน และการเตรียมตัวสำหรับวัยเกษียณ โดยมีแนวคิด \"วัคซีนหนี้\" เพื่อสร้างภูมิคุ้มกันทางการเงินและแคมเปญส่งเสริมความรู้ทางการเงินแก่ประชาชน นอกจากนี้ ยังมีข่าวที่ส่งเสริมความเท่าเทียมและความหลากหลาย เช่น การรองรับการกู้ร่วมของคู่รัก LGBTQIAN+ และแคมเปญ “ห่วงใยกันมายาวนาน” ของ \"เมืองไทยประกันชีวิต\" ในเดือน Pride Month ยอดบริจาคในประเทศเติบโตอย่างต่อเนื่องถึง 2% ต่อปี รวมเป็นมูลค่าสูงถึง 1.5 แสนล้านบาท สะท้อนให้เห็นถึงความศรัทธาของคนไทยที่มีต่อการช่วยเหลือผู้อื่น และเยาวชนยุคใหม่ หรือ Gen Z กำลังหันมาใส่ใจเรื่องการวางแผนการเงินมากขึ้น โดยเน้นความมั่นคงและประหยัดมากกว่าการอวดรวย [FACTOR3]การลงทุนจากต่างประเทศเพิ่มขึ้นอย่างต่อเนื่อง ทำให้เกิดการขยายตัวของภาคธุรกิจและการจ้างงาน ส่งผลให้รายได้ของประชาชนเพิ่มขึ้น และกำลังซื้อโดยรวมแข็งแกร่งขึ้น [CONCLUSION] การส่งออกที่แข็งแกร่งและความมั่นคงทางการเงินที่เพิ่มขึ้นจากการลงทุนต่างประเทศ ทำให้ดัชนีความเชื่อมั่นผู้บริโภคปรับตัวสูงขึ้นจากเดือนก่อนหน้า"
+  }
+]

@@ -1,8 +1,31 @@
+# XEconomic dependencies
+# ------------------------------------------------------------------
+# darts is pinned: it renamed core TimeSeries methods after 0.31
+# (pd_series -> to_series, pd_dataframe -> to_dataframe). With an
+# unpinned `darts`, a local env on an old version and Kaggle on the
+# latest diverged and the train/consolidate steps broke.
+# For a full lockfile, run `pip freeze` inside a known-good Kaggle run
+# and commit that as requirements.lock.txt.
+# ------------------------------------------------------------------
 fastapi
 uvicorn
 pandas
 numpy
 python-multipart
-darts
+darts==0.44.1
 pythainlp
 transformers
+
+xgboost
+statsmodels
+scikit-learn
+pytorch-lightning
+torch
+tqdm
+
+tiktoken
+datasets
+
+# For HuggingFace 4-bit quantization on Kaggle T4 GPUs
+bitsandbytes>=0.46.1
+accelerate
