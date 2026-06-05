@@ -1,3 +1,4 @@
+import { getNews } from './api'
 import Papa from "papaparse"
 
 function toSignedSentiment(score, impactType) {
@@ -52,26 +53,12 @@ function mapNewsRow(r) {
 }
 
 async function loadFromBackend() {
-  const res = await fetch("/dashboard/news?limit=20000")
-  if (!res.ok) throw new Error("โหลดข่าวจาก backend ไม่สำเร็จ")
-  const json = await res.json()
+  const json = await getNews(20000)
   return (json.data || []).map(mapNewsRow).filter((x) => x.date && x.title)
 }
 
 export async function getNewsSentimentFromCSV() {
-  const res = await fetch("./data/2017-2026.csv")
-  if (!res.ok) {
-    return loadFromBackend()
-  }
-
-  const text = await res.text()
-
-  if (text.trim().startsWith("<!doctype html") || text.includes('<div id="root"></div>')) {
-    return loadFromBackend()
-  }
-
-  const parsed = Papa.parse(text, { header: true, skipEmptyLines: true })
-  return (parsed.data || []).map(mapNewsRow).filter((x) => x.date && x.title)
+  return loadFromBackend()
 }
 
 export async function getAgencyVolumeFromCSV(newsRows) {

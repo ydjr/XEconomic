@@ -1,23 +1,47 @@
 import os
+import sys
 import json
+from pathlib import Path
+
 import pandas as pd
 import numpy as np
 from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
 
-ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+# --- resolve project root & import config ---
+_ROOT = Path(__file__).resolve().parents[1]
+if str(_ROOT) not in sys.path:
+    sys.path.insert(0, str(_ROOT))
+from config import Dirs, Files
 
-ART_DIR = os.path.join(ROOT, "artifacts")
-DATA_DIR = os.path.join(ROOT, "data")
+ROOT          = str(Dirs.ROOT)
+ART_DIR       = str(Dirs.ARTIFACTS)
+REASONING_DIR = str(Dirs.REASONING / "oneshot_results")
 
-CCI_CSV = os.path.join(DATA_DIR, "indicators/cci.csv")
+# Centralized via config — paths follow the actual on-disk layout
+CCI_CSV         = str(Files.CCI_CSV)             # public/data/indicators/cci.csv
+PRED_LATEST_CSV = str(Files.PRED_LATEST_CSV)     # artifacts/pred_latest.csv (script 6 output)
+NEWS_CSV        = str(Files.ABSA_NEWS_CSV)       # data/2017-2026.csv
+SHAP_CSV        = str(Files.SHAP_TOP3_CSV)       # artifacts/shap_top3_unique.csv
+WORDCLOUD_JSON  = str(Files.WORDCLOUD_JSON)      # public/data/wordcloud_words.json
 
-# DASHBOARD_CSV = os.path.join(ART_DIR, "cci_dashboard_latest.csv")
-PRED_LATEST_CSV = os.path.join(ART_DIR, "pred_direction.csv")
-EXPLAIN_JSON = os.path.join(ART_DIR, "one_reasoning_2024-01_to_2025-08.json")
-EN_EXPLAIN_JSON = os.path.join(ART_DIR, "reasoning_merged_EN.json")
-NEWS_CSV = os.path.join(DATA_DIR, "2017-2026.csv")
-SHAP_CSV = os.path.join(ART_DIR, "shap_top3_unique.csv")
+
+def find_latest_reasoning_json(lang: str = "TH") -> str:
+    """Return the statically defined reasoning JSON path from config."""
+    path = str(Files.REASONING_JSON_TH) if lang == "TH" else str(Files.REASONING_JSON_EN)
+    if os.path.exists(path):
+        return path
+    
+    # Fallback to the old English file if TH doesn't exist but EN does (for legacy data)
+    en_path = str(Files.REASONING_JSON_EN)
+    if os.path.exists(en_path):
+        return en_path
+        
+    return None
+
+# Resolve at startup
+EXPLAIN_JSON = find_latest_reasoning_json("TH")
+EN_EXPLAIN_JSON = find_latest_reasoning_json("EN")
 
 
 app = FastAPI(title="CCI Forecast API", version="1.0.0")
@@ -30,15 +54,52 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-def read_json(path: str):
-    if not os.path.exists(path):
+def load_json_file(path: str):
+    if not path or not os.path.exists(path):
         return None
-    with open(path, "r", encoding="utf-8") as f:
+    with open(path, "r", encoding="utf-8-sig") as f:
         return json.load(f)
 
 @app.get("/health")
 def health():
     return {"status": "ok"}
+
+
+@app.get("/health/data")
+def health_data():
+    """Freshness report — latest date present in each key data file.
+
+    Lets the dashboard surface "data as of YYYY-MM" warnings when the
+    pipeline hasn't caught up, instead of silently serving stale content.
+    """
+    def _latest_date(path: str, date_col: str):
+        if not os.path.exists(path):
+            return None
+        try:
+            df = pd.read_csv(path)
+            if date_col not in df.columns:
+                return None
+            s = pd.to_datetime(df[date_col], errors="coerce").dropna()
+            if s.empty:
+                return None
+            return s.max().strftime("%Y-%m-%d")
+        except Exception:
+            return None
+
+    return {
+        "cci_latest":          _latest_date(CCI_CSV, "date"),
+        "news_latest":         _latest_date(NEWS_CSV, "published_at"),
+        "prediction_latest":   _latest_date(PRED_LATEST_CSV, "date"),
+        "shap_latest":         _latest_date(SHAP_CSV, "date"),
+        "reasoning_file":      os.path.basename(EXPLAIN_JSON) if EXPLAIN_JSON and os.path.exists(EXPLAIN_JSON) else None,
+        "files": {
+            "cci":         os.path.exists(CCI_CSV),
+            "news":        os.path.exists(NEWS_CSV),
+            "prediction":  os.path.exists(PRED_LATEST_CSV),
+            "shap":        os.path.exists(SHAP_CSV),
+            "reasoning":   bool(EXPLAIN_JSON) and os.path.exists(EXPLAIN_JSON),
+        },
+    }
 
 @app.get("/dashboard/summary")
 def dashboard_summary():
@@ -131,11 +192,16 @@ def dashboard_summary():
 
 @app.get("/dashboard/explain/latest")
 def dashboard_explain_latest():
-    if not os.path.exists(EXPLAIN_JSON):
-        return {}
-    df = pd.read_csv(EXPLAIN_JSON)
-    df = df.replace({np.nan: None})
-    return {"data": df.to_dict(orient="records")}
+    if not EXPLAIN_JSON or not os.path.exists(EXPLAIN_JSON):
+        return {"data": []}
+    data = load_json_file(EXPLAIN_JSON)
+    if not isinstance(data, list):
+        return {"data": []}
+    for row in data:
+        if "date" in row and row["date"]:
+            row["date"] = str(row["date"])[:7]
+    data = sorted(data, key=lambda x: x.get("date", ""))
+    return {"data": data}
 
 
 @app.get("/dashboard/explain/all")
@@ -143,7 +209,7 @@ def dashboard_explain_all():
     if not os.path.exists(EXPLAIN_JSON):
         return {"data": []}
 
-    data = read_json(EXPLAIN_JSON)
+    data = load_json_file(EXPLAIN_JSON)
     if not isinstance(data, list):
         return {"data": []}
 
@@ -160,7 +226,7 @@ def dashboard_explain_all_en():
     if not os.path.exists(EN_EXPLAIN_JSON):
         return {"data": []}
 
-    data = read_json(EN_EXPLAIN_JSON)
+    data = load_json_file(EN_EXPLAIN_JSON)
     if not isinstance(data, list):
         return {"data": []}
 
@@ -317,7 +383,8 @@ def dashboard_news(limit: int = Query(2000, ge=1, le=20000)):
     if not os.path.exists(NEWS_CSV):
         return {"data": []}
 
-    df = pd.read_csv(NEWS_CSV)
+    cols = ["id", "published_at", "headline", "url", "Aspect", "category", "subtype", "sentiment_score", "impact_type", "effect_type"]
+    df = pd.read_csv(NEWS_CSV, usecols=lambda x: x in cols)
 
     # ปรับชื่อคอลัมน์ให้ตรงกับไฟล์คุณ wtf krai tum wa
     # จากรูปไฟล์คุณมี: id, category, subtype, published_at, headline, ... sentiment_score, impact_type, effect_type, aspects
@@ -325,7 +392,7 @@ def dashboard_news(limit: int = Query(2000, ge=1, le=20000)):
         if c not in df.columns:
             return {"data": []}
 
-    df["date"] = pd.to_datetime(df["published_at"], errors="coerce")
+    df["date"] = pd.to_datetime(df["published_at"], dayfirst=True, errors="coerce")
     df = df.dropna(subset=["date"])
     df = df.sort_values("date")
 
@@ -361,6 +428,22 @@ def dashboard_news(limit: int = Query(2000, ge=1, le=20000)):
         })
 
     return {"data": rows}
+
+
+@app.get("/dashboard/wordcloud")
+def dashboard_wordcloud(limit: int = Query(120, ge=1, le=500)):
+    """Per-word data for the interactive word cloud.
+
+    Each item: word, score, weight (0..1 for font sizing), count,
+    positive/negative article split, and sample headlines for the
+    hover tooltip. Produced by pipeline/generate_wordcloud.py.
+    """
+    if not os.path.exists(WORDCLOUD_JSON):
+        return {"data": []}
+    data = load_json_file(WORDCLOUD_JSON)
+    if not isinstance(data, list):
+        return {"data": []}
+    return {"data": data[:limit]}
 
 
 @app.get("/dashboard/shap")

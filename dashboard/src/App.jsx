@@ -4,7 +4,7 @@ import { getSummary, getTimeSeries, getNews, getShap, getAllExplain, getAllExpla
 import { getNewsSentimentFromCSV, getAgencyVolumeFromCSV } from "./newsFileApi"
 import { getAgencyVolumeLastNMonths } from "./newsSupabaseApi"
 import { TrendingUp, Activity, BarChart3, Search, RotateCcw } from "lucide-react"
-import wordcloudImg from "./assets/cci_impact_wordcloud.png"
+import InteractiveWordCloud from "./InteractiveWordCloud.jsx"
 import forecastsummary from "./assets/forecastsummary.svg"
 import summaryicon from "./assets/summary.svg"
 import forecastchart from "./assets/forecastchart.svg"
@@ -887,7 +887,6 @@ function ForecastChart({ t, lang, series, selectedMonth }) {
       .filter((_, i) => i % Math.max(1, Math.floor(visibleData.length / 14)) === 0)
       .map((d) => d.date)
     if (activeRange === "2y") return visibleData
-      .filter((_, i) => i % 2 === 0)
       .map((d) => d.date)
     if (activeRange === "1y") return visibleData
       .filter((_, i) => visibleData.length <= 16 || i % 2 === 0)
@@ -958,7 +957,7 @@ function ForecastChart({ t, lang, series, selectedMonth }) {
                   height={55}
                   ticks={xAxisTicks}
                   interval={0}
-                  minTickGap={activeRange === "1y" ? -50 : 0}
+                  minTickGap={activeRange === "2y" ? -20 : activeRange === "1y" ? -50 : 0}
                   tickMargin={8}
                   tick={<ForecastXAxisTick lang={lang} compact={activeRange === "1y"} />}
                   axisLine={{ stroke: THEME.textPrimary }}
@@ -1075,6 +1074,8 @@ function ForecastChart({ t, lang, series, selectedMonth }) {
     </Card>
   )
 }
+
+
 
 function ReasoningPanel({ t, lang, activeRow, selectedMonth, news, onSelectAspect }) {
   const getPrevious3Months = React.useCallback((targetMonth) => {
@@ -1555,6 +1556,10 @@ function AnalyticsPage({ t, lang, news = [] }) {
   const [agencyStack, setAgencyStack] = React.useState({ data: [], groups: [] })
   const [agencyErr, setAgencyErr] = React.useState("")
 
+  const NewsIcon = () => (
+    <img src={forecastchart} width={20} height={20} alt="News Icon" />
+  )
+
   // ── ใช้ข่าวทั้งหมด (ไม่จำกัดแค่ 12 เดือน) เพื่อ Brush เลื่อนดูย้อนหลัง ──
   const aspectStackAll = React.useMemo(() => {
     return stackCountByMonth(news, (n) => n.aspect || "Unknown", ASPECTS_TO_RUN)
@@ -1566,7 +1571,7 @@ function AnalyticsPage({ t, lang, news = [] }) {
     async function loadAgency() {
       setAgencyErr("")
       try {
-        const rows = await getAgencyVolumeLastNMonths(120) // ดึงข้อมูล 10 ปี (120 เดือน) จาก Supabase ทันที
+        const rows = await getAgencyVolumeLastNMonths(120)
         if (!alive) return
         setAgencyStack(toAgencyStack(rows))
       } catch (e) {
@@ -1599,7 +1604,6 @@ function AnalyticsPage({ t, lang, news = [] }) {
     return bins
   }, [news])
 
-  // ── Aggregate impact volume เป็นรายเดือน ──
   const impactMonthlyVolume = React.useMemo(() => {
     const monthMap = {}
     news.forEach((n) => {
@@ -1607,7 +1611,13 @@ function AnalyticsPage({ t, lang, news = [] }) {
       if (!m) return
       if (!monthMap[m]) monthMap[m] = { Positive: 0, Neutral: 0, Negative: 0, count: 0 }
 
-      const type = n.impactType === "Positive" ? "Positive" : n.impactType === "Negative" ? "Negative" : "Neutral"
+      const type =
+        n.impactType === "Positive"
+          ? "Positive"
+          : n.impactType === "Negative"
+            ? "Negative"
+            : "Neutral"
+
       monthMap[m][type] += 1
       monthMap[m].count += 1
     })
@@ -1625,22 +1635,41 @@ function AnalyticsPage({ t, lang, news = [] }) {
     })
   }, [news])
 
-  // ── สรุปภาพรวมผลกระทบ: แกน X = Neg/Neu/Pos, แท่ง = Short-term / Long-term ──
   const impactSummaryByEffect = React.useMemo(() => {
     const counts = {
       Negative: { "Short-term": 0, "Long-term": 0 },
       Neutral: { "Short-term": 0, "Long-term": 0 },
       Positive: { "Short-term": 0, "Long-term": 0 },
     }
+
     news.forEach((n) => {
-      const impact = n.impactType === "Positive" ? "Positive" : n.impactType === "Negative" ? "Negative" : "Neutral"
+      const impact =
+        n.impactType === "Positive"
+          ? "Positive"
+          : n.impactType === "Negative"
+            ? "Negative"
+            : "Neutral"
+
       const effect = n.effectType === "Long-term" ? "Long-term" : "Short-term"
       counts[impact][effect] += 1
     })
+
     return [
-      { impact: "Negative", "Short-term": counts.Negative["Short-term"], "Long-term": counts.Negative["Long-term"] },
-      { impact: "Neutral", "Short-term": counts.Neutral["Short-term"], "Long-term": counts.Neutral["Long-term"] },
-      { impact: "Positive", "Short-term": counts.Positive["Short-term"], "Long-term": counts.Positive["Long-term"] },
+      {
+        impact: "Negative",
+        "Short-term": counts.Negative["Short-term"],
+        "Long-term": counts.Negative["Long-term"],
+      },
+      {
+        impact: "Neutral",
+        "Short-term": counts.Neutral["Short-term"],
+        "Long-term": counts.Neutral["Long-term"],
+      },
+      {
+        impact: "Positive",
+        "Short-term": counts.Positive["Short-term"],
+        "Long-term": counts.Positive["Long-term"],
+      },
     ]
   }, [news])
 
@@ -1650,16 +1679,13 @@ function AnalyticsPage({ t, lang, news = [] }) {
     const longTerm = []
 
     news.forEach((n, idx) => {
-      // สุ่มข้ามเพื่อลดภาระกระตุกของเบราว์เซอร์ เนื่องจากข้อมูลจาก CSV มีมากกว่า 40,000 แถว
-      // เอามาโชว์แค่ 10% (ประมาณ 4,000 จุด) สีก็จะดูแน่นมากๆ แล้วครับ
-      if (idx % 10 !== 0) return;
+      if (idx % 10 !== 0) return
 
-      const sBase = Number(n.rawSentiment) || 0;
-      const iBase = impactMap[n.impactType] ?? 0;
+      const sBase = Number(n.rawSentiment) || 0
+      const iBase = impactMap[n.impactType] ?? 0
 
-      // Jitter (แกว่งจุด) แบบกระจายตัวกว้างขึ้นให้เต็มสเปซกราฟที่ว่างอยู่
-      const sJitter = (Math.random() * 0.16) - 0.08;
-      const iJitter = (Math.random() * 0.60) - 0.30;
+      const sJitter = Math.random() * 0.16 - 0.08
+      const iJitter = Math.random() * 0.6 - 0.3
 
       const point = {
         sentiment: Math.max(0, Math.min(1, sBase + sJitter)),
@@ -1676,7 +1702,6 @@ function AnalyticsPage({ t, lang, news = [] }) {
     return { shortTermData: shortTerm, longTermData: longTerm }
   }, [news])
 
-  // ── คำนวณ startIndex สำหรับ Brush (แสดง 12 เดือนล่าสุด) ──
   const agencyBrushStart = Math.max(0, agencyStack.data.length - 12)
   const aspectBrushStart = Math.max(0, aspectStackAll.data.length - 12)
   const sentimentBrushStart = Math.max(0, impactMonthlyVolume.length - 12)
@@ -1693,18 +1718,22 @@ function AnalyticsPage({ t, lang, news = [] }) {
     <div className="space-y-8 xecon-fade-in">
       <SectionHeader
         title={t("News Intelligence", "การวิเคราะห์ข่าวเชิงลึก")}
-        subtitle={t("Volume, sentiment, impact analysis and model feature importance", "ปริมาณข่าว อารมณ์ข่าว ผลกระทบ และความสำคัญของตัวแปร")}
-        icon={BarChart3}
+        subtitle={t(
+          "Volume, sentiment, impact analysis and model feature importance",
+          "ปริมาณข่าว อารมณ์ข่าว ผลกระทบ และความสำคัญของตัวแปร"
+        )}
+        icon={NewsIcon}
       />
 
-      {/* ── News volume by source — full time range + Brush ── */}
       <div className="grid grid-cols-1 gap-6">
         <Card>
           <CardHeader>
             <CardTitle>{t("News volume by source", "ปริมาณข่าวตามสำนักข่าว")}</CardTitle>
             <CardDescription>
-              {t("Drag the slider below the chart to explore different time periods",
-                "ลากแถบด้านล่างกราฟเพื่อเลื่อนดูช่วงเวลาต่างๆ ย้อนหลังได้")}
+              {t(
+                "Drag the slider below the chart to explore different time periods",
+                "ลากแถบด้านล่างกราฟเพื่อเลื่อนดูช่วงเวลาต่างๆ ย้อนหลังได้"
+              )}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -1718,11 +1747,19 @@ function AnalyticsPage({ t, lang, news = [] }) {
               <ResponsiveContainer width="100%" height={380}>
                 <BarChart data={agencyStack.data} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
                   <CartesianGrid stroke={THEME.border} horizontal={true} vertical={false} strokeOpacity={0.6} />
-                  <XAxis dataKey="month" tick={{ fontSize: 11, fill: "#6B7A99" }} tickFormatter={(v) => lang === "th" ? thaiMonthYear(v) : engMonthYear(v)} />
+                  <XAxis
+                    dataKey="month"
+                    tick={{ fontSize: 11, fill: "#6B7A99" }}
+                    tickFormatter={(v) => (lang === "th" ? thaiMonthYear(v) : engMonthYear(v))}
+                  />
                   <YAxis tick={{ fontSize: 11, fill: "#6B7A99" }} />
                   <ReTooltip
-                    contentStyle={{ borderRadius: 10, border: "1px solid #DDE4EF", boxShadow: "0 4px 20px rgba(18,32,64,0.08)" }}
-                    labelFormatter={(label) => lang === "th" ? thaiMonthYear(label) : engMonthYear(label)}
+                    contentStyle={{
+                      borderRadius: 10,
+                      border: "1px solid #DDE4EF",
+                      boxShadow: "0 4px 20px rgba(18,32,64,0.08)",
+                    }}
+                    labelFormatter={(label) => (lang === "th" ? thaiMonthYear(label) : engMonthYear(label))}
                   />
                   <Legend />
                   {agencyStack.groups.map((agency, i) => (
@@ -1743,7 +1780,7 @@ function AnalyticsPage({ t, lang, news = [] }) {
                     travellerWidth={10}
                     startIndex={agencyBrushStart}
                     endIndex={agencyStack.data.length - 1}
-                    tickFormatter={(v) => lang === "th" ? thaiMonthYear(v) : engMonthYear(v)}
+                    tickFormatter={(v) => (lang === "th" ? thaiMonthYear(v) : engMonthYear(v))}
                   />
                 </BarChart>
               </ResponsiveContainer>
@@ -1752,32 +1789,43 @@ function AnalyticsPage({ t, lang, news = [] }) {
         </Card>
       </div>
 
-      {/* ── News volume by topic — full time range + Brush ── */}
       <div className="grid grid-cols-1 gap-6">
         <Card>
           <CardHeader>
             <CardTitle>{t("News volume by topic", "ปริมาณข่าวตามประเด็น")}</CardTitle>
             <CardDescription>
-              {t("Drag the slider below to explore topics over time",
-                "ลากแถบด้านล่างเพื่อสำรวจประเด็นข่าวตามช่วงเวลา")}
+              {t("Drag the slider below to explore topics over time", "ลากแถบด้านล่างเพื่อสำรวจประเด็นข่าวตามช่วงเวลา")}
             </CardDescription>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={380}>
               <BarChart data={aspectStackAll.data} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
                 <CartesianGrid stroke={THEME.border} horizontal={true} vertical={false} strokeOpacity={0.6} />
-                <XAxis dataKey="month" tick={{ fontSize: 11, fill: "#6B7A99" }} tickFormatter={(v) => lang === "th" ? thaiMonthYear(v) : engMonthYear(v)} />
+                <XAxis
+                  dataKey="month"
+                  tick={{ fontSize: 11, fill: "#6B7A99" }}
+                  tickFormatter={(v) => (lang === "th" ? thaiMonthYear(v) : engMonthYear(v))}
+                />
                 <YAxis tick={{ fontSize: 11, fill: "#6B7A99" }} />
                 <ReTooltip
-                  contentStyle={{ borderRadius: 10, border: "1px solid #DDE4EF", boxShadow: "0 4px 20px rgba(18,32,64,0.08)" }}
-                  labelFormatter={(label) => lang === "th" ? thaiMonthYear(label) : engMonthYear(label)}
+                  contentStyle={{
+                    borderRadius: 10,
+                    border: "1px solid #DDE4EF",
+                    boxShadow: "0 4px 20px rgba(18,32,64,0.08)",
+                  }}
+                  labelFormatter={(label) => (lang === "th" ? thaiMonthYear(label) : engMonthYear(label))}
                 />
                 <Legend />
                 {aspectStackAll.groups.map((asp, i) => {
                   const enName = ASPECT_EN[asp] || asp
                   const label = lang === "en" ? enName : asp
                   return (
-                    <Bar key={asp} dataKey={asp} stackId="1" fill={getAspectColor(asp)} name={label}
+                    <Bar
+                      key={asp}
+                      dataKey={asp}
+                      stackId="1"
+                      fill={getAspectColor(asp)}
+                      name={label}
                       radius={i === aspectStackAll.groups.length - 1 ? [3, 3, 0, 0] : [0, 0, 0, 0]}
                     />
                   )
@@ -1790,7 +1838,7 @@ function AnalyticsPage({ t, lang, news = [] }) {
                   travellerWidth={10}
                   startIndex={aspectBrushStart}
                   endIndex={aspectStackAll.data.length - 1}
-                  tickFormatter={(v) => lang === "th" ? thaiMonthYear(v) : engMonthYear(v)}
+                  tickFormatter={(v) => (lang === "th" ? thaiMonthYear(v) : engMonthYear(v))}
                 />
               </BarChart>
             </ResponsiveContainer>
@@ -1803,8 +1851,10 @@ function AnalyticsPage({ t, lang, news = [] }) {
           <CardHeader>
             <CardTitle>{t("Sentiment distribution", "สรุปภาพรวมข่าวในแต่ละระดับ")}</CardTitle>
             <CardDescription>
-              {t("Distribution of news articles across sentiment score ranges",
-                "การกระจายตัวของจำนวนข่าวในแต่ละช่วงคะแนนความรู้สึก")}
+              {t(
+                "Distribution of news articles across sentiment score ranges",
+                "การกระจายตัวของจำนวนข่าวในแต่ละช่วงคะแนนความรู้สึก"
+              )}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -1812,22 +1862,31 @@ function AnalyticsPage({ t, lang, news = [] }) {
               <BarChart data={sentimentHistogram}>
                 <CartesianGrid stroke={THEME.border} horizontal={true} vertical={false} strokeOpacity={0.6} />
                 <XAxis dataKey="range" tick={{ fontSize: 10, fill: "#6B7A99" }} />
-                <YAxis tick={{ fontSize: 11, fill: "#6B7A99" }} tickFormatter={(v) => v >= 1000 ? v.toLocaleString() : v} />
+                <YAxis
+                  tick={{ fontSize: 11, fill: "#6B7A99" }}
+                  tickFormatter={(v) => (v >= 1000 ? v.toLocaleString() : v)}
+                />
                 <ReTooltip
-                  contentStyle={{ borderRadius: 10, border: "1px solid #DDE4EF", boxShadow: "0 4px 20px rgba(18,32,64,0.08)" }}
+                  contentStyle={{
+                    borderRadius: 10,
+                    border: "1px solid #DDE4EF",
+                    boxShadow: "0 4px 20px rgba(18,32,64,0.08)",
+                  }}
                 />
                 <Bar dataKey="count" fill="#0072B2" name={t("News count", "จำนวนข่าว")} radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
-        {/* ── สรุปภาพรวมผลกระทบจากข่าว — clustered: Short-term vs Long-term ── */}
+
         <Card>
           <CardHeader>
             <CardTitle>{t("Impact summary", "สรุปภาพรวมผลกระทบจากข่าว")}</CardTitle>
             <CardDescription>
-              {t("Total news count by impact level, split by short-term and long-term effect",
-                "จำนวนข่าวรวมทุกเดือน แยกตามระดับผลกระทบและระยะเวลา")}
+              {t(
+                "Total news count by impact level, split by short-term and long-term effect",
+                "จำนวนข่าวรวมทุกเดือน แยกตามระดับผลกระทบและระยะเวลา"
+              )}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -1835,20 +1894,36 @@ function AnalyticsPage({ t, lang, news = [] }) {
               <BarChart data={impactSummaryByEffect} margin={{ top: 5, right: 30, left: 10, bottom: 5 }}>
                 <CartesianGrid stroke={THEME.border} horizontal={true} vertical={false} strokeOpacity={0.6} />
                 <XAxis dataKey="impact" tick={{ fontSize: 13, fill: "#6B7A99", fontWeight: 600 }} />
-                <YAxis tick={{ fontSize: 11, fill: "#6B7A99" }} tickFormatter={(v) => v >= 1000 ? v.toLocaleString() : v} />
+                <YAxis
+                  tick={{ fontSize: 11, fill: "#6B7A99" }}
+                  tickFormatter={(v) => (v >= 1000 ? v.toLocaleString() : v)}
+                />
                 <ReTooltip
-                  contentStyle={{ borderRadius: 10, border: "1px solid #DDE4EF", boxShadow: "0 4px 20px rgba(18,32,64,0.08)" }}
+                  contentStyle={{
+                    borderRadius: 10,
+                    border: "1px solid #DDE4EF",
+                    boxShadow: "0 4px 20px rgba(18,32,64,0.08)",
+                  }}
                 />
                 <Legend />
-                <Bar dataKey="Short-term" fill={EFFECT_COLORS["Short-term"]} name={t("Short-term", "ระยะสั้น")} radius={[3, 3, 0, 0]} />
-                <Bar dataKey="Long-term" fill={EFFECT_COLORS["Long-term"]} name={t("Long-term", "ระยะยาว")} radius={[3, 3, 0, 0]} />
+                <Bar
+                  dataKey="Short-term"
+                  fill={EFFECT_COLORS["Short-term"]}
+                  name={t("Short-term", "ระยะสั้น")}
+                  radius={[3, 3, 0, 0]}
+                />
+                <Bar
+                  dataKey="Long-term"
+                  fill={EFFECT_COLORS["Long-term"]}
+                  name={t("Long-term", "ระยะยาว")}
+                  radius={[3, 3, 0, 0]}
+                />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
       </div>
 
-      {/* ── Wordcloud — full width ── */}
       <div className="grid grid-cols-1 gap-6">
         <Card>
           <CardHeader>
@@ -1856,7 +1931,7 @@ function AnalyticsPage({ t, lang, news = [] }) {
           </CardHeader>
           <CardContent>
             <div className="w-full bg-white rounded-lg overflow-hidden">
-              <img src={wordcloudImg} alt="CCI Impact Word Cloud" className="w-full h-auto rounded-xl" />
+              <InteractiveWordCloud lang={lang} />
             </div>
           </CardContent>
         </Card>
@@ -2179,7 +2254,7 @@ export default function App() {
             </div>
             <div className="leading-tight">
               <div className="text-white font-medium" style={{ fontSize: 15 }}>
-                XEconomic
+                XEconomics
               </div>
               <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", marginTop: 1 }}>
                 CCI Forecast &amp; XAI
@@ -2417,7 +2492,7 @@ export default function App() {
           style={{ padding: "20px 40px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}
         >
           <div style={{ fontSize: 13, color: "rgba(255,255,255,0.4)" }}>
-            <span style={{ color: "rgba(255,255,255,0.75)", fontWeight: 500 }}>XEconomic</span>
+            <span style={{ color: "rgba(255,255,255,0.75)", fontWeight: 500 }}>XEconomics</span>
             {" · "}{t("Consumer Confidence Index Forecast & Explainability Platform", "ระบบพยากรณ์ดัชนีความเชื่อมั่นผู้บริโภค")}
           </div>
           <div style={{ display: "flex", gap: 24 }}>
