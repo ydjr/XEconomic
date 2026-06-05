@@ -4,7 +4,7 @@ import { getSummary, getTimeSeries, getNews, getShap, getAllExplain, getAllExpla
 import { getNewsSentimentFromCSV, getAgencyVolumeFromCSV } from "./newsFileApi"
 import { getAgencyVolumeLastNMonths } from "./newsSupabaseApi"
 import { TrendingUp, Activity, BarChart3, Search, RotateCcw } from "lucide-react"
-import wordcloudImg from "./assets/cci_impact_wordcloud.png"
+import InteractiveWordCloud from "./InteractiveWordCloud.jsx"
 import forecastsummary from "./assets/forecastsummary.svg"
 import summaryicon from "./assets/summary.svg"
 import forecastchart from "./assets/forecastchart.svg"
@@ -1931,7 +1931,7 @@ function AnalyticsPage({ t, lang, news = [] }) {
           </CardHeader>
           <CardContent>
             <div className="w-full bg-white rounded-lg overflow-hidden">
-              <img src={wordcloudImg} alt="CCI Impact Word Cloud" className="w-full h-auto rounded-xl" />
+              <InteractiveWordCloud lang={lang} />
             </div>
           </CardContent>
         </Card>
@@ -2254,7 +2254,7 @@ export default function App() {
             </div>
             <div className="leading-tight">
               <div className="text-white font-medium" style={{ fontSize: 15 }}>
-                XEconomic
+                XEconomics
               </div>
               <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", marginTop: 1 }}>
                 CCI Forecast &amp; XAI
@@ -2492,7 +2492,7 @@ export default function App() {
           style={{ padding: "20px 40px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}
         >
           <div style={{ fontSize: 13, color: "rgba(255,255,255,0.4)" }}>
-            <span style={{ color: "rgba(255,255,255,0.75)", fontWeight: 500 }}>XEconomic</span>
+            <span style={{ color: "rgba(255,255,255,0.75)", fontWeight: 500 }}>XEconomics</span>
             {" · "}{t("Consumer Confidence Index Forecast & Explainability Platform", "ระบบพยากรณ์ดัชนีความเชื่อมั่นผู้บริโภค")}
           </div>
           <div style={{ display: "flex", gap: 24 }}>
