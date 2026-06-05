@@ -47,7 +47,7 @@ npm run dev
 
 Open browser: http://localhost:5173
 
-
+https://xeconomics.vercel.app/#forecast
 ## 📂 Project Structure
  
 ```
