@@ -25,7 +25,7 @@ import shutil
 # CONFIGURATION
 # ===========================================
 # UPDATE THIS TO YOUR REPO URL!
-REPO_URL = "https://github.com/ydjr/XEconomic.git" 
+REPO_URL = "https://github.com/Jean-ktn/XEconomic-Auto.git" 
 BRANCH = "jeans/news-analytics-update"
 WORK_DIR = "/kaggle/working/XEconomic"
 
