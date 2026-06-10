@@ -50,6 +50,7 @@ class Dirs:
     # --- Immutable directories (always read from project root) ---
     PIPELINE    = ROOT / "pipeline"
     NEWS_ANALYSIS   = PIPELINE / "1_news_analysis"
+    NEWS_PREP   = PIPELINE / "news_prep"
     FORECASTING     = PIPELINE / "2_forecasting"
     EXPLAINABLE_AI  = PIPELINE / "3_explainable_ai" / "explainable"
     NEWS_SUM    = PIPELINE / "data" / "news_sum"

@@ -141,11 +141,6 @@ def check_ollama() -> bool:
 
 # Step definitions: (phase, label, script_path, requires_llm, output_check_file)
 STEPS = [
-    # Phase: fetch
-    ("fetch", "Step 0: Fetch news from Supabase",
-     Dirs.NEWS_PREP / "0_fetch_news.py", False,
-     None),  # always run to check for new articles
-
     # Phase: news
     ("news", "Step 1: Preprocess news data",
      Dirs.NEWS_PREP / "1_preprocess.py", False,
