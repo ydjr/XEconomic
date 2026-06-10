@@ -151,19 +151,23 @@ import time
 from tqdm import tqdm
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
+from pathlib import Path
+
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))  # project root
+from config import cfg, call_hf_api, Files, Dirs, HF_LLM, Pipeline
 
 # ==========================================
 # CONFIGURATION
 # ==========================================
 CONFIG = {
-    "aspect_path": r"D:\ICT\senior_project\code\text_summarization\aspect_summaries\llama3.1-2025\aspect_summaries_2025.csv",
-    "shap_base_dir": r"D:\ICT\senior_project\code\shap\shap_result", 
-    "output_dir": r"D:\ICT\senior_project\code\text_summarization\3m_shap-aspect_summary\llama3.1",
-    "start_month": "2025-07", 
-    "end_month": "2025-08",
-    "top_k": 3,
-    "model_name": "llama3.1:8b",
-    "ollama_url": "http://localhost:11434/api/generate",
+    "aspect_path": str(Dirs.EXPLAINABLE / "text_summarization" / "aspect_summaries.csv"),
+    "shap_base_dir": str(Dirs.SHAP_RESULT),
+    "output_dir": str(Dirs.ARTIFACTS / "3m_summary_output"),
+    "start_month": Pipeline.START_MONTH,
+    "end_month": Pipeline.END_MONTH,
+    "top_k": Pipeline.SHAP_TOP_K,
+    "model_name": HF_LLM.SUMMARY_MODEL,
 }
 
 # Mapping keywords for the new lagged feature names
@@ -182,22 +186,15 @@ INDICATOR_DEFINITIONS = {
 # FUNCTIONS
 # ==========================================
 
-def call_ollama_with_retry(prompt, retries=2):
-    payload = {
-        "model": CONFIG["model_name"], 
-        "prompt": prompt, 
-        "stream": False, 
-        "options": {"temperature": 0.2}
-    }
-    for i in range(retries + 1):
-        try:
-            response = requests.post(CONFIG["ollama_url"], json=payload, timeout=180)
-            return response.json().get('response', '').strip()
-        except Exception as e:
-            if i < retries:
-                time.sleep(2)
-                continue
-            return f"Error after retries: {str(e)}"
+def call_llm_with_retry(prompt, retries=2):
+    """Call HuggingFace Inference API with retry."""
+    return call_hf_api(
+        prompt,
+        model=CONFIG["model_name"],
+        max_tokens=600,
+        temperature=0.2,
+        retries=retries,
+    )
 
 def get_target_aspect(shap_feature):
     """Maps features like 'cpi_pastcov_lag-3' to news categories."""
@@ -279,7 +276,7 @@ def main():
             else:
                 combined_texts = "\n\n".join(window_data['Aspect_Summary_TH'].fillna('').tolist())
                 prompt = generate_prompt(feature, row['shap_value'], target_aspect, combined_texts)
-                summary_3m = call_ollama_with_retry(prompt)
+                summary_3m = call_llm_with_retry(prompt)
                 
             print(f"    [OK] Preview: {summary_3m[:50]}...")
 

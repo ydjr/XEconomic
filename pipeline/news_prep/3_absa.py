@@ -7,18 +7,22 @@ from tqdm import tqdm
 from dataclasses import dataclass
 from typing import Dict, Any, Optional, List
 import requests
+from pathlib import Path
+
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))  # project root
+from config import cfg, call_hf_api, Files, Dirs, HF_LLM
 
 # ========================================
 # CONFIGURATION
 # ========================================
-INPUT_CSV = r"D:\ICT\senior_project\code\sentiment\outputs_thai2\cci_2024.csv"
-OUTPUT_DIR = r"D:\ICT\senior_project\code\sentiment\outputs_thai2\cci_2024_results"
+INPUT_CSV = str(Files.RELEVANCE_CSV)  # output of step 2 (relevance filter)
+OUTPUT_DIR = str(Dirs.ARTIFACTS / "absa_results")
 
-# Ollama Settings
-OLLAMA_URL = "http://localhost:11434/api/generate"
-MODEL_NAME = "llama3.1:8b"
-TEMPERATURE = 0.1
-MAX_RETRIES = 3
+# LLM via HuggingFace Inference API
+MODEL_NAME = HF_LLM.ABSA_MODEL
+TEMPERATURE = HF_LLM.TEMPERATURE
+MAX_RETRIES = HF_LLM.MAX_RETRIES
 
 # Processing Limits
 PROCESS_LIMIT = None  # Set to a number (e.g., 50) for testing
@@ -84,18 +88,15 @@ def get_monthly_filename(date_str: str) -> str:
         return f"sentiment_results_{match.group(1)}_{match.group(2)}.csv"
     return "sentiment_results.csv"
 
-def call_ollama(prompt: str) -> str:
-    payload = {
-        "model": MODEL_NAME,
-        "prompt": prompt,
-        "stream": False,
-        "temperature": TEMPERATURE,
-    }
-    try:
-        r = requests.post(OLLAMA_URL, json=payload, timeout=60)
-        return r.json().get("response", "")
-    except Exception as e:
-        return ""
+def call_llm(prompt: str) -> str:
+    """Call HuggingFace Inference API for ABSA."""
+    return call_hf_api(
+        prompt,
+        model=MODEL_NAME,
+        max_tokens=200,
+        temperature=TEMPERATURE,
+        retries=MAX_RETRIES,
+    )
 
 def extract_json(text: str) -> Dict[str, Any]:
     text = re.sub(r'```json\s*|```', '', text).strip()
@@ -143,7 +144,7 @@ def main():
         current_prompt = SYSTEM_PROMPT + "\n\n" + news_text
         
         for attempt in range(MAX_RETRIES + 1):
-            raw_response = call_ollama(current_prompt)
+            raw_response = call_llm(current_prompt)
             try:
                 data = extract_json(raw_response)
                 final_result = validate_and_fix(data)

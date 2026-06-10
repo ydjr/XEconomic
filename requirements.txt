@@ -6,3 +6,15 @@ python-multipart
 darts
 pythainlp
 transformers
+xgboost
+lightgbm
+huggingface_hub
+scikit-learn
+shap
+supabase
+requests
+wordcloud
+matplotlib
+tqdm
+accelerate
+bitsandbytes

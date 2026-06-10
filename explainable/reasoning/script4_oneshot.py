@@ -1,19 +1,21 @@
 
 import re
-import time
-import requests
+import sys
 import pandas as pd
 from pathlib import Path
 from tqdm import tqdm
 from datetime import datetime
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))  # project root
+from config import cfg, call_hf_api, Files, Dirs, HF_LLM
+
 # ==========================================
 # CONFIG
 # ==========================================
 
-SUMMARY_3M_PATH = Path(r"/home/xecon/sp2025/SP2025-SeniorProject/text_summarization/3m_summary/gemma2_27b/3m_summary_2024-01_to_2025-08.csv")
-PRED_PATH       = Path(r"/home/xecon/sp2025/SP2025-SeniorProject/forecasted_value/pred_direction.csv")
-OUTPUT_DIR = Path(r"/home/xecon/sp2025/SP2025-SeniorProject/reasoning/reasoning/oneshot_results/gemma2_27b/bulletver")
+SUMMARY_3M_PATH = Files.SUMMARY_3M_CSV
+PRED_PATH       = Files.PRED_DIRECTION
+OUTPUT_DIR      = Dirs.ARTIFACTS / "reasoning_output"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 START_MONTH = "2024-01"
@@ -22,13 +24,10 @@ END_MONTH   = "2025-08"
 OUTPUT_CSV  = OUTPUT_DIR / f"reasoning_{START_MONTH}_to_{END_MONTH}.csv"
 OUTPUT_JSON = OUTPUT_DIR / f"reasoning_{START_MONTH}_to_{END_MONTH}.json"
 
-# Ollama
-OLLAMA_URL        = "http://localhost:11434/api/generate"
-MODEL_NAME        = "gemma2:27b"
-MAX_RETRIES       = 2
-RETRY_SLEEP       = 6
-MAX_OUTPUT_TOKENS = 700
-OLLAMA_TIMEOUT    = 360
+# LLM via HuggingFace Inference API
+MODEL_NAME        = HF_LLM.REASON_MODEL
+MAX_RETRIES       = HF_LLM.MAX_RETRIES
+MAX_OUTPUT_TOKENS = HF_LLM.MAX_NEW_TOKENS
 
 # ==========================================
 # INDICATOR DEFINITIONS
@@ -82,28 +81,15 @@ def get_relationship(base_feat: str) -> str:
             return rel
     return DEFAULT_RELATIONSHIP
 
-def query_ollama(prompt: str) -> str:
-    payload = {
-        "model": MODEL_NAME,
-        "prompt": prompt,
-        "stream": False,
-        "options": {
-            "num_predict": MAX_OUTPUT_TOKENS,
-            "temperature": 0.2,
-            "repeat_penalty": 1.1,
-        },
-    }
-    for attempt in range(MAX_RETRIES + 1):
-        try:
-            r = requests.post(OLLAMA_URL, json=payload, timeout=OLLAMA_TIMEOUT)
-            r.raise_for_status()
-            return clean_text(r.json().get("response", ""))
-        except Exception as e:
-            if attempt < MAX_RETRIES:
-                print(f"  [Retry {attempt+1}] Ollama error: {e} — waiting {RETRY_SLEEP}s")
-                time.sleep(RETRY_SLEEP)
-            else:
-                return f"[OLLAMA_ERROR] {e}"
+def query_llm(prompt: str) -> str:
+    """Call HuggingFace Inference API for reasoning."""
+    return call_hf_api(
+        prompt,
+        model=MODEL_NAME,
+        max_tokens=MAX_OUTPUT_TOKENS,
+        temperature=0.2,
+        retries=MAX_RETRIES,
+    )
 
 def init_output() -> None:
     if OUTPUT_CSV.exists():
@@ -356,7 +342,7 @@ def main():
         print(f"reference tags:\n{allowed_tags_print}")
         print(f"evidence:\n{evidence_print}")
 
-        reasoning = query_ollama(prompt)
+        reasoning = query_llm(prompt)
         sections  = parse_sections(reasoning)
 
         if not sections["parse_ok"]:

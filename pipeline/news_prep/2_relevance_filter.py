@@ -5,10 +5,16 @@ from pathlib import Path
 from tqdm import tqdm
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))  # project root
+from config import cfg, WangchanBERTa
+
 # =====================
 # CONFIG
 # =====================
-MODEL_DIR = "../wangchanberta_cls/best_model"
+# Try primary model dir, fallback to legacy, then HF base
+_model_candidates = [WangchanBERTa.MODEL_DIR, WangchanBERTa.MODEL_DIR_LEGACY]
+MODEL_DIR = str(next((p for p in _model_candidates if p.exists()), WangchanBERTa.MODEL_DIR))
 BASE_DIR = Path(__file__).resolve().parents[1]
 DATA_DIR = BASE_DIR / "data"
 INPUT_CSV = DATA_DIR /  "1_cleaned_news/all_news.csv"

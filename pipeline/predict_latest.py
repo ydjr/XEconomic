@@ -1,3 +1,9 @@
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # project root
+from config import Files, Dirs
+
 import pandas as pd
 from darts import TimeSeries
 from darts.models import XGBModel
@@ -6,7 +12,7 @@ from darts.explainability.shap_explainer import ShapExplainer
 # ======================
 # LOAD DATA
 # ======================
-df = pd.read_csv("data/avg_sent_indi.csv")
+df = pd.read_csv(str(Files.AVG_SENT_INDI))
 df["date"] = pd.to_datetime(df["date"])
 df = df.sort_values("date")
 
@@ -17,7 +23,7 @@ past_cov = TimeSeries.from_dataframe(df, time_col="date", value_cols=cov_cols, f
 # ======================
 # LOAD MODEL + PREDICT
 # ======================
-model = XGBModel.load("models/backtest/xgb_weights.pkl")
+model = XGBModel.load(str(Files.XGB_WEIGHTS))
 
 forecast = model.predict(
     n=1,
@@ -29,8 +35,9 @@ pred_df = forecast.to_dataframe().reset_index()
 pred_df.columns = ["date", "cci_pred"]
 print(pred_df)
 
-pred_df.to_csv("artifacts/pred_latest.csv", index=False)
-print("Saved artifacts/pred_latest.csv")
+Dirs.ARTIFACTS.mkdir(parents=True, exist_ok=True)
+pred_df.to_csv(str(Files.PRED_LATEST_CSV), index=False)
+print(f"Saved {Files.PRED_LATEST_CSV}")
 
 # ======================
 # SHAP
@@ -54,8 +61,8 @@ shap_df = shap_ts.to_dataframe()
 # save full shap (with date column)
 shap_out = shap_df.copy()
 shap_out.insert(0, "date", shap_out.index.to_period("M").astype(str))
-shap_out.to_csv("artifacts/shap_h1.csv", index=False)
-print("Saved artifacts/shap_h1.csv")
+shap_out.to_csv(str(Files.SHAP_H1_CSV), index=False)
+print(f"Saved {Files.SHAP_H1_CSV}")
 
 # ======================
 # RANK LATEST
@@ -70,6 +77,6 @@ rank_df = (
 rank_df.columns = ["feature", "shap_importance"]
 rank_df["shap_value"] = last_shap[rank_df["feature"]].values
 
-rank_df.to_csv("artifacts/shap_predicted_month_rank.csv", index=False)
-print("Saved artifacts/shap_predicted_month_rank.csv")
+rank_df.to_csv(str(Files.SHAP_RANK_CSV), index=False)
+print(f"Saved {Files.SHAP_RANK_CSV}")
 print(rank_df.head(10))
