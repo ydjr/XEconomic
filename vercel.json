@@ -2,9 +2,9 @@
   "functions": {
     "api/**/*.py": {
       "includeFiles": [
-        "data/**",
-        "artifacts/**",
-        "public/data/**"
+        "kaggle_workspace/data/**",
+        "kaggle_workspace/artifacts/**",
+        "kaggle_workspace/public/data/**"
       ]
     }
   }

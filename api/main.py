@@ -19,11 +19,19 @@ ART_DIR       = str(Dirs.ARTIFACTS)
 REASONING_DIR = str(Dirs.REASONING / "oneshot_results")
 
 # Centralized via config — paths follow the actual on-disk layout
-CCI_CSV         = str(Files.CCI_CSV)             # public/data/indicators/cci.csv
-PRED_LATEST_CSV = str(Files.PRED_LATEST_CSV)     # artifacts/pred_latest.csv (script 6 output)
-NEWS_CSV        = str(Files.ABSA_NEWS_CSV)       # data/2017-2026.csv
-SHAP_CSV        = str(Files.SHAP_TOP3_CSV)       # artifacts/shap_top3_unique.csv
-WORDCLOUD_JSON  = str(Files.WORDCLOUD_JSON)      # public/data/wordcloud_words.json
+def get_workspace_path(original_path: str) -> str:
+    """Read from kaggle_workspace if the file exists, to keep original files untouched."""
+    rel_path = os.path.relpath(original_path, ROOT)
+    kw_path = os.path.join(ROOT, "kaggle_workspace", rel_path)
+    if os.path.exists(kw_path):
+        return kw_path
+    return original_path
+
+CCI_CSV         = get_workspace_path(str(Files.CCI_CSV))             # public/data/indicators/cci.csv
+PRED_LATEST_CSV = get_workspace_path(str(Files.PRED_LATEST_CSV))     # artifacts/pred_latest.csv (script 6 output)
+NEWS_CSV        = get_workspace_path(str(Files.ABSA_NEWS_CSV))       # data/2017-2026.csv
+SHAP_CSV        = get_workspace_path(str(Files.SHAP_TOP3_CSV))       # artifacts/shap_top3_unique.csv
+WORDCLOUD_JSON  = get_workspace_path(str(Files.WORDCLOUD_JSON))      # public/data/wordcloud_words.json
 
 
 def find_latest_reasoning_json(lang: str = "TH") -> str:

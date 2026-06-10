@@ -125,19 +125,18 @@ print("=" * 60)
 run("git config --global user.email 'kaggle-bot@xeconomic.com'", cwd=WORK_DIR)
 run("git config --global user.name 'Kaggle Pipeline Bot'", cwd=WORK_DIR)
 
-# Sync kaggle_workspace outputs back to project root so frontend can use them
-import shutil
-sync_dirs = ["artifacts", "public", "models", "data"]
-for d in sync_dirs:
-    src = os.path.join(WORK_DIR, "kaggle_workspace", d)
-    dst = os.path.join(WORK_DIR, d)
-    if os.path.exists(src):
-        shutil.copytree(src, dst, dirs_exist_ok=True)
+# Only add the kaggle_workspace updates to avoid tracking useless intermediate files
+# Add files that are supposed to be pushed back (artifacts, public data, indicators, pipeline state)
+directories_to_add = [
+    "kaggle_workspace/artifacts", 
+    "kaggle_workspace/public", 
+    "kaggle_workspace/models", 
+    "kaggle_workspace/data", 
+    "pipeline/data"
+]
+for d in directories_to_add:
+    if os.path.exists(os.path.join(WORK_DIR, d)):
         run(f"git add -f {d}", cwd=WORK_DIR)
-
-if os.path.exists(os.path.join(WORK_DIR, "pipeline/data")):
-    run("git add -f pipeline/data", cwd=WORK_DIR)
-
 run("git commit -m '🤖 Kaggle auto-update: new pipeline results'", cwd=WORK_DIR)
 
 # Push back to origin
