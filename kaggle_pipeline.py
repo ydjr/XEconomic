@@ -75,7 +75,9 @@ if not os.path.exists(WORK_DIR):
         
     run(f"git clone --depth 1 -b {BRANCH} {auth_url} {WORK_DIR}")
 else:
-    run(f"git pull", cwd=WORK_DIR)
+    # Use fetch + reset to handle force-pushed branches cleanly
+    run(f"git fetch origin {BRANCH}", cwd=WORK_DIR)
+    run(f"git reset --hard origin/{BRANCH}", cwd=WORK_DIR)
 
 # ===========================================
 # STEP 2: INSTALL DEPENDENCIES
@@ -140,7 +142,7 @@ run("git commit -m '🤖 Kaggle auto-update: new pipeline results'", cwd=WORK_DI
 # Push back to origin
 if os.getenv("GITHUB_TOKEN"):
     print("Pushing to GitHub...")
-    run("git push", cwd=WORK_DIR)
+    run("git push --force-with-lease", cwd=WORK_DIR)
 else:
     print("No GITHUB_TOKEN found. Skipping git push.")
 
