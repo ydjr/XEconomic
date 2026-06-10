@@ -124,9 +124,9 @@ run("git config --global user.email 'kaggle-bot@xeconomic.com'", cwd=WORK_DIR)
 run("git config --global user.name 'Kaggle Pipeline Bot'", cwd=WORK_DIR)
 
 # Only add the kaggle_workspace updates to avoid tracking useless intermediate files
-# Add files that are supposed to be pushed back (artifacts, public data, indicators)
-run("git add -f kaggle_workspace/artifacts kaggle_workspace/public kaggle_workspace/models kaggle_workspace/data/indicators", cwd=WORK_DIR)
-run("git commit -m '🤖 Kaggle auto-update: new pipeline results (HF API Edition)'", cwd=WORK_DIR)
+# Add files that are supposed to be pushed back (artifacts, public data, indicators, pipeline state)
+run("git add -f kaggle_workspace/artifacts kaggle_workspace/public kaggle_workspace/models kaggle_workspace/data pipeline/data", cwd=WORK_DIR)
+run("git commit -m '🤖 Kaggle auto-update: new pipeline results'", cwd=WORK_DIR)
 
 # Push back to origin
 if os.getenv("GITHUB_TOKEN"):
