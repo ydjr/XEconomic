@@ -125,16 +125,6 @@ def check_file(path: Path, label: str) -> bool:
     return exists
 
 
-def check_ollama() -> bool:
-    """Check if Ollama server is running."""
-    try:
-        import requests
-        r = requests.get(Ollama.URL.replace("/api/generate", ""), timeout=5)
-        return r.status_code == 200
-    except Exception:
-        return False
-
-
 # โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€
 # PIPELINE STEPS
 # โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€
@@ -247,14 +237,9 @@ def check_environment(phases_to_run: list, skip_llm: bool) -> bool:
     ]:
         check_file(f, label)
 
-    # Ollama (if LLM steps are included)
+    # HF API LLM (Always available, no need to ping local server)
     if not skip_llm and any(p in phases_to_run for p in ["news", "explain"]):
-        log.info("\n  Ollama LLM server:")
-        ollama_ok = check_ollama()
-        log.info(f"    {'[OK]' if ollama_ok else '[--]'} Ollama at {Ollama.URL}")
-        if not ollama_ok:
-            log.warning("    [!] Ollama not running -- LLM steps will fail")
-            log.warning("    [!] Start with: ollama serve")
+        log.info("\n  HuggingFace Serverless API: [OK]")
 
     # Node.js (if serving)
     if "serve" in phases_to_run:
