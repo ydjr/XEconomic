@@ -12,23 +12,22 @@ try:
 except Exception:
     ENC = None
 
+import sys
+_ROOT = Path(__file__).resolve().parents[2]
+if str(_ROOT) not in sys.path:
+    sys.path.insert(0, str(_ROOT))
+from config import Dirs, Files, call_hf_api
+
 # ==========================================
 # CONFIG
 # ==========================================
-INPUT_CSV = Path(r"/home/xecon/sp2025/SP2025-SeniorProject/sentiment/outputs_thai2/All3econnews2017_2026_full_sum_results/absa2024-2025.csv")
-OUTPUT_DIR = Path(r"/home/xecon/sp2025/SP2025-SeniorProject/text_summarization/monthly_summary_v2/gemma2_27b")
-OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-OUTPUT_CSV = OUTPUT_DIR / "results2024-2025.csv"
+INPUT_CSV = Files.ABSA_NEWS_CSV
+OUTPUT_CSV = Files.MONTHLY_SUMMARY_CSV
+OUTPUT_CSV.parent.mkdir(parents=True, exist_ok=True)
 
-TARGET_YEARS = [2024, 2025]
-
-# Ollama
-OLLAMA_URL        = "http://localhost:11434/api/generate"
-MODEL_NAME        = "gemma2:27b"
 MAX_RETRIES       = 2
 RETRY_SLEEP       = 6
 MAX_OUTPUT_TOKENS = 500
-OLLAMA_TIMEOUT    = 240
 
 INPUT_TOKEN_BUDGET = 6_000   # if total tokens exceed this -> use map-reduce
 CHUNK_TOKEN_BUDGET = 2_000   # max tokens per chunk in map-reduce
@@ -70,28 +69,16 @@ def build_news_block(summaries: list) -> str:
             lines.append(f"[{i+1}] {s}")
     return "\n".join(lines)
 
-def query_ollama(prompt: str) -> str:
-    payload = {
-        "model": MODEL_NAME,
-        "prompt": prompt,
-        "stream": False,
-        "options": {
-            "num_predict": MAX_OUTPUT_TOKENS,
-            "temperature": 0.1,
-            "repeat_penalty": 1.15,
-        },
-    }
+def call_model(prompt: str) -> str:
     for attempt in range(MAX_RETRIES + 1):
         try:
-            r = requests.post(OLLAMA_URL, json=payload, timeout=OLLAMA_TIMEOUT)
-            r.raise_for_status()
-            return clean_text(r.json().get("response", ""))
+            return call_hf_api(prompt, max_tokens=MAX_OUTPUT_TOKENS, temperature=0.1)
         except Exception as e:
             if attempt < MAX_RETRIES:
-                print(f"  [Retry {attempt+1}] Ollama error: {e} — waiting {RETRY_SLEEP}s")
+                print(f"  [Retry {attempt+1}] HF API error: {e} — waiting {RETRY_SLEEP}s")
                 time.sleep(RETRY_SLEEP)
             else:
-                return f"[OLLAMA_ERROR] {e}"
+                return f"[HF_ERROR] {e}"
 
 def chunk_by_budget(summaries: list, budget: int) -> list:
     """Split list of summaries into chunks that fit within token budget."""
@@ -196,7 +183,7 @@ def summarize_side(month: str, aspect: str, sentiment_side: str, summaries: list
     if total_tokens <= INPUT_TOKEN_BUDGET:
         block  = build_news_block(summaries)
         prompt = prompt_summarize(month, aspect, sentiment_side, block)
-        return query_ollama(prompt)
+        return call_model(prompt)
 
     # if exceed 
     print(f"    [map-reduce] {month} | {aspect} | {sentiment_side} | tokens={total_tokens}")
@@ -205,11 +192,11 @@ def summarize_side(month: str, aspect: str, sentiment_side: str, summaries: list
     for idx, ch in enumerate(chunks):
         block  = build_news_block(ch)
         prompt = prompt_summarize(month, aspect, sentiment_side, block)
-        result = query_ollama(prompt)
+        result = call_model(prompt)
         chunk_results.append(result)
 
     reduce_prompt = prompt_reduce(month, aspect, sentiment_side, chunk_results)
-    return query_ollama(reduce_prompt)
+    return call_model(reduce_prompt)
 
 # ==========================================
 # RESUME LOGIC
@@ -249,15 +236,14 @@ def main():
     if missing:
         raise ValueError(f"Missing columns: {missing}. Found: {list(df.columns)}")
 
-    # Parse dates and filter target years
+    # Parse dates
     df["published_at"] = pd.to_datetime(df["published_at"], errors="coerce")
     df = df[df["published_at"].notna()].copy()
     df["Year"]  = df["published_at"].dt.year
     df["Month"] = df["published_at"].dt.to_period("M").astype(str)
-    df = df[df["Year"].isin(TARGET_YEARS)].copy()
-
+    
     if df.empty:
-        print(f"No data found for years {TARGET_YEARS}")
+        print(f"No data found.")
         return
 
     df["summary"]     = df["summary"].astype(str).apply(clean_text)
@@ -266,7 +252,7 @@ def main():
 
     done_keys = load_done_keys()
     months    = sorted(df["Month"].unique())
-    print(f"Years: {TARGET_YEARS} | Months: {months}")
+    print(f"Years: {sorted(df['Year'].unique())} | Months: {months}")
     print(f"Resuming: {len(done_keys)} pairs already done.")
 
     for month in tqdm(months, desc="Months"):

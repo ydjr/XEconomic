@@ -1,34 +1,30 @@
-
 import re
 import time
-import requests
 import pandas as pd
 from pathlib import Path
 from tqdm import tqdm
 from datetime import datetime
 
+import sys
+_ROOT = Path(__file__).resolve().parents[2]
+if str(_ROOT) not in sys.path:
+    sys.path.insert(0, str(_ROOT))
+from config import Dirs, Files, call_hf_api
+
 # ==========================================
 # CONFIG
 # ==========================================
 
-SUMMARY_3M_PATH = Path(r"/home/xecon/sp2025/SP2025-SeniorProject/text_summarization/3m_summary/gemma2_27b/3m_summary_2024-01_to_2025-08.csv")
-PRED_PATH       = Path(r"/home/xecon/sp2025/SP2025-SeniorProject/forecasted_value/pred_direction.csv")
-OUTPUT_DIR = Path(r"/home/xecon/sp2025/SP2025-SeniorProject/reasoning/reasoning/oneshot_results/gemma4_31b/bulletver")
-OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+SUMMARY_3M_PATH = Files.SUMMARY_3M_CSV
+PRED_PATH       = Files.PRED_LATEST_CSV
 
-START_MONTH = "2024-01"
-END_MONTH   = "2025-08"
+OUTPUT_CSV  = Files.REASONING_CSV
+OUTPUT_JSON = Files.REASONING_JSON
+OUTPUT_CSV.parent.mkdir(parents=True, exist_ok=True)
 
-OUTPUT_CSV  = OUTPUT_DIR / f"reasoning_{START_MONTH}_to_{END_MONTH}.csv"
-OUTPUT_JSON = OUTPUT_DIR / f"reasoning_{START_MONTH}_to_{END_MONTH}.json"
-
-# Ollama
-OLLAMA_URL        = "http://localhost:11434/api/generate"
-MODEL_NAME        = "gemma4:31b"
 MAX_RETRIES       = 2
 RETRY_SLEEP       = 6
 MAX_OUTPUT_TOKENS = 700
-OLLAMA_TIMEOUT    = 360
 
 # ==========================================
 # INDICATOR DEFINITIONS
@@ -82,28 +78,16 @@ def get_relationship(base_feat: str) -> str:
             return rel
     return DEFAULT_RELATIONSHIP
 
-def query_ollama(prompt: str) -> str:
-    payload = {
-        "model": MODEL_NAME,
-        "prompt": prompt,
-        "stream": False,
-        "options": {
-            "num_predict": MAX_OUTPUT_TOKENS,
-            "temperature": 0.2,
-            "repeat_penalty": 1.1,
-        },
-    }
+def call_model(prompt: str) -> str:
     for attempt in range(MAX_RETRIES + 1):
         try:
-            r = requests.post(OLLAMA_URL, json=payload, timeout=OLLAMA_TIMEOUT)
-            r.raise_for_status()
-            return clean_text(r.json().get("response", ""))
+            return call_hf_api(prompt, max_tokens=MAX_OUTPUT_TOKENS, temperature=0.2)
         except Exception as e:
             if attempt < MAX_RETRIES:
-                print(f"  [Retry {attempt+1}] Ollama error: {e} — waiting {RETRY_SLEEP}s")
+                print(f"  [Retry {attempt+1}] HF API error: {e} — waiting {RETRY_SLEEP}s")
                 time.sleep(RETRY_SLEEP)
             else:
-                return f"[OLLAMA_ERROR] {e}"
+                return f"[HF_ERROR] {e}"
 
 def init_output() -> None:
     if OUTPUT_CSV.exists():
@@ -302,12 +286,11 @@ def main():
     print(f"3M summary columns  : {list(df_3m.columns)}")
     print(f"Sample SHAP features: {df_3m['SHAP_Feature'].unique()[:6].tolist()}")
 
-    start_dt      = datetime.strptime(f"{START_MONTH}-01", "%Y-%m-%d")
-    end_dt        = datetime.strptime(f"{END_MONTH}-01",   "%Y-%m-%d")
-    target_months = pd.date_range(start=start_dt, end=end_dt, freq="MS")
+    target_months_str = sorted(df_3m["Target_Month"].unique())
+    target_months = [datetime.strptime(f"{m}-01", "%Y-%m-%d") for m in target_months_str]
 
     init_output()
-    print(f"\nTarget months: {START_MONTH} → {END_MONTH} | Model: {MODEL_NAME}\n")
+    print(f"\nTarget months: {len(target_months)} months | Model: 4-bit HF API\n")
 
     for current_month_dt in tqdm(target_months, desc="Months"):
         month = current_month_dt.strftime("%Y-%m")
@@ -350,7 +333,7 @@ def main():
         print(f"reference tags:\n{allowed_tags_print}")
         print(f"evidence:\n{evidence_print}")
 
-        reasoning = query_ollama(prompt)
+        reasoning = call_model(prompt)
         sections  = parse_sections(reasoning)
 
         if not sections["parse_ok"]:

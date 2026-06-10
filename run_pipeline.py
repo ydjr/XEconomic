@@ -182,19 +182,23 @@ STEPS = [
 
     # Phase: explain
     ("explain", "Step 9: SHAP post-processing",
-     Dirs.SHAP_DIR / "prep.py", False,
+     Dirs.EXPLAINABLE / "shap" / "prep.py", False,
      Dirs.SHAP_RESULT / "shap_latest.csv"),
 
-    ("explain", "Step 10: 3-month aspect summary (Ollama LLM)",
-     Dirs.TEXT_SUM / "3mshapaspectsum.py", True,
+    ("explain", "Step 10: Monthly aspect summary (4-bit HF API)",
+     Dirs.EXPLAINABLE_AI / "7.monthly_summary_v2.py", True,
      None),
 
-    ("explain", "Step 11: Reasoning generation (Ollama LLM)",
-     Dirs.REASONING / "script4_oneshot.py", True,
+    ("explain", "Step 11: 3-month aspect summary (4-bit HF API)",
+     Dirs.EXPLAINABLE_AI / "8.3m_shap_aspect_summary_v3.py", True,
+     None),
+
+    ("explain", "Step 12: Reasoning generation (4-bit HF API)",
+     Dirs.EXPLAINABLE_AI / "9.script4_oneshot.py", True,
      None),
 
     # Phase: assets
-    ("assets", "Step 12: Extract entities",
+    ("assets", "Step 13: Extract entities",
      Dirs.PIPELINE / "extract_entities.py", False,
      Files.TOP_ENTITIES_JSON),
 

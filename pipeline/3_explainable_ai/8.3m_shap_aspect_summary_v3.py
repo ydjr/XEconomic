@@ -1,6 +1,5 @@
 import re
 import time
-import requests
 import pandas as pd
 from pathlib import Path
 from tqdm import tqdm
@@ -8,28 +7,26 @@ from datetime import datetime
 from collections import Counter
 from dateutil.relativedelta import relativedelta
 
+import sys
+_ROOT = Path(__file__).resolve().parents[2]
+if str(_ROOT) not in sys.path:
+    sys.path.insert(0, str(_ROOT))
+from config import Dirs, Files, call_hf_api
+
 # ==========================================
 # CONFIG
 # ==========================================
-MONTHLY_SUMMARY_PATH = Path(r"/home/xecon/sp2025/SP2025-SeniorProject/text_summarization/monthly_summary_v2/gemma2_27b/results2023-2025.csv")
-SHAP_PATH            = Path(r"/home/xecon/sp2025/SP2025-SeniorProject/shap/shap_top3_unique.csv")
-PRED_PATH            = Path(r"/home/xecon/sp2025/SP2025-SeniorProject/forecasted_value/pred_direction.csv")
+MONTHLY_SUMMARY_PATH = Files.MONTHLY_SUMMARY_CSV
+SHAP_PATH            = Dirs.SHAP_RESULT / "shap_latest.csv"
+PRED_PATH            = Files.PRED_LATEST_CSV
 
-START_MONTH = "2024-01"
-END_MONTH   = "2025-08"
-TOP_K       = 3
+TOP_K = 3
+OUTPUT_CSV = Files.SUMMARY_3M_CSV
+OUTPUT_CSV.parent.mkdir(parents=True, exist_ok=True)
 
-OUTPUT_DIR = Path(r"/home/xecon/sp2025/SP2025-SeniorProject/text_summarization/3m_summary/gemma2_27b")
-OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-OUTPUT_CSV = OUTPUT_DIR / f"3m_summary_{START_MONTH}_to_{END_MONTH}.csv"
-
-# Ollama
-OLLAMA_URL        = "http://localhost:11434/api/generate"
-MODEL_NAME        = "gemma2:27b"
 MAX_RETRIES       = 2
 RETRY_SLEEP       = 6
 MAX_OUTPUT_TOKENS = 400
-OLLAMA_TIMEOUT    = 180
 
 # Fixed fallback outputs when evidence does not align with indicator definition
 NO_ALIGN_POS = "ไม่มีข้อมูลสัญญาณบวกที่สอดคล้องกับตัวชี้วัดนี้"
@@ -121,28 +118,15 @@ def get_shap_direction(shap_value: float) -> str:
     else:
         return "ไม่มีผลต่อ CCI"
 
-def query_ollama(prompt: str) -> str:
-    payload = {
-        "model": MODEL_NAME,
-        "prompt": prompt,
-        "stream": False,
-        "options": {
-            "temperature": 0.1,
-            "num_predict": MAX_OUTPUT_TOKENS,
-            "repeat_penalty": 1.15,
-        },
-    }
-
+def call_model(prompt: str) -> str:
     for i in range(MAX_RETRIES + 1):
         try:
-            r = requests.post(OLLAMA_URL, json=payload, timeout=OLLAMA_TIMEOUT)
-            r.raise_for_status()
-            return clean_text(r.json().get("response", ""))
+            return call_hf_api(prompt, max_tokens=MAX_OUTPUT_TOKENS, temperature=0.1)
         except Exception as e:
             if i < MAX_RETRIES:
                 time.sleep(RETRY_SLEEP)
             else:
-                return f"[OLLAMA_ERROR] {e}"
+                return f"[HF_ERROR] {e}"
 
 def normalize_llm_summary(text: str, mode: str = "pos") -> str:
     """
@@ -153,7 +137,7 @@ def normalize_llm_summary(text: str, mode: str = "pos") -> str:
     """
     text = clean_text(text)
 
-    if not text or text.startswith("[OLLAMA_ERROR]"):
+    if not text or text.startswith("[HF_ERROR]"):
         return text
 
     if mode == "pos":
@@ -390,12 +374,11 @@ def main():
         df_monthly[col] = df_monthly[col].astype(str).apply(clean_text)
 
     # Build target month range
-    start_dt      = datetime.strptime(f"{START_MONTH}-01", "%Y-%m-%d")
-    end_dt        = datetime.strptime(f"{END_MONTH}-01",   "%Y-%m-%d")
-    target_months = pd.date_range(start=start_dt, end=end_dt, freq="MS")
+    target_months_str = sorted(df_shap["date"].unique())
+    target_months = [datetime.strptime(f"{m}-01", "%Y-%m-%d") for m in target_months_str]
 
     init_output()
-    print(f"Target months: {START_MONTH} → {END_MONTH} | Model: {MODEL_NAME}")
+    print(f"Target months: {len(target_months)} months | Model: 4-bit HF API")
 
     for current_month_dt in tqdm(target_months, desc="Months"):
         month_str = current_month_dt.strftime("%Y-%m")
@@ -453,7 +436,7 @@ def main():
                     pos_summary = "ไม่พบสัญญาณบวกที่ชัดเจนในช่วงนี้"
                 elif len(months_with_pos) == 1:
                     p_prompt = build_prompt_pos(asps, trend_str, win, dfn, d_feat)
-                    pos_summary = normalize_llm_summary(query_ollama(p_prompt), mode="pos")
+                    pos_summary = normalize_llm_summary(call_model(p_prompt), mode="pos")
                 else:
                     p_prompt = build_prompt_pos(asps, trend_str, win, dfn, d_feat)
                     print(
@@ -461,7 +444,7 @@ def main():
                         f"evidence_months={[w['month'] for w in months_with_pos]} | "
                         f"pos_chars={[len(w['pos']) for w in months_with_pos]}"
                     )
-                    pos_summary = normalize_llm_summary(query_ollama(p_prompt), mode="pos")
+                    pos_summary = normalize_llm_summary(call_model(p_prompt), mode="pos")
 
                 # -------------------------
                 # Negative summary
@@ -470,7 +453,7 @@ def main():
                     neg_summary = "ไม่พบสัญญาณลบที่ชัดเจนในช่วงนี้"
                 elif len(months_with_neg) == 1:
                     n_prompt = build_prompt_neg(asps, trend_str, win, dfn, d_feat)
-                    neg_summary = normalize_llm_summary(query_ollama(n_prompt), mode="neg")
+                    neg_summary = normalize_llm_summary(call_model(n_prompt), mode="neg")
                 else:
                     n_prompt = build_prompt_neg(asps, trend_str, win, dfn, d_feat)
                     print(
@@ -478,7 +461,7 @@ def main():
                         f"evidence_months={[w['month'] for w in months_with_neg]} | "
                         f"neg_chars={[len(w['neg']) for w in months_with_neg]}"
                     )
-                    neg_summary = normalize_llm_summary(query_ollama(n_prompt), mode="neg")
+                    neg_summary = normalize_llm_summary(call_model(n_prompt), mode="neg")
 
             print(
                 f"  [{month_str}] feat={d_feat} | aspects={asps} | SHAP={shap_val:+.4f} ({shap_dir}) | "
