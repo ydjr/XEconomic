@@ -7,25 +7,25 @@ from tqdm import tqdm
 from dataclasses import dataclass
 from typing import Dict, Any, Optional, List
 import requests
-from pathlib import Path
-
 import sys
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))  # project root
-from config import cfg, call_hf_api, Files, Dirs, HF_LLM
+from pathlib import Path
+_ROOT = Path(__file__).resolve().parents[2]
+if str(_ROOT) not in sys.path:
+    sys.path.insert(0, str(_ROOT))
+from config import Dirs, Files, Pipeline
+
 
 # ========================================
 # CONFIGURATION
 # ========================================
-INPUT_CSV = str(Files.RELEVANCE_CSV)  # output of step 2 (relevance filter)
-OUTPUT_DIR = str(Dirs.ARTIFACTS / "absa_results")
+from config import Dirs, Files, call_hf_api, HF_LLM
 
-# LLM via HuggingFace Inference API
-MODEL_NAME = HF_LLM.ABSA_MODEL
-TEMPERATURE = HF_LLM.TEMPERATURE
-MAX_RETRIES = HF_LLM.MAX_RETRIES
+INPUT_CSV = Files.SUMMARIZED_NEWS_CSV
+OUTPUT_FILE = Files.ABSA_NEWS_CSV
+MAX_RETRIES = 3
 
 # Processing Limits
-PROCESS_LIMIT = None  # Set to a number (e.g., 50) for testing
+PROCESS_LIMIT = None  # for testing
 # ========================================
 
 FACTORS = {
@@ -42,9 +42,6 @@ FACTORS = {
 FACTORS_LIST = list(FACTORS.keys())
 EFFECT_TYPES = ["Short-term", "Long-term"]
 
-# -----------------------------
-# PROMPT SETTINGS (NO RATIONALITY / NO EMOJIS)
-# -----------------------------
 SYSTEM_PROMPT = f"""
 You are a Thai Economic Analyst. Analyze the news and return ONLY a JSON object.
 
@@ -66,7 +63,7 @@ You are a Thai Economic Analyst. Analyze the news and return ONLY a JSON object.
 """.strip()
 
 REPAIR_PROMPT = """
-Your previous output was invalid. 
+Your previous output was invalid.
 Return ONLY valid JSON with fields: sentiment_score, Aspect, effect_type.
 Ensure Aspect is from the allowed list.
 """
@@ -75,28 +72,16 @@ Ensure Aspect is from the allowed list.
 # LOGIC FUNCTIONS
 # -----------------------------
 def get_impact_type(score: float) -> str:
-    """Classify impact in Python based on score."""
     if score >= 0.60: return "Positive"
     if score <= 0.40: return "Negative"
     return "Neutral"
 
-def get_monthly_filename(date_str: str) -> str:
-    """Extract YYYY-MM from published_at to name the CSV."""
-    # Expected format: 2024-02-13... or similar
-    match = re.search(r'(\d{{4}})-(\d{{2}})', date_str)
-    if match:
-        return f"sentiment_results_{match.group(1)}_{match.group(2)}.csv"
-    return "sentiment_results.csv"
-
-def call_llm(prompt: str) -> str:
-    """Call HuggingFace Inference API for ABSA."""
-    return call_hf_api(
-        prompt,
-        model=MODEL_NAME,
-        max_tokens=200,
-        temperature=TEMPERATURE,
-        retries=MAX_RETRIES,
-    )
+def call_model(prompt: str) -> str:
+    try:
+        return call_hf_api(prompt, max_tokens=150, temperature=0.1)
+    except Exception as e:
+        print(f"LLM API Error: {e}")
+        return ""
 
 def extract_json(text: str) -> Dict[str, Any]:
     text = re.sub(r'```json\s*|```', '', text).strip()
@@ -105,16 +90,13 @@ def extract_json(text: str) -> Dict[str, Any]:
     return json.loads(m.group(0))
 
 def validate_and_fix(obj: Dict[str, Any]) -> Dict[str, Any]:
-    # Check Aspect
     if obj.get("Aspect") not in FACTORS_LIST:
-        obj["Aspect"] = "เศรษฐกิจไทย" # Safe default
-    # Check Score
+        obj["Aspect"] = "เศรษฐกิจไทย"
     try:
         score = float(obj.get("sentiment_score", 0.5))
         obj["sentiment_score"] = round(max(0.0, min(1.0, score)), 2)
     except:
         obj["sentiment_score"] = 0.5
-    # Check Effect
     if obj.get("effect_type") not in EFFECT_TYPES:
         obj["effect_type"] = "Short-term"
     return obj
@@ -123,58 +105,88 @@ def validate_and_fix(obj: Dict[str, Any]) -> Dict[str, Any]:
 # MAIN PIPELINE
 # -----------------------------
 def main():
-    os.makedirs(OUTPUT_DIR, exist_ok=True)
-    print(f"Starting processing with {MODEL_NAME}...")
+    Path(OUTPUT_FILE).parent.mkdir(parents=True, exist_ok=True)
+    fpath = str(OUTPUT_FILE)
+
+    print(f"Starting processing with HuggingFace Endpoint ({HF_LLM.MODEL_ID})...")
+    print(f"Results will be saved to: {fpath}")
 
     # Load CSV
     rows = []
+    if not os.path.exists(INPUT_CSV):
+        print(f"Error: File not found at {INPUT_CSV}")
+        return
+
     with open(INPUT_CSV, "r", encoding="utf-8-sig") as f:
         reader = csv.DictReader(f)
         for r in reader:
-            if str(r.get("CCI_pred")) == "1":
-                rows.append(r)
+            rows.append(r)
             if PROCESS_LIMIT and len(rows) >= PROCESS_LIMIT:
                 break
 
-    for r in tqdm(rows, desc="Analyzing"):
-        news_text = f"ข่าว: {r.get('summary', r.get('headline', ''))}"
-        
-        # LLM Logic with Repair Loop
+    if not rows:
+        print("The CSV file appears to be empty.")
+        return
+
+    # -----------------------------
+    # RESUME LOGIC — id-based
+    # -----------------------------
+    def row_key(row):
+        """Stable per-article key: prefer article_id, fall back to url."""
+        aid = str(row.get("article_id", "") or "").strip()
+        if aid and aid.lower() != "nan":
+            return aid
+        return str(row.get("url", "") or "").strip()
+
+    done_ids = set()
+    if os.path.exists(fpath):
+        try:
+            with open(fpath, "r", encoding="utf-8-sig") as f:
+                existing = csv.DictReader(f)
+                for row in existing:
+                    k = row_key(row)
+                    if k:
+                        done_ids.add(k)
+            print(f"Resuming: {len(done_ids)} articles already processed")
+        except Exception as e:
+            print(f"  [WARN] Could not load resume keys ({e}); starting fresh")
+
+    for i, r in enumerate(tqdm(rows, desc="Analyzing")):
+        if row_key(r) in done_ids:
+            continue
+
+        content_to_analyze = r.get("summary") or r.get("headline") or ""
+        news_text = f"ข่าว: {content_to_analyze}"
+
         final_result = None
         current_prompt = SYSTEM_PROMPT + "\n\n" + news_text
-        
+
         for attempt in range(MAX_RETRIES + 1):
-            raw_response = call_llm(current_prompt)
+            raw_response = call_model(current_prompt)
             try:
                 data = extract_json(raw_response)
                 final_result = validate_and_fix(data)
                 break
             except:
-                current_prompt = f"{news_text}\n\n{REPAIR_PROMPT}\nError in last attempt."
+                current_prompt = f"{news_text}\n\n{REPAIR_PROMPT}"
 
-        # Fallback if all retries fail
         if not final_result:
             final_result = {"sentiment_score": 0.5, "Aspect": "เศรษฐกิจไทย", "effect_type": "Short-term"}
 
-        # Calculate Impact in Python
         final_result["impact_type"] = get_impact_type(final_result["sentiment_score"])
 
-        # Determine Output File
-        fname = get_monthly_filename(r.get("published_at", "2026-01"))
-        fpath = os.path.join(OUTPUT_DIR, fname)
-        
-        # Merge data
+        # Merge news data with LLM results
         output_row = {**r, **final_result}
 
-        # Append to CSV
+        # Append to the single master file
         file_exists = os.path.isfile(fpath)
         with open(fpath, "a", encoding="utf-8-sig", newline="") as out_f:
             writer = csv.DictWriter(out_f, fieldnames=output_row.keys())
-            if not file_exists:
+            if not file_exists or os.path.getsize(fpath) == 0:
                 writer.writeheader()
             writer.writerow(output_row)
 
-    print("Process complete. Check the outputs folder.")
+    print(f"\nSuccess! All results saved in: {fpath}")
 
 if __name__ == "__main__":
     main()

@@ -18,17 +18,28 @@ import os
 import csv
 import json
 import re
+import sys
+from pathlib import Path
 from collections import defaultdict
 
 from pythainlp.tokenize import word_tokenize
 
-# --- paths ---
-ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-CSV_PATH = os.path.join(ROOT, "public", "data", "news_sentiment_summary_all.csv")
-OUTPUT_PATH = os.path.join(ROOT, "public", "data", "top_entities.json")
+# --- resolve project root & import config ---
+_ROOT = Path(__file__).resolve().parents[1]
+if str(_ROOT) not in sys.path:
+    sys.path.insert(0, str(_ROOT))
+from config import Files, Pipeline
 
-TOP_N = 30
-MIN_FREQ = 3
+# Windows console (cp874) can't encode the emoji used in progress prints
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8")
+
+# --- paths ---
+CSV_PATH = str(Files.ABSA_NEWS_CSV)
+OUTPUT_PATH = str(Files.TOP_ENTITIES_JSON)
+
+TOP_N = Pipeline.ENTITY_TOP_N
+MIN_FREQ = Pipeline.ENTITY_MIN_FREQ
 
 # --- KNOWN PERSON NAMES in Thai economic/political news ---
 KNOWN_PERSONS = {

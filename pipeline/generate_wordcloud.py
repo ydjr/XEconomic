@@ -11,7 +11,10 @@ Output:
 import os
 import re
 import csv
+import sys
+import json
 import random
+from pathlib import Path
 from collections import defaultdict
 
 from pythainlp.tokenize import word_tokenize
@@ -21,14 +24,27 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
+# --- resolve project root & import config ---
+_ROOT = Path(__file__).resolve().parents[1]
+if str(_ROOT) not in sys.path:
+    sys.path.insert(0, str(_ROOT))
+from config import Files, Pipeline
+
+# Windows console (cp874) can't encode the emoji used in progress prints
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8")
+
 # --- paths ---
-ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-CSV_PATH = os.path.join(ROOT, "public", "data", "2017-2026.csv")
-OUTPUT_PATH = os.path.join(ROOT, "dashboard", "src", "assets", "cci_impact_wordcloud.png")
+CSV_PATH = str(Files.ABSA_NEWS_CSV)
+OUTPUT_PATH = str(Files.WORDCLOUD_PNG)
+JSON_OUTPUT_PATH = str(Files.WORDCLOUD_JSON)
+
+# how many sample headlines to keep per word (for the hover tooltip)
+SAMPLE_CAP = 5
 
 # --- config ---
-MIN_WORD_LEN = 3        # ข้ามคำสั้นกว่า 3 ตัวอักษร
-TOP_N_WORDS = 120       # จำนวนคำสูงสุดใน word cloud
+MIN_WORD_LEN = Pipeline.WORDCLOUD_MIN_WORD_LEN
+TOP_N_WORDS = Pipeline.WORDCLOUD_TOP_N
 
 # ---------- stopwords ----------
 # รวม pythainlp default + custom ทั้งหมด
@@ -167,11 +183,26 @@ def is_valid_token(w, stops):
 
 
 def build_freq(news_rows, stops):
-    """Build weighted word frequency dict — unigrams only"""
+    """Build weighted word frequency dict + per-word metadata.
+
+    Returns (freq, meta):
+      freq — {word: weighted score}, used to size the cloud. Primary weight
+             is sentiment intensity (per token occurrence). If every article
+             is neutral (e.g. ABSA fell back to defaults), all weights
+             collapse to zero — in that case fall back to article counts so
+             the cloud still renders instead of crashing on a
+             divide-by-zero in WordCloud.generate_from_frequencies().
+      meta — per-word counts / positive / negative / sample headlines,
+             used by _export_word_json() for the interactive hover tooltip.
+    """
     scores = defaultdict(float)
+    counts = defaultdict(int)            # number of articles a word appears in
+    pos = defaultdict(int)
+    neg = defaultdict(int)
+    samples = defaultdict(list)
 
     for row in news_rows:
-        headline = row.get("headline", "")
+        headline = (row.get("headline") or "").strip()
         summary = row.get("summary", "")
         impact_type = row.get("impact_type", "Neutral")
         sentiment = row.get("sentiment_score", "0.5")
@@ -180,12 +211,60 @@ def build_freq(news_rows, stops):
         text = f"{headline} {summary}"
 
         tokens = word_tokenize(text, engine="newmm")
+        seen = set()  # so per-article metadata counts each word once
         for t in tokens:
             w = t.strip()
-            if is_valid_token(w, stops):
-                scores[w] += weight
+            if not is_valid_token(w, stops):
+                continue
+            scores[w] += weight                 # per-occurrence — unchanged
+            if w not in seen:                   # per-article metadata
+                seen.add(w)
+                counts[w] += 1
+                if impact_type == "Positive":
+                    pos[w] += 1
+                elif impact_type == "Negative":
+                    neg[w] += 1
+                if (headline and len(samples[w]) < SAMPLE_CAP
+                        and headline not in samples[w]):
+                    samples[w].append(headline)
 
-    return scores
+    meta = {"counts": counts, "pos": pos, "neg": neg, "samples": samples}
+
+    if not scores or max(scores.values()) <= 0:
+        print("  [warn] sentiment weights are all zero "
+              "(ABSA likely produced only neutral scores) "
+              "- falling back to word frequency")
+        return counts, meta
+
+    return scores, meta
+
+
+def _export_word_json(top, meta):
+    """Write per-word data the dashboard uses for the interactive
+    (hover-tooltip) word cloud — score, occurrence count, positive/negative
+    split, and a few sample headlines per word."""
+    counts  = meta["counts"]
+    pos     = meta["pos"]
+    neg     = meta["neg"]
+    samples = meta["samples"]
+
+    max_score = max(top.values()) or 1.0
+    words = []
+    for w, score in sorted(top.items(), key=lambda x: -x[1]):
+        words.append({
+            "word":     w,
+            "score":    round(float(score), 2),
+            "weight":   round(float(score) / max_score, 4),  # 0..1 for font sizing
+            "count":    int(counts.get(w, 0)),
+            "positive": int(pos.get(w, 0)),
+            "negative": int(neg.get(w, 0)),
+            "samples":  samples.get(w, [])[:SAMPLE_CAP],
+        })
+
+    out = Path(JSON_OUTPUT_PATH)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(words, ensure_ascii=False, indent=2), encoding="utf-8")
+    print(f"[OK] word data JSON: {out}  ({len(words)} words)")
 
 
 def _find_thai_font():
@@ -201,7 +280,20 @@ def _find_thai_font():
     for p in candidates:
         if os.path.exists(p):
             return p
-    print("⚠️  ไม่พบ Thai font")
+
+    # Fallback: scan common Linux font dirs. On Kaggle the pipeline installs
+    # fonts-thai-tlwg, which drops Garuda/Norasi/Loma/... under tlwg/.
+    import glob
+    for pattern in [
+        "/usr/share/fonts/truetype/tlwg/*.ttf",
+        "/usr/share/fonts/**/Noto*Thai*.ttf",
+        "/usr/share/fonts/**/*[Tt]hai*.ttf",
+    ]:
+        hits = sorted(glob.glob(pattern, recursive=True))
+        if hits:
+            return hits[0]
+
+    print("[WARN] no Thai font found - Thai text may render as boxes")
     return None
 
 
@@ -213,7 +305,7 @@ def generate(csv_path=CSV_PATH, output_path=OUTPUT_PATH):
     stops = thai_stopwords() | EXTRA_STOPS
 
     print("🔤 ตัดคำ + คำนวณ weight...")
-    scores = build_freq(news, stops)
+    scores, meta = build_freq(news, stops)
 
     # top N
     top = dict(sorted(scores.items(), key=lambda x: x[1], reverse=True)[:TOP_N_WORDS])
@@ -221,6 +313,9 @@ def generate(csv_path=CSV_PATH, output_path=OUTPUT_PATH):
     if not top:
         print("❌ ไม่พบคำ")
         return
+
+    # per-word data for the interactive (hover) word cloud on the dashboard
+    _export_word_json(top, meta)
 
     print(f"☁️  สร้าง word cloud ({len(top)} คำ)...")
 

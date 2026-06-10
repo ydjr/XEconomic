@@ -141,25 +141,30 @@ def check_ollama() -> bool:
 
 # Step definitions: (phase, label, script_path, requires_llm, output_check_file)
 STEPS = [
+    # Phase: fetch
+    ("fetch", "Step 0: Fetch news from Supabase",
+     Dirs.NEWS_ANALYSIS / "0_fetch_news.py", False,
+     None),  # always run to check for new articles
+
     # Phase: news
     ("news", "Step 1: Preprocess news data",
-     Dirs.NEWS_PREP / "1_preprocess.py", False,
+     Dirs.NEWS_ANALYSIS / "1.preprocess_news.py", False,
      Dirs.CLEANED_NEWS / "all_news.csv"),
 
-    ("news", "Step 2: Relevance filter (WangchanBERTa)",
-     Dirs.NEWS_PREP / "2_relevance_filter.py", False,
-     Dirs.PIPELINE_DATA / "2_news_cci_r.csv"),
+    ("news", "Step 2: Relevance filter (StelleX)",
+     Dirs.NEWS_ANALYSIS / "2.eachnews_StelleX.py", False,
+     Dirs.PIPELINE_DATA / "All3econnews2017_2026_full_sum.csv"),
 
-    ("news", "Step 3: ABSA via LLM (Ollama)",
-     Dirs.NEWS_PREP / "3_absa.py", True,
+    ("news", "Step 3: ABSA via LLM (HuggingFace/Ollama)",
+     Dirs.NEWS_ANALYSIS / "3.absa.py", True,
      Dirs.PIPELINE_DATA / "3_absa_results"),
 
     ("news", "Step 4: Extract aspect features",
-     Dirs.NEWS_PREP / "4_ft_extract.py", False,
+     Dirs.NEWS_ANALYSIS / "4.ft_extract.py", False,
      Files.ASPECT_FEATURES),
 
     ("news", "Step 5: Consolidate dataset",
-     Dirs.NEWS_PREP / "5_consolidate.py", False,
+     Dirs.NEWS_ANALYSIS / "5.consolidate.py", False,
      Files.AVG_SENT_INDI),
 
     # Phase: train

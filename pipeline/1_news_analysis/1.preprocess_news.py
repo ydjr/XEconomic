@@ -4,18 +4,23 @@ from pathlib import Path
 from datetime import datetime
 import pandas as pd
 from pythainlp.util import normalize
+import sys
+from pathlib import Path
+_ROOT = Path(__file__).resolve().parents[2]
+if str(_ROOT) not in sys.path:
+    sys.path.insert(0, str(_ROOT))
+from config import Dirs, Files, Pipeline
+
 
 
 # =====================
 # Config
 # =====================
-BASE_DIR = Path(__file__).resolve().parents[1]
-DATA_DIR = BASE_DIR / "data"
-INPUT_DIR = DATA_DIR / "news_sum"
-OUTPUT_DIR = DATA_DIR / "1_cleaned_news"
-MIN_CHAR_LEN = 300
+BASE_DIR = Dirs.PIPELINE_DATA
+INPUT_FILE = Files.RAW_NEWS_CSV
+OUTPUT_FILE = Files.CLEANED_NEWS_CSV
+MIN_CHAR_LEN = Pipeline.MIN_CONTENT_LEN
 
-OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 # =====================
 # Utilities
@@ -110,29 +115,35 @@ def main():
     # for debug
     print("Script base dir:", BASE_DIR)
     print("CWD:", Path.cwd())
-    print("INPUT_DIR exists:", INPUT_DIR.exists())
-    print("Files:", list(INPUT_DIR.glob("*")))
-    
+    print("INPUT_FILE exists:", INPUT_FILE.exists())
+    print("Input file:", INPUT_FILE)
 
     all_records = []
 
-    for path in INPUT_DIR.glob("*"):
-        if path.suffix not in [".json", ".csv"]:
-            continue
-        print(f"Processing {path.name}")
-        all_records.extend(process_file(path))
+    print(f"Processing {INPUT_FILE.name}")
+    all_records.extend(process_file(INPUT_FILE))
 
     df = pd.DataFrame(all_records)
 
     df = df.drop_duplicates(subset=["url"], keep="first")
-    
-    df.to_csv(OUTPUT_DIR / "all_news.csv", index=False, encoding="utf-8-sig")
-    df.to_json(OUTPUT_DIR / "all_news.jsonl", orient="records", lines=True, force_ascii=False)
 
-    with open(OUTPUT_DIR / "all_news_pretty.json", "w", encoding="utf-8") as f:
-        json.dump(df.to_dict(orient="records"), f, ensure_ascii=False, indent=2)
+    # Month-completeness gate: only let articles through whose month has fully
+    # ended. The current in-progress month is held back until we roll over —
+    # this keeps ABSA and downstream summaries from spending LLM cycles on a
+    # partial month that will look different once it's complete.
+    today = pd.Timestamp.today().normalize()
+    current_month_start = today.replace(day=1).date().isoformat()
+    before = len(df)
+    df = df[df["published_at"].notna() & (df["published_at"] < current_month_start)]
+    dropped = before - len(df)
+    if dropped > 0:
+        print(f"  [gate] Held back {dropped} articles from {current_month_start[:7]} or later — "
+              f"waiting for the current month to finish")
 
-    print(f"Saved {len(df)} cleaned articles")
+    OUTPUT_FILE.parent.mkdir(parents=True, exist_ok=True)
+    df.to_csv(OUTPUT_FILE, index=False, encoding="utf-8-sig")
+
+    print(f"Saved {len(df)} cleaned articles to {OUTPUT_FILE}")
 
 if __name__ == "__main__":
     main()
