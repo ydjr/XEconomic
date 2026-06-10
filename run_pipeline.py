@@ -145,7 +145,7 @@ STEPS = [
      Dirs.NEWS_ANALYSIS / "2.eachnews_StelleX.py", False,
      Dirs.PIPELINE_DATA / "All3econnews2017_2026_full_sum.csv"),
 
-    ("news", "Step 3: ABSA via LLM (HuggingFace/Ollama)",
+    ("news", "Step 3: ABSA via LLM (4-bit HF API)",
      Dirs.NEWS_ANALYSIS / "3.absa.py", True,
      Dirs.PIPELINE_DATA / "3_absa_results"),
 
@@ -158,16 +158,17 @@ STEPS = [
      Files.AVG_SENT_INDI),
 
     # Phase: train
-    ("train", "Step 6: Backtest models (GridSearch)",
-     Dirs.PIPELINE / "backtest.py", False,
-     Files.XGB_BEST_PARAMS),
+    # Backtest is not used in automated pipeline (run manually if needed)
+    # ("train", "Step 6: Backtest models (GridSearch)",
+    #  Dirs.FORECASTING / "backtest.py", False,
+    #  Files.XGB_BEST_PARAMS),
 
-    ("train", "Step 7: Train best model",
-     Dirs.PIPELINE / "train.py", False,
-     Files.XGB_WEIGHTS),
+    # ("train", "Step 7: Train best model",
+    #  Dirs.FORECASTING / "train.py", False,
+    #  Files.XGB_WEIGHTS),
 
     ("train", "Step 8: Predict + SHAP",
-     Dirs.PIPELINE / "predict_latest.py", False,
+     Dirs.FORECASTING / "6.predict_latest.py", False,
      Files.SHAP_RANK_CSV),
 
     # Phase: explain

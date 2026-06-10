@@ -6,19 +6,17 @@ import time
 from tqdm import tqdm
 from dataclasses import dataclass
 from typing import Dict, Any, Optional, List
-import requests
 import sys
 from pathlib import Path
 _ROOT = Path(__file__).resolve().parents[2]
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
-from config import Dirs, Files, Pipeline
+from config import Dirs, Files, Pipeline, call_hf_api
 
 
 # ========================================
 # CONFIGURATION
 # ========================================
-from config import Dirs, Files, call_hf_api
 
 INPUT_CSV = Files.SUMMARIZED_NEWS_CSV
 OUTPUT_FILE = Files.ABSA_NEWS_CSV

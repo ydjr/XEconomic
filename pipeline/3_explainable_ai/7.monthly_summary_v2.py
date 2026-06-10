@@ -1,7 +1,6 @@
 import re
 import os
 import time
-import requests
 import pandas as pd
 from pathlib import Path
 from tqdm import tqdm
