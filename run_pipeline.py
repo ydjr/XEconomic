@@ -1,4 +1,4 @@
-﻿"""
+"""
 XEconomic โ€” Pipeline Orchestrator
 ===================================
 Master script that runs all pipeline steps in sequence.
@@ -29,7 +29,7 @@ from datetime import datetime
 # โ”€โ”€โ”€ import config โ”€โ”€โ”€
 ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT))
-from config import Dirs, Files, Ollama, WangchanBERTa, Server
+from config import Dirs, Files, HF_LLM, WangchanBERTa, Server
 
 # โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€
 # LOGGING
