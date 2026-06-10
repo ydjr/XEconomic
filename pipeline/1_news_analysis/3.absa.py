@@ -18,7 +18,7 @@ from config import Dirs, Files, Pipeline
 # ========================================
 # CONFIGURATION
 # ========================================
-from config import Dirs, Files, call_hf_api, HF_LLM
+from config import Dirs, Files, call_hf_api
 
 INPUT_CSV = Files.SUMMARIZED_NEWS_CSV
 OUTPUT_FILE = Files.ABSA_NEWS_CSV
@@ -108,7 +108,7 @@ def main():
     Path(OUTPUT_FILE).parent.mkdir(parents=True, exist_ok=True)
     fpath = str(OUTPUT_FILE)
 
-    print(f"Starting processing with HuggingFace Endpoint ({HF_LLM.MODEL_ID})...")
+    print(f"Starting processing with HuggingFace Serverless API...")
     print(f"Results will be saved to: {fpath}")
 
     # Load CSV
