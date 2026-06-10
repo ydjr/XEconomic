@@ -340,6 +340,18 @@ def init_kaggle_workspace():
         else:
             dst.mkdir(parents=True, exist_ok=True)
 
+    # Seed indicator CSVs from dashboard/dist (the authoritative source)
+    # public/data/indicators/ in the repo may only have cci.csv
+    dist_indicators = ROOT / "dashboard" / "dist" / "data" / "indicators"
+    ws_indicators = ws / "public" / "data" / "indicators"
+    ws_indicators.mkdir(parents=True, exist_ok=True)
+    if dist_indicators.exists():
+        for csv_file in dist_indicators.glob("*.csv"):
+            dst_file = ws_indicators / csv_file.name
+            if not dst_file.exists():
+                shutil.copy2(csv_file, dst_file)
+                print(f"  Seeded indicator: {csv_file.name}")
+
     print(f"Kaggle workspace ready: {ws}")
 
 
