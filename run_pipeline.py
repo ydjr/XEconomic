@@ -198,13 +198,13 @@ STEPS = [
      None),
 
     # Phase: assets
-    ("assets", "Step 13: Extract entities",
-     Dirs.PIPELINE / "extract_entities.py", False,
-     Files.TOP_ENTITIES_JSON),
+    # ("assets", "Step 13: Extract entities",
+    #  Dirs.PIPELINE / "extract_entities.py", False,
+    #  Files.TOP_ENTITIES_JSON),
 
-    ("assets", "Step 13: Generate word cloud",
-     Dirs.PIPELINE / "generate_wordcloud.py", False,
-     Files.WORDCLOUD_PNG),
+    # ("assets", "Step 13: Generate word cloud",
+    #  Dirs.PIPELINE / "generate_wordcloud.py", False,
+    #  Files.WORDCLOUD_PNG),
 ]
 
 PHASE_ORDER = ["fetch", "news", "train", "explain", "assets", "serve"]
