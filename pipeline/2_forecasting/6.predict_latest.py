@@ -29,7 +29,7 @@ DATE = "date"
 TARGET = "cci"
 HORIZON = Pipeline.PREDICT_HORIZON
 
-MACRO_COLS = ["cpi", "gdp", "unemployment_rate"]
+MACRO_COLS = ["cpi", "gdp", "unemployment_rate", "impi", "expi"]
 NEWS_COLS  = [
     "การเมือง", "ภัยพิบัติ/โรคระบาด", "มาตรการของรัฐ",
     "ราคาน้ำมันเชื้อเพลิง", "ราคาสินค้าเกษตร", "สังคม/ความมั่นคง",
