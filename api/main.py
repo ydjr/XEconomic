@@ -72,6 +72,7 @@ def load_json_file(path: str):
 def health():
     return {"status": "ok"}
 
+_health_cache = None
 
 @app.get("/health/data")
 def health_data():
@@ -80,13 +81,15 @@ def health_data():
     Lets the dashboard surface "data as of YYYY-MM" warnings when the
     pipeline hasn't caught up, instead of silently serving stale content.
     """
+    global _health_cache
+    if _health_cache is not None:
+        return _health_cache
+
     def _latest_date(path: str, date_col: str):
         if not os.path.exists(path):
             return None
         try:
-            df = pd.read_csv(path)
-            if date_col not in df.columns:
-                return None
+            df = pd.read_csv(path, usecols=[date_col])
             s = pd.to_datetime(df[date_col], errors="coerce").dropna()
             if s.empty:
                 return None
@@ -94,20 +97,21 @@ def health_data():
         except Exception:
             return None
 
-    return {
+    _health_cache = {
         "cci_latest":          _latest_date(CCI_CSV, "date"),
         "news_latest":         _latest_date(NEWS_CSV, "published_at"),
         "prediction_latest":   _latest_date(PRED_LATEST_CSV, "date"),
         "shap_latest":         _latest_date(SHAP_CSV, "date"),
-        "reasoning_file":      os.path.basename(EXPLAIN_JSON) if EXPLAIN_JSON and os.path.exists(EXPLAIN_JSON) else None,
+        "reasoning_file":      os.path.basename(EXPLAIN_JSON) if EXPLAIN_JSON else None,
         "files": {
             "cci":         os.path.exists(CCI_CSV),
             "news":        os.path.exists(NEWS_CSV),
             "prediction":  os.path.exists(PRED_LATEST_CSV),
             "shap":        os.path.exists(SHAP_CSV),
-            "reasoning":   bool(EXPLAIN_JSON) and os.path.exists(EXPLAIN_JSON),
-        },
+            "reasoning":   bool(EXPLAIN_JSON)
+        }
     }
+    return _health_cache
 
 @app.get("/dashboard/summary")
 def dashboard_summary():
