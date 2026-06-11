@@ -386,56 +386,61 @@ def dashboard_timeseries(limit: int = Query(500, ge=1, le=5000)):
     return {"data": rows}
 
 
+# Global cache for the parsed news data
+_news_cache = None
+
 @app.get("/dashboard/news")
 def dashboard_news(limit: int = Query(2000, ge=1, le=20000)):
-    if not os.path.exists(NEWS_CSV):
-        return {"data": []}
-
-    cols = ["id", "published_at", "headline", "url", "Aspect", "category", "subtype", "sentiment_score", "impact_type", "effect_type"]
-    df = pd.read_csv(NEWS_CSV, usecols=lambda x: x in cols)
-
-    # ปรับชื่อคอลัมน์ให้ตรงกับไฟล์คุณ wtf krai tum wa
-    # จากรูปไฟล์คุณมี: id, category, subtype, published_at, headline, ... sentiment_score, impact_type, effect_type, aspects
-    for c in ["published_at", "headline"]:
-        if c not in df.columns:
+    global _news_cache
+    if _news_cache is None:
+        if not os.path.exists(NEWS_CSV):
             return {"data": []}
 
-    df["date"] = pd.to_datetime(df["published_at"], dayfirst=True, errors="coerce")
-    df = df.dropna(subset=["date"])
-    df = df.sort_values("date")
+        cols = ["id", "published_at", "headline", "url", "Aspect", "category", "subtype", "sentiment_score", "impact_type", "effect_type"]
+        df = pd.read_csv(NEWS_CSV, usecols=lambda x: x in cols)
 
-    if limit and len(df) > limit:
-        df = df.tail(limit)
+        # ปรับชื่อคอลัมน์ให้ตรงกับไฟล์คุณ
+        for c in ["published_at", "headline"]:
+            if c not in df.columns:
+                return {"data": []}
 
-    def infer_source(url: str):
-        u = str(url or "")
-        if "thairath.co.th" in u: return "Thairath"
-        if "thaipbs.or.th" in u: return "Thai PBS"
-        try:
-            from urllib.parse import urlparse
-            host = urlparse(u).netloc.replace("www.", "")
-            return host
-        except:
-            return ""
+        df["date"] = pd.to_datetime(df["published_at"], dayfirst=True, errors="coerce")
+        df = df.dropna(subset=["date"])
+        df = df.sort_values("date")
 
-    # map ให้เป็น schema ที่ frontend ใช้
-    rows = []
-    for _, r in df.iterrows():
-        date_str = r["date"].strftime("%Y-%m-%d")
-        rows.append({
-            "id": r.get("id"),
-            "date": date_str,
-            "title": r.get("headline", "") or "",
-            "url": r.get("url", "") or "",
-            "aspect": r.get("Aspect") or "Other",
-            "tag": r.get("category", "") or "",
-            "source": infer_source(r.get("url", "")) or (r.get("subtype", "") or ""),
-            "rawSentiment": float(r.get("sentiment_score")) if pd.notna(r.get("sentiment_score")) else 0.0,
-            "impactType": r.get("impact_type", "Neutral") or "Neutral",
-            "effectType": r.get("effect_type", "") or "",
-        })
+        def infer_source(url: str):
+            u = str(url or "")
+            if "thairath.co.th" in u: return "Thairath"
+            if "thaipbs.or.th" in u: return "Thai PBS"
+            try:
+                from urllib.parse import urlparse
+                host = urlparse(u).netloc.replace("www.", "")
+                return host
+            except:
+                return ""
 
-    return {"data": rows}
+        # map ให้เป็น schema ที่ frontend ใช้
+        rows = []
+        for _, r in df.iterrows():
+            date_str = r["date"].strftime("%Y-%m-%d")
+            rows.append({
+                "id": r.get("id"),
+                "date": date_str,
+                "title": r.get("headline", "") or "",
+                "url": r.get("url", "") or "",
+                "aspect": r.get("Aspect") or "Other",
+                "tag": r.get("category", "") or "",
+                "source": infer_source(r.get("url", "")) or (r.get("subtype", "") or ""),
+                "rawSentiment": float(r.get("sentiment_score")) if pd.notna(r.get("sentiment_score")) else 0.0,
+                "impactType": r.get("impact_type", "Neutral") or "Neutral",
+                "effectType": r.get("effect_type", "") or "",
+            })
+        _news_cache = rows
+
+    # Return sliced cache
+    if limit and len(_news_cache) > limit:
+        return {"data": _news_cache[-limit:]}
+    return {"data": _news_cache}
 
 
 @app.get("/dashboard/wordcloud")
