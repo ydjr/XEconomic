@@ -60,6 +60,7 @@ def analyze_and_pivot_sentiment(file_path, output_path):
 
     except Exception as e:
         print(f"An unexpected error occurred: {e}")
+        raise
 
 if __name__ == "__main__":
     analyze_and_pivot_sentiment(IN_ABSA, OUT_CSV)
