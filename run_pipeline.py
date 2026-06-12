@@ -132,7 +132,15 @@ def check_file(path: Path, label: str) -> bool:
 # Step definitions: (phase, label, script_path, requires_llm, output_check_file)
 STEPS = [
     # Phase: fetch
-    ("fetch", "Step 0: Fetch news from Supabase",
+    ("fetch", "Step 0a: Fetch UTCC Consumer Confidence Index",
+     Dirs.PIPELINE / "fetch_cci.py", False,
+     None),
+
+    ("fetch", "Step 0b: Fetch Macro Indicators (MOC API)",
+     Dirs.PIPELINE / "fetch_indicators.py", False,
+     None),
+
+    ("fetch", "Step 0c: Fetch news from Supabase",
      Dirs.NEWS_ANALYSIS / "0_fetch_news.py", False,
      None),  # always run to check for new articles
 
