@@ -62,7 +62,8 @@ DIVIDER = "=" * 60
 
 def run_script(script_path: Path, label: str, args: list = None, cwd: Path = None):
     """Run a Python script as a subprocess, streaming its output in real-time."""
-    cmd = [PYTHON, str(script_path)]
+    # -u flag forces Python to be unbuffered so we get logs immediately
+    cmd = [PYTHON, "-u", str(script_path)]
     if args:
         cmd.extend(args)
     work_dir = str(cwd or ROOT)
@@ -72,9 +73,14 @@ def run_script(script_path: Path, label: str, args: list = None, cwd: Path = Non
     log.info(f"  CMD: {' '.join(cmd)}")
     log.info(f"  CWD: {work_dir}")
     log.info(DIVIDER)
+    sys.stdout.flush()
 
     start = time.time()
     
+    # Ensure PYTHONUNBUFFERED=1 is set in the environment
+    env = os.environ.copy()
+    env["PYTHONUNBUFFERED"] = "1"
+
     process = subprocess.Popen(
         cmd,
         cwd=work_dir,
@@ -83,22 +89,26 @@ def run_script(script_path: Path, label: str, args: list = None, cwd: Path = Non
         text=True,
         encoding="utf-8",
         errors="replace",
-        bufsize=1
+        bufsize=1,
+        env=env
     )
 
     for line in iter(process.stdout.readline, ''):
         line = line.rstrip()
         if line:
             log.info(f"  | {line}")
+            sys.stdout.flush()
 
     process.wait()
     elapsed = time.time() - start
 
     if process.returncode != 0:
         log.error(f"❌ [FAIL] {label} in {elapsed:.1f}s (exit code {process.returncode})")
+        sys.stdout.flush()
         return False
 
     log.info(f"✅ [OK] {label} completed in {elapsed:.1f}s")
+    sys.stdout.flush()
     return True
 
 
@@ -107,6 +117,7 @@ def run_command(cmd: list, label: str, cwd: Path = None):
     work_dir = str(cwd or ROOT)
     log.info(f"▶ {label}")
     log.info(f"  CMD: {' '.join(cmd)}")
+    sys.stdout.flush()
 
     process = subprocess.Popen(
         cmd,
@@ -123,10 +134,12 @@ def run_command(cmd: list, label: str, cwd: Path = None):
         line = line.rstrip()
         if line:
             log.info(f"  | {line}")
+            sys.stdout.flush()
 
     process.wait()
     if process.returncode != 0:
         log.error(f"❌ [FAIL] {label} (exit code {process.returncode})")
+        sys.stdout.flush()
         return False
     return True
 
