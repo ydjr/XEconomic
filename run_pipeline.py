@@ -61,58 +61,72 @@ DIVIDER = "=" * 60
 
 
 def run_script(script_path: Path, label: str, args: list = None, cwd: Path = None):
-    """Run a Python script as a subprocess."""
+    """Run a Python script as a subprocess, streaming its output in real-time."""
     cmd = [PYTHON, str(script_path)]
     if args:
         cmd.extend(args)
     work_dir = str(cwd or ROOT)
 
-    log.info(f">>> {label}")
-    log.info(f"    CMD: {' '.join(cmd)}")
-    log.info(f"    CWD: {work_dir}")
+    log.info(DIVIDER)
+    log.info(f"▶ {label}")
+    log.info(f"  CMD: {' '.join(cmd)}")
+    log.info(f"  CWD: {work_dir}")
+    log.info(DIVIDER)
 
     start = time.time()
-    result = subprocess.run(
+    
+    process = subprocess.Popen(
         cmd,
         cwd=work_dir,
-        capture_output=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
         text=True,
         encoding="utf-8",
         errors="replace",
+        bufsize=1
     )
+
+    for line in iter(process.stdout.readline, ''):
+        line = line.rstrip()
+        if line:
+            log.info(f"  | {line}")
+
+    process.wait()
     elapsed = time.time() - start
 
-    if result.stdout:
-        for line in result.stdout.strip().split("\n")[-10:]:  # last 10 lines
-            log.info(f"    | {line}")
-
-    if result.returncode != 0:
-        log.error(f"    [FAIL] in {elapsed:.1f}s (exit code {result.returncode})")
-        if result.stderr:
-            for line in result.stderr.strip().split("\n")[-15:]:
-                log.error(f"    | {line}")
+    if process.returncode != 0:
+        log.error(f"❌ [FAIL] {label} in {elapsed:.1f}s (exit code {process.returncode})")
         return False
 
-    log.info(f"    [OK] Done in {elapsed:.1f}s")
+    log.info(f"✅ [OK] {label} completed in {elapsed:.1f}s")
     return True
 
 
 def run_command(cmd: list, label: str, cwd: Path = None):
-    """Run a shell command."""
+    """Run a shell command, streaming its output in real-time."""
     work_dir = str(cwd or ROOT)
-    log.info(f">>> {label}")
-    log.info(f"    CMD: {' '.join(cmd)}")
+    log.info(f"▶ {label}")
+    log.info(f"  CMD: {' '.join(cmd)}")
 
-    result = subprocess.run(
+    process = subprocess.Popen(
         cmd,
         cwd=work_dir,
-        capture_output=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
         text=True,
         encoding="utf-8",
         errors="replace",
+        bufsize=1
     )
-    if result.returncode != 0:
-        log.error(f"    [FAIL]: {result.stderr[:200] if result.stderr else 'unknown error'}")
+
+    for line in iter(process.stdout.readline, ''):
+        line = line.rstrip()
+        if line:
+            log.info(f"  | {line}")
+
+    process.wait()
+    if process.returncode != 0:
+        log.error(f"❌ [FAIL] {label} (exit code {process.returncode})")
         return False
     return True
 
