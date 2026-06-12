@@ -334,9 +334,9 @@ def init_kaggle_workspace():
     for d in seed_dirs:
         src = ROOT / d
         dst = ws / d
-        if src.exists() and not dst.exists():
+        if src.exists():
             print(f"  Seeding {d}/ → kaggle_workspace/{d}/")
-            shutil.copytree(src, dst)
+            shutil.copytree(src, dst, dirs_exist_ok=True)
         else:
             dst.mkdir(parents=True, exist_ok=True)
 
