@@ -149,6 +149,11 @@ class Supabase:
     TABLE    = "articles"
     PAGE_SIZE = 100   # small pages — avoids Supabase free-tier statement timeout
 
+class SupabaseABSA:
+    URL      = os.getenv("SUPABASE_ABSA_URL", "").rstrip("/") or "https://lohxkexggdpqjbxiqqyc.supabase.co"
+    ANON_KEY = os.getenv("SUPABASE_ABSA_KEY", "") or "sb_publishable__oDI6LsirULvFLz1b4YwDA_uDI9o-d2"
+    TABLE    = "absa_results"
+
 
 # ─────────────────────────────────────────────
 # WANGCHANBERTA (Relevance Filter)

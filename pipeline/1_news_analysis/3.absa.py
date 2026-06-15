@@ -136,21 +136,32 @@ def main():
             return aid
         return str(row.get("url", "") or "").strip()
 
+    # We skip 'done_ids' check here because we will upsert anyway.
+    # But to save LLM calls, we could fetch existing article_ids from Supabase.
+    import requests
+    from config import SupabaseABSA
+    
+    HEADERS = {
+        "apikey": SupabaseABSA.ANON_KEY,
+        "Authorization": f"Bearer {SupabaseABSA.ANON_KEY}",
+        "Content-Type": "application/json",
+        "Prefer": "resolution=merge-duplicates"
+    }
+    BASE_URL = f"{SupabaseABSA.URL}/rest/v1/{SupabaseABSA.TABLE}"
+
+    # Fetch already processed IDs
     done_ids = set()
-    if os.path.exists(fpath):
-        try:
-            with open(fpath, "r", encoding="utf-8-sig") as f:
-                existing = csv.DictReader(f)
-                for row in existing:
-                    k = row_key(row)
-                    if k:
-                        done_ids.add(k)
-            print(f"Resuming: {len(done_ids)} articles already processed")
-        except Exception as e:
-            print(f"  [WARN] Could not load resume keys ({e}); starting fresh")
+    try:
+        resp = requests.get(f"{BASE_URL}?select=article_id", headers=HEADERS, timeout=60)
+        if resp.status_code in (200, 206):
+            done_ids = {r["article_id"] for r in resp.json() if r.get("article_id")}
+        print(f"Resuming: {len(done_ids)} articles already in Supabase")
+    except Exception as e:
+        print(f"  [WARN] Could not fetch resume keys from Supabase ({e})")
 
     for i, r in enumerate(tqdm(rows, desc="Analyzing")):
-        if row_key(r) in done_ids:
+        k = row_key(r)
+        if k in done_ids:
             continue
 
         content_to_analyze = r.get("summary") or r.get("headline") or ""
@@ -173,18 +184,36 @@ def main():
 
         final_result["impact_type"] = get_impact_type(final_result["sentiment_score"])
 
-        # Merge news data with LLM results
-        output_row = {**r, **final_result}
+        # Prepare payload for Supabase
+        def clean_val(v):
+            if pd.isna(v) if isinstance(v, float) else False: return None
+            return str(v) if v is not None else None
 
-        # Append to the single master file
-        file_exists = os.path.isfile(fpath)
-        with open(fpath, "a", encoding="utf-8-sig", newline="") as out_f:
-            writer = csv.DictWriter(out_f, fieldnames=output_row.keys())
-            if not file_exists or os.path.getsize(fpath) == 0:
-                writer.writeheader()
-            writer.writerow(output_row)
+        payload = {
+            "article_id": k,
+            "published_at": clean_val(r.get("published_at")),
+            "headline": clean_val(r.get("headline")),
+            "summary": clean_val(r.get("summary")),
+            "Aspect": final_result["Aspect"],
+            "sentiment_score": final_result["sentiment_score"],
+            "impact_type": final_result["impact_type"]
+        }
 
-    print(f"\nSuccess! All results saved in: {fpath}")
+        # Upsert to Supabase
+        for attempt in range(3):
+            try:
+                res = requests.post(BASE_URL, json=payload, headers=HEADERS, timeout=30)
+                if res.status_code in (201, 200, 204):
+                    break
+                else:
+                    print(f"  [Error] Supabase upload failed ({res.status_code}): {res.text}")
+                    time.sleep(2)
+            except Exception as e:
+                print(f"  [Error] Supabase exception: {e}")
+                time.sleep(2)
+
+    print(f"\nSuccess! All new ABSA results uploaded to Supabase.")
 
 if __name__ == "__main__":
+    import pandas as pd # Ensure pandas is available
     main()

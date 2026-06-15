@@ -182,7 +182,11 @@ STEPS = [
 
     ("news", "Step 3: ABSA via LLM (4-bit HF API)",
      Dirs.NEWS_ANALYSIS / "3.absa.py", True,
-     Dirs.PIPELINE_DATA / "3_absa_results"),
+     None),
+
+    ("news", "Step 3.5: Fetch Historical ABSA Results",
+     Dirs.PIPELINE / "fetch_absa.py", False,
+     Files.ABSA_NEWS_CSV),
 
     ("news", "Step 4: Extract aspect features",
      Dirs.NEWS_ANALYSIS / "4.ft_extract.py", False,
