@@ -39,8 +39,8 @@ NEWS_COLS  = [
 FEATURE_COLS = MACRO_COLS + NEWS_COLS
 
 PARAMS = {
-    "lags": list(range(-1, -13, -1)),
-    "lags_past_covariates": list(range(-1, -13, -1)),
+    "lags": list(range(1, 13)),
+    "lags_past_covariates": list(range(1, 13)),
     "n_estimators": [100, 200],
     "max_depth": [3, 4],
     "learning_rate": [0.05, 0.1],
