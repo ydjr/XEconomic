@@ -188,7 +188,7 @@ class Pipeline:
     BACKTEST_START   = 0.65
 
     # Forecast config (script 6: predict_latest)
-    PREDICT_HORIZON = 6      # months to forecast ahead from latest CCI
+    PREDICT_HORIZON = 3      # months to forecast ahead from latest CCI
 
     # Target / features
     DATE_COL   = "date"
