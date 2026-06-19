@@ -422,7 +422,11 @@ def run_pipeline(phases: list, skip_llm: bool = False, force: bool = False):
 
     # Start servers if 'serve' is in phases
     if "serve" in phases and failed == 0:
-        start_servers()
+        # Prevent Kaggle notebook from hanging indefinitely
+        if config._KAGGLE_MODE and args.phase != "serve":
+            log.info("Skipping 'serve' phase automatically in Kaggle mode to prevent hanging.")
+        else:
+            start_servers()
 
     return failed == 0
 
