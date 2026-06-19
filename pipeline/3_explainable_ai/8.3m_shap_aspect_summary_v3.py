@@ -380,7 +380,7 @@ def main():
     init_output()
     print(f"Target months: {len(target_months)} months | Model: 4-bit HF API")
 
-    for current_month_dt in tqdm(target_months, desc="Months"):
+    for i, current_month_dt in enumerate(tqdm(target_months, desc="Months")):
         month_str = current_month_dt.strftime("%Y-%m")
 
         # Get prediction row for current month
@@ -481,6 +481,16 @@ def main():
                 "Summary_3M_Positive": pos_summary,
                 "Summary_3M_Negative": neg_summary,
             })
+            
+        # Auto-commit every month to prevent data loss on Kaggle timeout
+        import os
+        if os.environ.get("KAGGLE_ENV") == "1":
+            print(f"\n[Auto-Save] Saving 3M summary progress for month {month_str} to GitHub...")
+            os.system("git config --global user.email 'bot@kaggle.com'")
+            os.system("git config --global user.name 'Kaggle Bot'")
+            os.system(f"git add {OUTPUT_CSV}")
+            os.system("git commit -m 'chore: auto-save 3m summary progress'")
+            os.system("git push")
 
     print(f"\nDone. Output saved to:\n  {OUTPUT_CSV}")
 

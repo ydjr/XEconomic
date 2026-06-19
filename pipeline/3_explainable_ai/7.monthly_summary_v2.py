@@ -254,7 +254,7 @@ def main():
     print(f"Years: {sorted(df['Year'].unique())} | Months: {months}")
     print(f"Resuming: {len(done_keys)} pairs already done.")
 
-    for month in tqdm(months, desc="Months"):
+    for i, month in enumerate(tqdm(months, desc="Months")):
         month_df = df[df["Month"] == month]
 
         for aspect in tqdm(ASPECTS, desc=f"  {month}", leave=False):
@@ -303,6 +303,17 @@ def main():
 
             append_row(row)
             done_keys.add(key)
+        
+        # Auto-commit every 10 months to prevent data loss on Kaggle timeout
+        if (i + 1) % 10 == 0:
+            import os
+            if os.environ.get("KAGGLE_ENV") == "1":
+                print(f"\n[Auto-Save] Saving progress for month {month} to GitHub...")
+                os.system("git config --global user.email 'bot@kaggle.com'")
+                os.system("git config --global user.name 'Kaggle Bot'")
+                os.system(f"git add {OUTPUT_CSV}")
+                os.system("git commit -m 'chore: auto-save monthly summary progress'")
+                os.system("git push")
 
     print(f"\nDone. Output saved to:\n  {OUTPUT_CSV}")
 
