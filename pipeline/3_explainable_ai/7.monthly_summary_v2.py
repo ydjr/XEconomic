@@ -250,8 +250,27 @@ def main():
     df["impact_type"] = df["impact_type"].astype(str).apply(clean_text)
 
     done_keys = load_done_keys()
-    months    = sorted(df["Month"].unique())
-    print(f"Years: {sorted(df['Year'].unique())} | Months: {months}")
+    # Determine target window based on predictions
+    try:
+        from config import Files
+        df_pred = pd.read_csv(Files.PRED_LATEST_CSV)
+        pred_months = sorted(df_pred["date"].unique())
+        
+        # Calculate min_month: target_months[0] minus 2 months
+        start_dt = pd.to_datetime(pred_months[0]) - pd.DateOffset(months=2)
+        end_dt = pd.to_datetime(pred_months[-1])
+        
+        min_month = start_dt.strftime("%Y-%m")
+        max_month = end_dt.strftime("%Y-%m")
+        
+        all_months = sorted(df["Month"].unique())
+        months = [m for m in all_months if min_month <= m <= max_month]
+        print(f"Targeting specific months for 3-month SHAP trend: {min_month} to {max_month}")
+    except Exception as e:
+        print(f"Warning: Could not filter target months based on predictions ({e}). Defaulting to all months.")
+        months = sorted(df["Month"].unique())
+
+    print(f"Total target months to process: {len(months)}")
     print(f"Resuming: {len(done_keys)} pairs already done.")
 
     for i, month in enumerate(tqdm(months, desc="Months")):
