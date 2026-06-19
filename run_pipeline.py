@@ -237,7 +237,7 @@ STEPS = [
     #  Files.WORDCLOUD_PNG),
 ]
 
-PHASE_ORDER = ["fetch", "news", "train", "explain", "assets"]
+PHASE_ORDER = ["fetch", "news", "train", "explain"]
 
 
 # โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€โ”€
