@@ -189,6 +189,7 @@ class Pipeline:
 
     # Forecast config (script 6: predict_latest)
     PREDICT_HORIZON = 3      # months to forecast ahead from latest CCI
+    HIST_EXPLAIN_MONTHS = 6  # months of historical data to explain (e.g. 2025-11 to 2026-04)
 
     # Target / features
     DATE_COL   = "date"

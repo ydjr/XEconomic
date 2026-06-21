@@ -118,6 +118,7 @@ def get_shap_direction(shap_value: float) -> str:
     else:
         return "ไม่มีผลต่อ CCI"
 
+
 def call_model(prompt: str) -> str:
     for i in range(MAX_RETRIES + 1):
         try:

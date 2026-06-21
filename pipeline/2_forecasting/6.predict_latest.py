@@ -138,10 +138,39 @@ def main():
         "direction": directions,
     })
     print(pred_df.to_string(index=False))
-    pred_df.to_csv(Files.PRED_LATEST_CSV, index=False, encoding="utf-8-sig")
-    print(f"saved {Files.PRED_LATEST_CSV}")
 
-    print("\n Shap Explainer")
+    # ── Historical months: actual CCI + direction for past N months ──
+    HIST_N = Pipeline.HIST_EXPLAIN_MONTHS
+    target_series = target.to_series()
+    hist_rows = []
+    for i in range(HIST_N, 0, -1):
+        idx = len(target_series) - i
+        if idx < 1:
+            continue
+        cur_val = float(target_series.iloc[idx])
+        prev_val = float(target_series.iloc[idx - 1])
+        diff = cur_val - prev_val
+        if diff > 0.5:
+            d = "เพิ่มขึ้น"
+        elif diff < -0.5:
+            d = "ลดลง"
+        else:
+            d = "ทรงตัว"
+        hist_rows.append({
+            "date":      target_series.index[idx].strftime("%Y-%m"),
+            "predicted": cur_val,   # actual value (not a forecast)
+            "direction": d,
+        })
+
+    hist_df = pd.DataFrame(hist_rows)
+    combined_pred_df = pd.concat([hist_df, pred_df], ignore_index=True)
+    combined_pred_df.to_csv(Files.PRED_LATEST_CSV, index=False, encoding="utf-8-sig")
+    print(f"\nsaved {Files.PRED_LATEST_CSV}")
+    print(f"  Historical months: {sorted(hist_df['date'].tolist())}")
+    print(f"  Forecast months:   {sorted(pred_df['date'].tolist())}")
+
+    # ── SHAP Explainer ──
+    print("\n SHAP Explainer")
     explainer = ShapExplainer(
         model=model,
         background_series=target,
@@ -152,10 +181,12 @@ def main():
         foreground_series=target,
         foreground_past_covariates=past_cov
     )
- 
+
     # Per-predicted-month SHAP in long format (date, feature, SHAP_Value, ABS_SHAP)
     # Use SHAP of the last training point at each horizon → that explains pred month T+h
     shap_long_rows = []
+
+    # Future forecast months (horizon 1..HORIZON from last data point)
     for h in range(1, HORIZON + 1):
         shap_exp = explaination.get_shap_explanation_object(horizon=h)
         last_shap = shap_exp.values[-1]  # last training point
@@ -168,9 +199,28 @@ def main():
                 "ABS_SHAP":   abs(float(val)),
             })
 
+    # Historical months: use horizon=1 SHAP at each past data point
+    shap_exp_h1 = explaination.get_shap_explanation_object(horizon=1)
+    n_points = len(shap_exp_h1.values)
+    for i in range(HIST_N, 0, -1):
+        pt_idx = n_points - i  # index into shap_exp_h1.values
+        if pt_idx < 0:
+            continue
+        hist_shap = shap_exp_h1.values[pt_idx]
+        # The month this SHAP explains = data point month + 1 (horizon=1)
+        hist_month_dt = target_series.index[pt_idx] + pd.DateOffset(months=1)
+        hist_month = hist_month_dt.strftime("%Y-%m")
+        for feat, val in zip(shap_exp_h1.feature_names, hist_shap):
+            shap_long_rows.append({
+                "date":       hist_month,
+                "feature":    feat,
+                "SHAP_Value": float(val),
+                "ABS_SHAP":   abs(float(val)),
+            })
+
     new_shap = pd.DataFrame(shap_long_rows)
 
-    # Append strategy: keep historical months, add/overwrite new predicted months
+    # Append strategy: keep months outside our window, add/overwrite new months
     if Files.SHAP_RANK_CSV.exists():
         old_shap = pd.read_csv(Files.SHAP_RANK_CSV, encoding="utf-8-sig")
         old_shap["date"] = old_shap["date"].astype(str).str[:7]
@@ -181,9 +231,10 @@ def main():
 
     shap_rank_df.to_csv(Files.SHAP_RANK_CSV, index=False, encoding="utf-8-sig")
     print(f"\nSaved SHAP rank: {Files.SHAP_RANK_CSV}")
-    print(f"  Predicted months: {sorted(new_shap['date'].unique())}")
+    print(f"  All months with SHAP: {sorted(new_shap['date'].unique())}")
     top3 = new_shap.sort_values("ABS_SHAP", ascending=False).groupby("date").head(3)[["date", "feature", "ABS_SHAP"]]
     print(top3.to_string(index=False))
- 
+
 if __name__ == "__main__":
     main()
+
