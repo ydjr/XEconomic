@@ -256,8 +256,8 @@ def main():
         df_pred = pd.read_csv(Files.PRED_LATEST_CSV)
         pred_months = sorted(df_pred["date"].unique())
         
-        # Calculate min_month: target_months[0] minus 2 months
-        start_dt = pd.to_datetime(pred_months[0]) - pd.DateOffset(months=2)
+        # Calculate min_month: target_months[0] minus 6 months
+        start_dt = pd.to_datetime(pred_months[0]) - pd.DateOffset(months=6)
         end_dt = pd.to_datetime(pred_months[-1])
         
         min_month = start_dt.strftime("%Y-%m")
