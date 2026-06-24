@@ -403,10 +403,26 @@ function toAgencyStack(rows) {
 
 function buildSelectedMonthChartData(series = [], selectedMonth) {
   if (!series?.length) return []
-  return series.map((row) => ({
-    ...row,
-    selectedPred: row.date?.slice(0, 7) === selectedMonth ? row.pred : null,
-  }))
+  
+  // Find the last index where actual is not null
+  let lastActualIdx = -1
+  for (let i = series.length - 1; i >= 0; i--) {
+    if (series[i].actual != null) {
+      lastActualIdx = i
+      break
+    }
+  }
+
+  return series.map((row, i) => {
+    // Only plot forecast from the last actual point onwards to avoid overlap
+    const plotPred = i >= lastActualIdx ? row.pred : null
+    
+    return {
+      ...row,
+      plotPred,
+      selectedPred: row.date?.slice(0, 7) === selectedMonth ? row.pred : null,
+    }
+  })
 }
 
 function useLang() {
@@ -1031,7 +1047,7 @@ function ForecastChart({ t, lang, series, selectedMonth }) {
                 />
                 <Line
                   type="monotone"
-                  dataKey="pred"
+                  dataKey="plotPred"
                   stroke={THEME.success}
                   strokeWidth={2}
                   dot={{ r: 3 }}
