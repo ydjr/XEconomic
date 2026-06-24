@@ -414,8 +414,10 @@ function buildSelectedMonthChartData(series = [], selectedMonth) {
   }
 
   return series.map((row, i) => {
-    // Only plot forecast from the last actual point onwards to avoid overlap
-    const plotPred = i >= lastActualIdx ? row.pred : null
+    // Force the start of the forecast line to connect exactly to the last actual point
+    const plotPred = i > lastActualIdx 
+      ? row.pred 
+      : (i === lastActualIdx ? row.actual : null)
     
     return {
       ...row,
@@ -993,7 +995,7 @@ function ForecastChart({ t, lang, series, selectedMonth }) {
                   content={({ active, payload, label }) => {
                     if (!active || !payload?.length) return null
                     const actualItem = payload.find((p) => p.dataKey === "actual")
-                    const predItem = payload.find((p) => p.dataKey === "pred")
+                    const predItem = payload.find((p) => p.dataKey === "plotPred" || p.dataKey === "pred")
                     return (
                       <div className="rounded-xl border bg-white p-3 shadow-lg" style={{ borderColor: THEME.border }}>
                         <div className="text-sm font-semibold text-gray-900 mb-1">
