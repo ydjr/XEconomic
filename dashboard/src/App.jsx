@@ -1,6 +1,6 @@
 import React from "react"
 import "./index.css"
-import { getSummary, getTimeSeries, getNews, getShap, getAllExplain, getAllExplainEN } from "./api.js"
+import { getSummary, getTimeSeries, getNews, getShap, getShapAll, getAllExplain, getAllExplainEN } from "./api.js"
 import { getNewsSentimentFromCSV, getAgencyVolumeFromCSV } from "./newsFileApi"
 import { getAgencyVolumeLastNMonths } from "./newsSupabaseApi"
 import { TrendingUp, Activity, BarChart3, Search, RotateCcw } from "lucide-react"
@@ -633,6 +633,7 @@ function ForecastPage({
         selectedMonth={selectedForecastMonth}
         news={news}
         onSelectAspect={onSelectAspect}
+        allShapData={allShapData}
       />
 
       {/* <TopAspectsOnlyCard
@@ -1095,7 +1096,7 @@ function ForecastChart({ t, lang, series, selectedMonth }) {
 
 
 
-function ReasoningPanel({ t, lang, activeRow, selectedMonth, news, onSelectAspect }) {
+function ReasoningPanel({ t, lang, activeRow, selectedMonth, news, onSelectAspect, allShapData = [] }) {
   const getPrevious3Months = React.useCallback((targetMonth) => {
     if (!targetMonth) return []
     const [year, month] = targetMonth.split("-").map(Number)
@@ -1108,6 +1109,16 @@ function ReasoningPanel({ t, lang, activeRow, selectedMonth, news, onSelectAspec
     }
     return months
   }, [])
+
+  const shapDataForMonth = React.useMemo(() => {
+    if (!selectedMonth || !allShapData.length) return {}
+    const filtered = allShapData.filter(s => s.forecast_month === selectedMonth)
+    const map = {}
+    filtered.forEach(s => {
+      map[s.feature] = s.shap_value
+    })
+    return map
+  }, [allShapData, selectedMonth])
 
   const ranked = React.useMemo(() => {
     const backwardMonths = getPrevious3Months(selectedMonth)
@@ -1175,9 +1186,30 @@ function ReasoningPanel({ t, lang, activeRow, selectedMonth, news, onSelectAspec
                       {idx + 1}
                     </div>
 
-                    <p className="text-sm leading-7" style={{ color: THEME.textPrimary }}>
-                      {f.text}
-                    </p>
+                    <div className="flex flex-col gap-2 w-full">
+                      {f.tag && (
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-semibold px-2 py-0.5 bg-white border rounded" style={{ color: THEME.navy, borderColor: THEME.border }}>
+                            Feature: {f.tag}
+                          </span>
+                          {shapDataForMonth[f.tag] !== undefined && (
+                            <span 
+                              className="text-xs font-medium px-2 py-0.5 rounded border" 
+                              style={{ 
+                                backgroundColor: shapDataForMonth[f.tag] > 0 ? THEME.success + '15' : THEME.error + '15', 
+                                color: shapDataForMonth[f.tag] > 0 ? THEME.success : THEME.error,
+                                borderColor: shapDataForMonth[f.tag] > 0 ? THEME.success + '40' : THEME.error + '40'
+                              }}
+                            >
+                              SHAP Score: {shapDataForMonth[f.tag] > 0 ? "+" : ""}{Number(shapDataForMonth[f.tag]).toFixed(4)}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                      <p className="text-sm leading-7" style={{ color: THEME.textPrimary }}>
+                        {f.text}
+                      </p>
+                    </div>
                   </div>
                 ))
                 : <div className="text-sm text-gray-400 py-4">—</div>}
@@ -2108,6 +2140,7 @@ export default function App() {
   const [err, setErr] = React.useState("")
   const [newsReal, setNewsReal] = React.useState([])
   const [shapData, setShapData] = React.useState([])
+  const [allShapData, setAllShapData] = React.useState([])
 
   const [selectedForecastMonth, setSelectedForecastMonth] = React.useState("")
 
@@ -2167,13 +2200,14 @@ export default function App() {
     async function load() {
       setErr("")
       try {
-        const [s, e, enE, ts, newsRows, shapRes] = await Promise.allSettled([
+        const [s, e, enE, ts, newsRows, shapRes, shapAllRes] = await Promise.allSettled([
           getSummary(),
           getAllExplain(),
           getAllExplainEN(),
           getTimeSeries(2000),
           getNewsSentimentFromCSV(),
           getShap(),
+          getShapAll(),
         ])
 
         if (!alive) return
@@ -2184,6 +2218,7 @@ export default function App() {
         setSeries(ts.status === "fulfilled" ? ts.value?.data || [] : [])
         setNewsReal(newsRows.status === "fulfilled" ? newsRows.value || [] : [])
         setShapData(shapRes.status === "fulfilled" ? shapRes.value?.data || [] : [])
+        setAllShapData(shapAllRes.status === "fulfilled" ? shapAllRes.value?.data || [] : [])
         setDataLoaded(true)
       } catch (ex) {
         if (!alive) return

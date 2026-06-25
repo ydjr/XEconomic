@@ -493,3 +493,20 @@ def dashboard_shap(limit: int = Query(10, ge=1, le=50)):
     ]
 
     return {"data": rows}
+
+
+@app.get("/dashboard/shap/all")
+def dashboard_shap_all():
+    if not os.path.exists(SHAP_CSV):
+        return {"data": []}
+
+    df = pd.read_csv(SHAP_CSV)
+    required_cols = {"forecast_month", "feature", "shap_value"}
+    if not required_cols.issubset(df.columns):
+        return {"data": []}
+
+    df["shap_value"] = pd.to_numeric(df["shap_value"], errors="coerce")
+    df = df.dropna(subset=["shap_value"])
+
+    rows = df[["forecast_month", "feature", "shap_value"]].to_dict(orient="records")
+    return {"data": rows}

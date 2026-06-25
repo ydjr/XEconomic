@@ -29,6 +29,10 @@ export async function getShap() {
   return getJSON(`/dashboard/shap`);
 }
 
+export async function getShapAll() {
+  return getJSON(`/dashboard/shap/all`);
+}
+
 export function getWordcloud(limit = 120) {
   return getJSON(`/dashboard/wordcloud?limit=${limit}`);
 }
