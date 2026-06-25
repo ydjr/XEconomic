@@ -1196,9 +1196,9 @@ function ReasoningPanel({ t, lang, activeRow, selectedMonth, news, onSelectAspec
                             <span 
                               className="text-xs font-medium px-2 py-0.5 rounded border" 
                               style={{ 
-                                backgroundColor: shapDataForMonth[f.tag] > 0 ? THEME.success + '15' : THEME.error + '15', 
-                                color: shapDataForMonth[f.tag] > 0 ? THEME.success : THEME.error,
-                                borderColor: shapDataForMonth[f.tag] > 0 ? THEME.success + '40' : THEME.error + '40'
+                                backgroundColor: shapDataForMonth[f.tag] > 0 ? THEME.success + '15' : THEME.danger + '15', 
+                                color: shapDataForMonth[f.tag] > 0 ? THEME.success : THEME.danger,
+                                borderColor: shapDataForMonth[f.tag] > 0 ? THEME.success + '40' : THEME.danger + '40'
                               }}
                             >
                               SHAP Score: {shapDataForMonth[f.tag] > 0 ? "+" : ""}{Number(shapDataForMonth[f.tag]).toFixed(4)}
