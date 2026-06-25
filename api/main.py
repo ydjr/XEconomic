@@ -1,12 +1,18 @@
 import os
 import sys
 import json
+from contextlib import asynccontextmanager
+import requests
 from pathlib import Path
 
 import pandas as pd
 import numpy as np
 from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
+
+SUPABASE_URL = "https://lohxkexggdpqjbxiqqyc.supabase.co"
+SUPABASE_KEY = "sb_publishable__oDI6LsirULvFLz1b4YwDA_uDI9o-d2"
+SUPABASE_TABLE = "absa_results"
 
 # --- resolve project root & import config ---
 _ROOT = Path(__file__).resolve().parents[1]
@@ -97,15 +103,31 @@ def health_data():
         except Exception:
             return None
 
+    def _latest_date_supabase():
+        try:
+            headers = {"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}"}
+            url = f"{SUPABASE_URL}/rest/v1/{SUPABASE_TABLE}?select=published_at&order=published_at.desc.nullslast&limit=1"
+            resp = requests.get(url, headers=headers, timeout=5)
+            if resp.status_code == 200:
+                data = resp.json()
+                if data and "published_at" in data[0] and data[0]["published_at"]:
+                    # Try to parse and format consistently
+                    s = pd.to_datetime([data[0]["published_at"]], dayfirst=True, errors="coerce").dropna()
+                    if not s.empty:
+                        return s.max().strftime("%Y-%m-%d")
+        except Exception:
+            pass
+        return None
+
     _health_cache = {
         "cci_latest":          _latest_date(CCI_CSV, "date"),
-        "news_latest":         _latest_date(NEWS_CSV, "published_at"),
+        "news_latest":         _latest_date_supabase(),
         "prediction_latest":   _latest_date(PRED_LATEST_CSV, "date"),
         "shap_latest":         _latest_date(SHAP_CSV, "date"),
         "reasoning_file":      os.path.basename(EXPLAIN_JSON) if EXPLAIN_JSON else None,
         "files": {
             "cci":         os.path.exists(CCI_CSV),
-            "news":        os.path.exists(NEWS_CSV),
+            "news":        True, # Now using Supabase
             "prediction":  os.path.exists(PRED_LATEST_CSV),
             "shap":        os.path.exists(SHAP_CSV),
             "reasoning":   bool(EXPLAIN_JSON)
@@ -397,11 +419,31 @@ _news_cache = None
 def dashboard_news(limit: int = Query(2000, ge=1, le=20000)):
     global _news_cache
     if _news_cache is None:
-        if not os.path.exists(NEWS_CSV):
+        headers = {
+            "apikey": SUPABASE_KEY,
+            "Authorization": f"Bearer {SUPABASE_KEY}",
+            "Range-Unit": "items"
+        }
+        all_rows = []
+        offset = 0
+        limit_per_req = 1000
+        while True:
+            headers["Range"] = f"{offset}-{offset + limit_per_req - 1}"
+            resp = requests.get(f"{SUPABASE_URL}/rest/v1/{SUPABASE_TABLE}?select=*", headers=headers)
+            if resp.status_code != 200:
+                break
+            data = resp.json()
+            if not data:
+                break
+            all_rows.extend(data)
+            if len(data) < limit_per_req:
+                break
+            offset += limit_per_req
+            
+        if not all_rows:
             return {"data": []}
 
-        cols = ["id", "published_at", "headline", "url", "Aspect", "category", "subtype", "sentiment_score", "impact_type", "effect_type"]
-        df = pd.read_csv(NEWS_CSV, usecols=lambda x: x in cols)
+        df = pd.DataFrame(all_rows)
 
         # ปรับชื่อคอลัมน์ให้ตรงกับไฟล์คุณ
         for c in ["published_at", "headline"]:
@@ -427,21 +469,34 @@ def dashboard_news(limit: int = Query(2000, ge=1, le=20000)):
         rows = []
         for _, r in df.iterrows():
             date_str = r["date"].strftime("%Y-%m-%d")
+            
+            # fallback for source
+            source_agency = str(r.get("agency", ""))
+            if not source_agency or source_agency == "nan" or source_agency == "None":
+                source_agency = infer_source(r.get("url", ""))
+                
+            # fallback for section
+            cat = str(r.get("section", ""))
+            if not cat or cat == "nan" or cat == "None":
+                cat = str(r.get("category", ""))
+                
             rows.append({
-                "id": r.get("id"),
+                "id": str(r.get("article_id") or r.get("id", "")),
                 "date": date_str,
-                "title": r.get("headline", "") or "",
-                "url": r.get("url", "") or "",
-                "aspect": r.get("Aspect") or "Other",
-                "tag": r.get("category", "") or "",
-                "source": infer_source(r.get("url", "")) or (r.get("subtype", "") or ""),
-                "rawSentiment": float(r.get("sentiment_score")) if pd.notna(r.get("sentiment_score")) else 0.0,
-                "impactType": r.get("impact_type", "Neutral") or "Neutral",
-                "effectType": r.get("effect_type", "") or "",
+                "title": str(r.get("headline", "")),
+                "url": str(r.get("url", "")),
+                "aspect": str(r.get("Aspect", "Other")),
+                "tag": cat,
+                "source": source_agency,
+                "sentiment": float(r.get("sentiment_score", 0)) if pd.notnull(r.get("sentiment_score")) else 0,
+                "impactType": str(r.get("impact_type", "Neutral")),
+                "effectType": str(r.get("effect_type", "")),
+                "rawSentiment": float(r.get("sentiment_score", 0)) if pd.notnull(r.get("sentiment_score")) else 0,
+                "summary": str(r.get("summary", ""))
             })
+
         _news_cache = rows
 
-    # Return sliced cache
     if limit and len(_news_cache) > limit:
         return {"data": _news_cache[-limit:]}
     return {"data": _news_cache}
