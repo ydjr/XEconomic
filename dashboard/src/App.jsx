@@ -1728,7 +1728,7 @@ function AnalyticsPage({ t, lang, news = [] }) {
       <div className="grid grid-cols-1 gap-6">
         <Card>
           <CardHeader>
-            <CardTitle>{t("News volume by source", "ปริมาณข่าวตามสำนักข่าว")}</CardTitle>
+            <CardTitle>{t("News volume", "ปริมาณข่าว")}</CardTitle>
             <CardDescription>
               {t(
                 "Drag the slider below the chart to explore different time periods",
@@ -1761,14 +1761,13 @@ function AnalyticsPage({ t, lang, news = [] }) {
                     }}
                     labelFormatter={(label) => (lang === "th" ? thaiMonthYear(label) : engMonthYear(label))}
                   />
-                  <Legend />
                   {agencyStack.groups.map((agency, i) => (
                     <Bar
                       key={agency}
                       dataKey={agency}
                       stackId="1"
                       fill={isThairathAgency(agency) ? THAIRATH_COLOR : CHART_COLORS[i % CHART_COLORS.length]}
-                      name={agency}
+                      name={t("News count", "จำนวนข่าว")}
                       radius={i === agencyStack.groups.length - 1 ? [3, 3, 0, 0] : [0, 0, 0, 0]}
                     />
                   ))}
